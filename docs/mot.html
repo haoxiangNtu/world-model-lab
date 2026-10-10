@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MoT 原理 · World Model Lab</title>
+<meta name="description" content="Mixture-of-Transformers（MoT）的原理：每种模态各有一套 FFN、注意力投影和归一化参数，但所有 token 在同一个注意力里交换信息。VPP2 用它把 0.9B 的动作专家挂到 14B 视频 DiT 旁边，靠单向注意力掩码和 KV cache 保住视频先验。配可交互 3D 双塔和注意力掩码。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="wrap">
+<header class="top"><a class="brand" href="../index.html">World Model Lab</a>
+<nav><a href="vpp2.html">论文导读</a><a href="wan.html">Wan2.1 架构</a><a class="on" href="mot.html">MoT 原理</a><a href="posttrain.html">后训练过程</a><a href="benchmarks.html">评测数据集</a><a href="notes.html">原理问答</a><a href="https://github.com/haoxiangNtu/world-model-lab">GitHub</a></nav></header>
+
+<div class="eyebrow">Mixture-of-Transformers · Liang et al. · TMLR 2025</div>
+<h1>MoT 的原理：参数分家，注意力共享</h1>
+<p class="lead">VPP2 的动作专家是"通过 MoT 架构"挂到视频 DiT 上的。MoT 的想法只有一句话：不同模态的 token 各用各的权重，但在同一个注意力矩阵里互相看。这一页先讲原始论文，再讲机器人领域怎么用它（π0、Cosmos 3、VPP2 都是同一个套路），最后用 3D 看清 VPP2 里一个视频 token 和一个动作 token 各走了什么路。原文见 <a href="https://arxiv.org/abs/2411.04996">arXiv 2411.04996</a>。</p>
+<div class="toc"><a href="#what">是什么</a><a href="#vs">和 MoE、稠密的区别</a><a href="#s1">3D：双塔共享注意力</a><a href="#mask">注意力掩码</a><a href="#robot">机器人里的 MoT</a><a href="#vpp2">VPP2 的具体做法</a></div>
+
+<h2 id="what">1. MoT 是什么</h2>
+<p>原始论文（Meta FAIR 与斯坦福，Weixin Liang 等）要解决的问题是：一个稠密 Transformer 同时学文本、图像、语音，各模态的训练动态互相冲突，占据不同的特征空间，需要远多于纯文本模型的数据和算力。MoT 的做法：</p>
+<ol class="steps">
+<li><b>按模态拆开所有非嵌入参数。</b>FFN、注意力的 q、k、v、o 投影、LayerNorm，每种模态各一套。文本 token 永远走文本那套，图像 token 永远走图像那套，路由由 token 的模态决定，是确定的，没有学习出来的路由器。</li>
+<li><b>注意力仍然是全局的。</b>各模态的 q、k、v 算完之后拼成一个序列，做同一个自注意力。所以跨模态的信息交换一点没少，只是"怎么算 q、k、v"和"注意力之后怎么处理"分开了。</li>
+<li><b>计算量按模态比例分配。</b>每个 token 只过自己那一套参数，总 FLOPs 和同宽度的稠密模型相当，但每套参数只需要拟合一种模态，收敛更快。</li>
+</ol>
+<div class="tablewrap"><table>
+<tr><th>设定（论文中的实验）</th><th>结果</th></tr>
+<tr><td>Chameleon 7B，文本 + 图像生成</td><td>MoT 用 55.8% 的 FLOPs 达到稠密基线的水平</td></tr>
+<tr><td>再加语音</td><td>语音质量相当，只用 37.2% 的 FLOPs</td></tr>
+<tr><td>Transfusion 设定（文本自回归 + 图像扩散，目标函数不同）</td><td>7B MoT 用 1/3 FLOPs 达到稠密的图像质量；760M MoT 在关键图像指标上超过 1.4B 稠密模型</td></tr>
+<tr><td>AWS A100 实测墙钟时间</td><td>达到稠密基线的图像质量用 47.2% 的时间，文本质量用 75.6% 的时间</td></tr>
+</table></div>
+<p>最后一行对机器人最有意思：Transfusion 设定里文本是自回归目标、图像是扩散目标，两种目标函数在同一个网络里训练，MoT 依然有效。VPP2 的情况与此类似：视频 token 已经是去噪好的 latent，动作 token 在做流匹配去噪。</p>
+
+<h2 id="vs">2. 和 MoE、稠密模型的区别</h2>
+<div class="tablewrap"><table>
+<tr><th></th><th>稠密 Transformer</th><th>MoE（混合专家）</th><th>MoT（混合 Transformer）</th></tr>
+<tr><td>谁决定 token 走哪套参数</td><td>没有选择，都走同一套</td><td>学习出来的路由器，按 token 内容挑 top-k 个专家</td><td>token 的模态，确定的</td></tr>
+<tr><td>拆的是什么</td><td>—</td><td>通常只拆 FFN</td><td>FFN、注意力投影、归一化全拆</td></tr>
+<tr><td>注意力</td><td>共享</td><td>共享</td><td>共享（全局序列）</td></tr>
+<tr><td>负载均衡问题</td><td>无</td><td>有，需要辅助损失</td><td>无，各模态 token 数是数据决定的</td></tr>
+<tr><td>典型用途</td><td>单模态</td><td>同一模态内扩大容量</td><td>多模态，或者给预训练模型"挂"一个新模态</td></tr>
+</table></div>
+<p>第三列最后一行就是机器人领域用 MoT 的方式：视频模型或 VLM 已经预训练好了，动作是一个新模态，给它单独一套参数，让它通过共享注意力读预训练模型的表征，而不去改预训练模型本身。</p>
+
+<section class="station" id="s1">
+<div class="station-head"><h2>3D 实验 1 · 一个 token 在 VPP2 里走的路</h2><span class="pill">拖动旋转 · 滚轮缩放</span></div>
+<p>左边蓝色塔是 14B 的视频 DiT（40 层只画 8 层），右边橙色塔是 0.9B 的动作 DiT，每层之间的粉色薄板是共享注意力，板上的小方块是这一层各个 token 的 key 和 value。白球是被跟踪的 token：在自己的塔里过归一化、q/k/v 投影、FFN，到了注意力板上才和别的 token 交换信息，粉线是它可以看的 key。切换跟踪对象，再试试打开双向掩码；"推理：KV cache"模式演示单步视频 + 5 步动作去噪的实际执行顺序。</p>
+<div class="stage stage3d" id="st1"><div class="overlay" id="ov1"></div><div class="hint">drag · wheel</div></div>
+<div class="controls">
+<div class="ctl"><label>跟踪谁</label><div class="seg"><button id="fv" class="on">一个视频 token</button><button id="fa">一个动作 token</button><button id="fk">推理：KV cache</button></div></div>
+<div class="ctl"><label>注意力掩码</label><div class="seg"><button id="mk1" class="on">VPP2：单向</button><button id="mk2">双向（对照）</button></div></div>
+</div>
+<div class="legend3d"><span><i style="background:#3aa8e0"></i>视频 DiT 参数与 token</span><span><i style="background:#f0963c"></i>动作 DiT 参数与 token</span><span><i style="background:#d45fa0"></i>共享注意力 / 可见的 key</span><span><i style="background:#ff7a59"></i>双向掩码下视频看动作的连线</span></div>
+<div class="infopanel" id="ip1"></div>
+</section>
+
+<h2 id="mask">3. 注意力掩码：谁能看谁</h2>
+<p>VPP2 论文图 4 右侧画了一张掩码。行是 query，列是 key。o₀ 是当前观测，o<sub>h</sub>、o<sub>h′</sub>、o<sub>H</sub> 是预测出来的未来 latent 帧，a₀、a<sub>h</sub> 是动作 token。点击格子看解释，切换按钮看双向掩码会怎样。</p>
+<div class="twocol">
+<div><div class="stage" style="padding:12px"><canvas id="maskcv" width="420" height="420" style="width:100%;max-width:420px;display:block;margin:0 auto"></canvas></div>
+<div class="controls"><div class="ctl"><label>掩码</label><div class="seg"><button id="cm1" class="on">VPP2：单向</button><button id="cm2">双向（对照）</button></div></div></div></div>
+<div class="infopanel" id="ipm">点击一个格子。</div>
+</div>
+<div class="note">单向掩码的后果是：视频 token 这一路的计算和纯视频模型完全一样，动作 token 的存在对它没有任何影响。于是视频塔的前向只需要算一次，它每层的 key、value 存成 KV cache，动作塔做 5 步去噪时反复读这份缓存。视频先验没有被动作训练碰过，推理也不用重复 14B 的前向。</div>
+
+<h2 id="robot">4. 机器人里到处都是 MoT</h2>
+<div class="tablewrap"><table>
+<tr><th>模型</th><th>预训练塔</th><th>新模态塔</th><th>掩码方向</th><th>备注</th></tr>
+<tr><td>π0 / π0.5（Physical Intelligence，2024–2025）</td><td>PaliGemma 3B VLM</td><td>约 300M 的动作专家，流匹配</td><td>图像和文本看不到动作；动作看全部</td><td>论文里叫"action expert"，就是双塔 MoT</td></tr>
+<tr><td>Cosmos 3（NVIDIA，2026）</td><td>推理塔（自回归语言）</td><td>生成塔（扩散：图像、视频、音频、动作）</td><td>共享多模态注意力</td><td>Nano 16B = 8B + 8B，Super 64B = 32B + 32B，官方明说是 MoT</td></tr>
+<tr><td>VPP2（2026）</td><td>Wan2.1-I2V-14B 视频 DiT</td><td>0.9B 动作 DiT，流匹配</td><td>视频看不到动作；动作看视频和动作</td><td>视频塔冻结 + LoRA，动作塔读视频塔的 KV cache</td></tr>
+</table></div>
+<p>三者的共同点：新模态的 token 要"读"预训练模型的中间表征，而不是只读它的最终输出。读中间表征的最自然方式就是共享注意力，又不想让新模态的梯度改坏预训练塔，于是参数分家、掩码单向。VPP2 的基线之一 Cosmos3-64B 本身也是 MoT，只是它的生成塔同时管视频和动作。</p>
+
+<h2 id="vpp2">5. VPP2 的具体做法</h2>
+<dl class="kv">
+<dt>动作专家</dt><dd>一个 0.9B 参数的扩散 Transformer，标准 MoT 结构，随机初始化。输入是加噪的 2 秒动作片段，目标是流匹配的速度场，推理 5 步去噪，约 0.10 秒。</dd>
+<dt>条件</dt><dd>视频 DiT 处理"当前观测 + 单步生成的未来 latent"，每一层的 key、value 组成 KV cache；动作 token 在每一层的共享注意力里读它。这就是论文说的"以视频模型的 KV cache 为条件学习隐式逆动力学模型"：给定现在和未来的画面，推断中间的动作。</dd>
+<dt>保护视频塔</dt><dd>动作训练初期冻结视频 DiT 的全部基础参数，只用 LoRA 适配视频主干。原因是动作专家刚初始化时梯度很乱，直接传进视频塔会破坏预训练表征。</dd>
+<dt>统一坐标</dt><dd>动作是在统一后的末端坐标系里表示的（见<a href="vpp2.html#s2">导读页 3D 实验 2</a>），所以一套动作专家能吃超过 80% 的双臂第一视角数据。</dd>
+<dt>延迟</dt><dd>视频单步 0.12 秒 + 动作 5 步 0.10 秒 = 每个 2 秒动作片段约 0.22 秒，bfloat16 加 torch.compile。</dd>
+</dl>
+<p>把它和 VPP1（Video Prediction Policy，2024）比：VPP1 从视频扩散模型的中间层抽特征，再喂给一个独立的扩散策略头；VPP2 把这一步换成共享注意力，动作 token 自己决定看哪一层、哪些位置的视频表征，而不是预先指定取哪一层。</p>
+
+<footer>World Model Lab · 世界模型的学习与测试记录 · <a href="https://github.com/haoxiangNtu/world-model-lab">源码</a> · 参考：Liang et al., <a href="https://arxiv.org/abs/2411.04996">Mixture-of-Transformers</a>, TMLR 2025；Guo et al., <a href="https://arxiv.org/abs/2610.10270">VPP2</a>, 2026；Black et al., π0, 2024；NVIDIA, <a href="https://arxiv.org/abs/2606.02800">Cosmos 3</a>, 2026</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="lab3d.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const L = Lab3D, C = L.C;
+
+/* ---------- Station 1: two towers, shared attention ---------- */
+(function () {
+  const S = L.makeScene($('st1'), { theta: 0.3, phi: 1.15, dist: 38, target: [-0.5, 5.5, 0] });
+  S.scene.add(L.grid(34, 17)).position.y = -2.2;
+  const NL = 8, dy = 1.55; const vid = [], act = [], planes = [], vkeys = [], akeys = [];
+  for (let i = 0; i < NL; i++) {
+    const y = i * dy;
+    const vs = L.box(6, 0.42, 3, C.video, { opacity: 0.92 }); vs.position.set(-4.8, y, 0); S.scene.add(vs); vid.push(vs);
+    const as = L.box(3, 0.42, 2, C.action, { opacity: 0.92 }); as.position.set(4.6, y, 0); S.scene.add(as); act.push(as);
+    const pl = L.box(15.5, 0.05, 3.4, C.attn, { opacity: 0.14, edgeColor: C.attn, edgeOpacity: 0.45 }); pl.position.set(-0.4, y + 0.78, 0); S.scene.add(pl); planes.push(pl);
+    const vk = [], ak = [];
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) { const k = L.box(0.34, 0.1, 0.34, C.video, { edges: false }); k.position.set(-6.8 + c * 1.0, y + 0.84, -1 + r * 1.0); S.scene.add(k); vk.push(k); }
+    for (let c = 0; c < 4; c++) { const k = L.box(0.34, 0.1, 0.34, C.action, { edges: false }); k.position.set(3.4 + c * 0.8, y + 0.84, 0); S.scene.add(k); ak.push(k); }
+    vkeys.push(vk); akeys.push(ak);
+  }
+  S.scene.add(L.label('Video DiT · 14B（冻结 + LoRA）\n40 层只画 8 层 · 蓝色权重', { pos: [-4.8, NL * dy + 1.6, -1.5], size: 15 }));
+  S.scene.add(L.label('Action DiT · 0.9B\n橙色权重，随机初始化', { pos: [4.6, NL * dy + 0.2, 1.5], size: 15 }));
+  S.scene.add(L.label('共享注意力（每层一次）', { pos: [-0.4, NL * dy - 1.8, 3.6], size: 13, bg: 'rgba(212,95,160,0.55)' }));
+  /* bottom tokens */
+  const vt = [], at = [];
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 5; c++) { const k = L.box(0.5, 0.5, 0.5, C.video); k.position.set(-6.8 + c * 1.0, -1.5, -1 + r * 1.0); S.scene.add(k); vt.push(k); }
+  for (let c = 0; c < 4; c++) { const k = L.box(0.5, 0.5, 0.5, C.action); k.position.set(3.4 + c * 0.8, -1.5, 0); S.scene.add(k); at.push(k); }
+  S.scene.add(L.label('视频 token：当前观测 + 预测的未来 latent', { pos: [-4.8, -2.6, 2.2], size: 15 }), L.label('动作 token：2 s 动作片段', { pos: [4.6, -2.6, 1.6], size: 15 }));
+  const marker = L.sphere(0.32, 0xffffff, { emissive: 0xffffff }); S.scene.add(marker);
+  const lines = new THREE.Group(); S.scene.add(lines);
+  let mode = 'video', bidir = false, t0 = 0; const PER = 110;
+  function setMode(m) { mode = m; ['fv', 'fa', 'fk'].forEach((id, i) => $(id).classList.toggle('on', ['video', 'action', 'kv'][i] === m)); t0 = performance.now(); lightKeys(-1);
+    $('ip1').innerHTML = m === 'video' ? '<b>视频 token 的一层：</b>自己的 LayerNorm → 自己的 q/k/v 投影 → 共享注意力（只能看视频 key）→ 自己的 o 投影和 FFN。它的计算和纯 Wan 视频模型完全一样，动作 token 对它不可见。'
+      : m === 'action' ? '<b>动作 token 的一层：</b>动作塔自己的 LayerNorm → 动作塔的 q/k/v 投影 → 共享注意力（能看视频 key 和动作 key）→ 动作塔的 o 投影和 FFN。它读的是视频塔每一层的中间表征，这就是"隐式逆动力学"的信息来源。'
+      : '<b>推理顺序：</b>视频塔先跑一次（单步生成后的 latent 作为输入），每层的 key/value 存进 KV cache，视频塔随后不再计算。动作塔跑 5 步去噪，每一步都在每一层读同一份缓存。延迟：视频 0.12 s + 动作 0.10 s ≈ 0.22 s。'; }
+  function lightKeys(upto) { vkeys.forEach((vk, i) => vk.forEach(k => { k.material.emissive.setHex(i <= upto ? 0x1f5a80 : 0x000000); })); vid.forEach((s, i) => s.material.opacity = (mode === 'kv' && i <= upto) ? 0.4 : 0.92); }
+  function drawLines(li, from, toV, toA, color) { L.clear(lines); if (toV) vkeys[li].forEach(k => lines.add(L.line([from, k.position], color, { opacity: 0.55 }))); if (toA) akeys[li].forEach(k => lines.add(L.line([from, k.position], color, { opacity: 0.7 }))); }
+  function glow(arr, idx) { arr.forEach((s, i) => s.material.emissive.setHex(i === idx ? 0x334455 : 0x000000)); }
+  S.onTick(() => {
+    const now = performance.now(); const el = (now - t0) / (1000 / 60);
+    if (mode !== 'kv') {
+      const u = (el / PER) % NL, li = Math.floor(u), f = u - li; const x = mode === 'video' ? -4.8 : 4.6;
+      const ownKeys = mode === 'video' ? vkeys[li][7] : akeys[li][1];
+      if (f < 0.35) { marker.position.set(x, li * dy + f / 0.35 * 0.78, 0); glow(mode === 'video' ? vid : act, li); glow(mode === 'video' ? act : vid, -1); L.clear(lines); planes[li].material.opacity = 0.14; }
+      else if (f < 0.7) { marker.position.copy(ownKeys.position).add(new THREE.Vector3(0, 0.35, 0)); planes[li].material.opacity = 0.3;
+        if (mode === 'video') drawLines(li, marker.position, true, bidir, bidir ? C.warn : C.attn); else drawLines(li, marker.position, true, true, C.attn); }
+      else { marker.position.set(x, li * dy + 0.78 + (f - 0.7) / 0.3 * (dy - 0.78), 0); L.clear(lines); planes[li].material.opacity = 0.14; glow(mode === 'video' ? vid : act, li); }
+      planes.forEach((p, i) => { if (i !== li) p.material.opacity = 0.14; });
+      $('ov1').innerHTML = `<b>${mode === 'video' ? '视频 token' : '动作 token'} · 第 ${li + 1} 层</b>\n${f < 0.35 ? 'LayerNorm + q/k/v 投影（自己塔的参数）' : f < 0.7 ? (mode === 'video' ? (bidir ? '共享注意力：看视频 key，也看动作 key（双向）' : '共享注意力：只看视频 key') : '共享注意力：看视频 key 和动作 key') : 'o 投影 + FFN（自己塔的参数）'}`;
+    } else {
+      const A = NL * 28, B = NL * 55, total = A + 5 * B; const u = el % total;
+      if (u < A) { const li = Math.min(NL - 1, Math.floor(u / 28)); marker.position.set(-4.8, li * dy + (u / 28 - li) * dy, 0); glow(vid, li); glow(act, -1); lightKeys(li); L.clear(lines);
+        $('ov1').innerHTML = `<b>视频塔前向 · 第 ${li + 1} 层</b>\n算一次，key/value 写入 KV cache\n（0.12 s，含单步视频生成）`; }
+      else { const v = u - A; const step = Math.floor(v / B) + 1; const w = (v % B) / 55; const li = Math.min(NL - 1, Math.floor(w)), f = w - li; lightKeys(NL); glow(vid, -1); glow(act, li);
+        if (f > 0.3 && f < 0.7) { marker.position.copy(akeys[li][1].position).add(new THREE.Vector3(0, 0.35, 0)); drawLines(li, marker.position, true, true, C.attn); } else { marker.position.set(4.6, li * dy + f * dy, 0); L.clear(lines); }
+        $('ov1').innerHTML = `<b>动作塔去噪步 ${step} / 5 · 第 ${li + 1} 层</b>\n视频塔不再计算，只读缓存的 key/value\n（5 步共 0.10 s）`; }
+    }
+  });
+  $('fv').onclick = () => setMode('video'); $('fa').onclick = () => setMode('action'); $('fk').onclick = () => setMode('kv');
+  $('mk1').onclick = () => { bidir = false; $('mk1').classList.add('on'); $('mk2').classList.remove('on'); };
+  $('mk2').onclick = () => { bidir = true; $('mk2').classList.add('on'); $('mk1').classList.remove('on'); if (mode === 'video') $('ip1').innerHTML = '<b>双向掩码（对照）：</b>视频 token 也能看动作 token。于是视频塔的输出依赖动作 token，动作训练的梯度会穿过注意力改动视频表征，而且动作每去噪一步视频塔都得重算。VPP2 没有这样做。'; };
+  setMode('video');
+})();
+
+/* ---------- attention mask canvas ---------- */
+(function () {
+  const c = $('maskcv'), g = c.getContext('2d'); const names = ['o₀', 'o_h', 'o_h′', 'o_H', 'a₀', 'a_h']; const desc = ['当前观测', '未来帧 h', '未来帧 h′', '未来帧 H（片段末尾）', '动作 token 0', '动作 token h'];
+  let bidir = false; let sel = null;
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  function allowed(q, k) { const qv = q < 4, kv = k < 4; if (qv && kv) return true; if (!qv) return true; return bidir; }
+  function draw() {
+    const dpr = Math.min(2, devicePixelRatio || 1); const W = 420; c.width = W * dpr; c.height = W * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, W);
+    const m = 58, cell = (W - m - 10) / 6; g.font = '13px JetBrains Mono, monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = css('--muted'); g.fillText('key →', m + cell * 3, 14); g.save(); g.translate(14, m + cell * 3); g.rotate(-Math.PI / 2); g.fillText('query ↓', 0, 0); g.restore();
+    for (let i = 0; i < 6; i++) { g.fillStyle = i < 4 ? '#3aa8e0' : '#f0963c'; g.fillText(names[i], m + cell * (i + 0.5), m - 14); g.textAlign = 'right'; g.fillText(names[i], m - 8, m + cell * (i + 0.5)); g.textAlign = 'center'; }
+    for (let q = 0; q < 6; q++) for (let k = 0; k < 6; k++) { const a = allowed(q, k); const x = m + cell * k, y = m + cell * q;
+      g.fillStyle = a ? (q < 4 ? (k < 4 ? '#3aa8e0' : '#ff7a59') : (k < 4 ? '#d45fa0' : '#f0963c')) : css('--panel'); g.globalAlpha = a ? 0.85 : 1; g.beginPath(); g.roundRect(x + 2, y + 2, cell - 4, cell - 4, 6); g.fill(); g.globalAlpha = 1;
+      if (sel && sel[0] === q && sel[1] === k) { g.strokeStyle = css('--fg'); g.lineWidth = 2; g.stroke(); } }
+  }
+  c.addEventListener('click', e => { const r = c.getBoundingClientRect(); const s = 420 / r.width; const x = (e.clientX - r.left) * s, y = (e.clientY - r.top) * s; const m = 58, cell = (420 - m - 10) / 6; const k = Math.floor((x - m) / cell), q = Math.floor((y - m) / cell); if (k < 0 || k > 5 || q < 0 || q > 5) return; sel = [q, k]; draw();
+    const a = allowed(q, k); const qv = q < 4, kv = k < 4;
+    $('ipm').innerHTML = `<b>query ${names[q]}（${desc[q]}）→ key ${names[k]}（${desc[k]}）：${a ? '可见' : '被掩掉'}</b>。` + (qv && kv ? '视频 token 之间是双向全注意力，这和 Wan 本身一样：DiT 同时看到当前帧和所有预测帧。' : qv && !kv ? (a ? '双向对照里视频可以看动作，视频塔的输出因此依赖动作，视频先验会被动作训练改动。' : '视频看不到动作，所以视频塔的计算与纯视频模型相同，可以算一次后缓存。') : kv ? '动作 token 读视频塔这一层的 key/value：当前观测和预测的未来，这就是逆动力学需要的两头信息。' : '动作 token 之间互相可见，让 2 秒片段内的动作保持连贯。'); });
+  $('cm1').onclick = () => { bidir = false; $('cm1').classList.add('on'); $('cm2').classList.remove('on'); draw(); };
+  $('cm2').onclick = () => { bidir = true; $('cm2').classList.add('on'); $('cm1').classList.remove('on'); draw(); };
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw); draw();
+})();
+</script>
+</body>
+</html>

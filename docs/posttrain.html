@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>后训练过程 · World Model Lab</title>
+<meta name="description" content="VPP2 怎么把 Wan2.1 后训练成机器人策略：事件级持续预训练、固定时长片段后训练、一致性蒸馏成单步、动作专家预训练（冻结 + LoRA）、评测专项后训练。三个可交互实验：采样时间线、流匹配与一致性蒸馏的 3D 粒子、三阶段流水线的参数冻结图。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="wrap">
+<header class="top"><a class="brand" href="../index.html">World Model Lab</a>
+<nav><a href="vpp2.html">论文导读</a><a href="wan.html">Wan2.1 架构</a><a href="mot.html">MoT 原理</a><a class="on" href="posttrain.html">后训练过程</a><a href="benchmarks.html">评测数据集</a><a href="notes.html">原理问答</a><a href="https://github.com/haoxiangNtu/world-model-lab">GitHub</a></nav></header>
+
+<div class="eyebrow">Stage 1 → 2 → 3 · 持续预训练 · 后训练 · 蒸馏 · 动作专家</div>
+<h1>VPP2 的后训练过程</h1>
+<p class="lead">从一个会生成好看视频的 Wan2.1-I2V-14B，到一个 0.22 秒出一段动作的机器人策略，中间是四步：先教它按详细描述预测整个操作事件，再改成预测固定 8 秒，再把 40 步采样蒸馏成 1 步，最后挂上动作专家。每一步解决的都是上一步留下的具体问题。</p>
+<div class="toc"><a href="#stage1">阶段 1 事件级</a><a href="#s1">实验：采样时间线</a><a href="#stage2">阶段 2 固定时长</a><a href="#distill">一致性蒸馏</a><a href="#s2">3D：流匹配与蒸馏</a><a href="#stage3">阶段 3 动作专家</a><a href="#s3">3D：三阶段流水线</a><a href="#bench">评测专项后训练</a></div>
+
+<h2 id="stage1">阶段 1 · 事件级持续预训练：先把映射学唯一</h2>
+<p>把 Wan2.1-I2V-14B 的全部参数拿来，在整理好的操作视频上继续训练。每条训练样本是一个完整的子任务：条件是首帧 o₀ 和详细描述 c，目标是从开始到完成的整段视频。</p>
+<div class="formula">y_event = ( o₀, o_⌊T/N⌋, o_⌊2T/N⌋, …, o_T )      在整个事件上均匀取 N 帧，T 是末帧
+x₁ = E(y_event)                                 Wan-VAE 编码成 latent
+x_s = (1 − s) ε + s x₁,  ε ~ N(0, I),  s ∈ [0,1]  流时间 s：0 是噪声，1 是数据
+L_FM = E ‖ v_θ(x_s, s, c) − (x₁ − ε) ‖²           流匹配，和 Wan 原本的目标一样</div>
+<div class="readout">
+<div><div class="k">预测帧数</div><div class="v">49 帧</div></div>
+<div><div class="k">分辨率</div><div class="v">416 × 240</div></div>
+<div><div class="k">优化步数</div><div class="v">30 000</div></div>
+<div><div class="k">batch size</div><div class="v">1 024</div></div>
+<div><div class="k">学习率</div><div class="v">1e-5</div></div>
+<div><div class="k">可训练参数</div><div class="v">全部 16.4B</div></div>
+</div>
+<p>为什么是"整个事件"而不是"接下来几秒"：描述说的是整件事（把杯子放进盒子），如果只预测接下来 2 秒，描述和画面对不上，模型又回到了短片段的多模态映射。论文的消融 VPP2-Fixed-Step 就是跳过这一阶段直接预测固定时长，指令跟随成功率从 0.80 / 0.90 掉到 0.48 / 0.42（人手 / 机器人）。</p>
+
+<section class="station" id="s1">
+<div class="station-head"><h2>实验 1 · 事件级采样 vs 固定时长采样</h2></div>
+<p>一条示范有 T 帧。事件级采样在整段上均匀取 N 帧，所以事件越长、帧与帧之间隔得越久；固定时长采样从当前帧起按固定间隔取，超出事件末尾的位置全部截到最后一帧。拖动事件时长和片段起点，看两种采样取到哪些帧、帧间隔是多少。</p>
+<div class="stage" style="padding:10px 12px"><canvas id="tl" width="1040" height="300" class="viz"></canvas></div>
+<div class="controls">
+<div class="ctl"><label>采样方式</label><div class="seg"><button id="smE" class="on">事件级（阶段 1）</button><button id="smC">固定 8 s 片段（阶段 2）</button></div></div>
+<div class="ctl"><label>事件时长 <output id="durv">4.0 s</output></label><input type="range" id="dur" min="1" max="12" step="0.5" value="4"></div>
+<div class="ctl"><label>片段起点 t <output id="t0v">0.0 s</output></label><input type="range" id="t0" min="0" max="12" step="0.25" value="0"></div>
+<div class="ctl"><label>预测帧数 N（不含 o₀）</label><div class="seg"><button data-n="16" class="on">16（后训练 17 帧）</button><button data-n="48">48（预训练 49 帧）</button></div></div>
+</div>
+<div class="readout">
+<div><div class="k">帧间隔 δ</div><div class="v" id="r1d"></div></div>
+<div><div class="k">覆盖的时间范围</div><div class="v" id="r1c"></div></div>
+<div><div class="k">被截到末帧的采样点</div><div class="v" id="r1k"></div></div>
+<div><div class="k">2 s 动作片段对应的预测帧</div><div class="v" id="r1a"></div></div>
+</div>
+<div class="note">数据集按 30 fps 画。固定 8 秒、N = 16 时 δ = 30 × 8 / 16 = 15 帧 = 0.5 秒，对所有事件都一样，于是 2 秒的动作片段永远对应前 4 个预测帧间隔。事件级采样的 δ 随事件时长从 0.06 秒变到 0.75 秒，动作没法按固定节奏对齐，这就是阶段 2 存在的原因。</div>
+</section>
+
+<h2 id="stage2">阶段 2 · 固定时长后训练：给动作一个统一的时间刻度</h2>
+<div class="formula">H = 8 s（机器人）或 2 s（人手），f = 数据集帧率，δ = f·H / N
+y_chunk^(t) = ( o_t, o_{t+⌊δ⌋}, o_{t+⌊2δ⌋}, …, o_{t+⌊Nδ⌋} )     索引超过 T 的截到 T
+条件 c = 当前观测 o_t + 子任务描述；目标函数仍是 L_FM</div>
+<p>这一阶段同时把视频输入降到 17 × 416 × 240，token 数从 5070 降到 1950。模型已经在阶段 1 学会了"按描述把事情做完"，阶段 2 只是改变它输出的时间刻度，不需要重新学语义。</p>
+
+<h2 id="distill">一致性蒸馏：把 40 步压成 1 步</h2>
+<p>流匹配模型推理要沿速度场积分，Wan 默认 40 到 50 步，每步一次 14B 前向，机器人等不起。一致性模型的想法：训练一个函数 F_θ(x_s, s, c)，不管从路径上哪个点出发，都直接输出终点 x₁。约束是"同一条路径上相邻两个时刻的预测要一致"。</p>
+<div class="formula">L_CD = E [ λ(s, s′) ‖ F_θ(x_s, s, c) − stopgrad( F_θ̄(x̂_s′, s′, c) ) ‖² ],   0 ≤ s &lt; s′ ≤ 1
+x̂_s′  = 用冻结的教师（阶段 2 的模型）从 (x_s, s) 沿速度场积分到 s′
+θ̄     = 学生参数的 EMA（指数滑动平均），作目标时不回传梯度
+边界条件 F_θ(x, 1, c) = x；以 0.5 的概率取 s′ = 1，强调单步生成
+推理：x₁ = F_θ(ε, 0, c)，一次前向，约 0.12 s</div>
+
+<section class="station" id="s2">
+<div class="station-head"><h2>3D 实验 2 · 流匹配的直线与一致性蒸馏的捷径</h2><span class="pill">拖动旋转 · 滚轮缩放</span></div>
+<p>灰点是噪声 ε ~ N(0, I)，蓝点是数据 x₁（这里用两个环代表 latent 的两个模式）。流匹配训练时把每个噪声点和一个数据点配对，沿直线 x_s = (1−s)ε + s·x₁ 插值，模型学的是每个点上的速度。拖动 s 看粒子从噪声走到数据。切换模式看教师怎么一步步积分、学生怎么一步跳到终点、一致性约束在约束什么。</p>
+<div class="stage stage3d" id="st2"><div class="overlay" id="ov2"></div><div class="hint">drag · wheel</div></div>
+<div class="controls">
+<div class="ctl"><label>流时间 s <output id="sv">0.00</output></label><input type="range" id="s" min="0" max="1" step="0.01" value="0"></div>
+<div class="ctl"><label>&nbsp;</label><button id="play" class="primary">播放 s: 0 → 1</button></div>
+<div class="ctl"><label>模式</label><div class="seg"><button id="fm0" class="on">全部配对的直线</button><button id="fm1">教师：多步积分</button><button id="fm2">学生：单步 F(ε, 0, c)</button><button id="fm3">一致性约束</button></div></div>
+</div>
+<div class="infopanel" id="ip2"></div>
+</section>
+
+<h2 id="stage3">阶段 3 · 动作专家预训练：挂上去，但别碰坏</h2>
+<p>视频模型变成单步生成器之后，才开始训练动作。动作专家是一个 0.9B 参数的扩散 Transformer，通过 MoT 架构和视频 DiT 共享注意力（原理见 <a href="mot.html">MoT 页</a>），以视频 DiT 的 KV cache 为条件，输出 2 秒的动作片段，用流匹配训练、5 步去噪推理。</p>
+<dl class="kv">
+<dt>数据</dt><dd>统一了工作空间和末端坐标系的双臂数据（ALOHA 式、人形、人类第一视角），占总数据 80% 以上。</dd>
+<dt>冻结什么</dt><dd>动作训练初期冻结视频 DiT 的全部基础参数，视频主干只用 LoRA 适配。动作专家是新初始化的，开头的梯度是噪声，直接传进 14B 主干会破坏阶段 1、2 学到的表征。</dd>
+<dt>训练什么</dt><dd>0.9B 动作 DiT 全部参数 + 视频 DiT 上的 LoRA。</dd>
+<dt>为什么是隐式逆动力学</dt><dd>动作 token 在每一层同时看到当前观测的表征和预测未来的表征，相当于在问"从这里到那里要怎么动"。没有显式地先生成像素视频再做逆动力学，像素解码在控制回路里根本不需要跑。</dd>
+<dt>延迟</dt><dd>视频单步 0.12 s + 动作 5 步 0.10 s = 0.22 s 出一段 2 秒动作；bfloat16 + torch.compile。</dd>
+</dl>
+
+<section class="station" id="s3">
+<div class="station-head"><h2>3D 实验 3 · 三阶段流水线：谁在训练，谁被冻结</h2><span class="pill">点击阶段看细节</span></div>
+<p>三个平台对应三个阶段。塔是视频 DiT（只画 10 层），橙色是正在训练的参数，灰色是冻结的参数，绿色小块是 LoRA 适配器。阶段 3 右侧多出的橙色小塔是动作 DiT。平台上方是这一阶段的输入输出。点击任何平台查看配置。</p>
+<div class="stage stage3d" id="st3"><div class="overlay" id="ov3"></div><div class="hint">click · drag · wheel</div></div>
+<div class="legend3d"><span><i style="background:#f0963c"></i>正在训练</span><span><i style="background:#6b7794"></i>冻结</span><span><i style="background:#4fc98a"></i>LoRA 适配器</span><span><i style="background:#3aa8e0"></i>视频帧 / latent</span></div>
+<div class="infopanel" id="ip3">点击一个平台。</div>
+</section>
+
+<h2 id="bench">评测专项后训练</h2>
+<p>论文里的仿真评测（LIBERO、RoboDojo）用的是在各自训练集上再做一轮后训练的 VPP2：LIBERO 只用四个标准套件的示范，RoboDojo 按官方协议训练。这一轮和阶段 3 的做法相同，只是数据换成评测自己的示范。真实 ALOHA 的零样本评测则完全不做任务专项训练，直接部署阶段 3 的模型。VLM 子任务规划的版本还要把示范按子任务切开，每段配一条子任务描述再训练。</p>
+<div class="tablewrap"><table>
+<tr><th>评测</th><th>后训练数据</th><th>是否零样本</th><th>VPP2 结果</th></tr>
+<tr><td>真实 ALOHA 10 类任务</td><td>无（直接用阶段 3 模型）</td><td>是</td><td class="num">58.5%</td></tr>
+<tr><td>LIBERO-ID / Pro / OOD</td><td>四个标准 LIBERO 套件</td><td>Pro、OOD 的扰动是零样本</td><td class="num">98.8 / 45.0 / 63.9</td></tr>
+<tr><td>RoboDojo 仿真</td><td>官方训练集</td><td>否</td><td class="num">39.26 分 / 32.26%</td></tr>
+<tr><td>RoboDojo 五个任务组 + VLM 规划</td><td>按子任务切分的示范</td><td>否</td><td class="num">27.6% → 57.6%</td></tr>
+</table></div>
+
+<footer>World Model Lab · 世界模型的学习与测试记录 · <a href="https://github.com/haoxiangNtu/world-model-lab">源码</a> · 参考：Guo et al., <a href="https://arxiv.org/abs/2610.10270">VPP2</a>, 2026；Lipman et al., Flow Matching, 2023；Song et al., Consistency Models, 2023；Hu et al., LoRA, 2022</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="lab3d.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const L = Lab3D, C = L.C;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ---------- Station 1: sampling timeline (2D) ---------- */
+(function () {
+  const c = $('tl'), g = c.getContext('2d'); let mode = 'E', dur = 4, t0 = 0, N = 16; const fps = 30, H = 8;
+  function fit() { const r = c.getBoundingClientRect(); const dpr = Math.min(2, devicePixelRatio || 1); const W = 1040, Hh = 300; const w = Math.round(r.width * dpr), h = Math.round(r.width * dpr * Hh / W); if (c.width !== w || c.height !== h) { c.width = w; c.height = h; } g.setTransform(dpr * r.width / W, 0, 0, dpr * r.width / W, 0, 0); return { W, H: Hh }; }
+  function draw() {
+    const { W } = fit(); g.clearRect(0, 0, W, 300); const fg = css('--fg'), muted = css('--muted'), line = css('--line');
+    const T = Math.round(dur * fps); const x0 = 60, x1 = W - 40; const span = 12; const sx = s => x0 + (x1 - x0) * s / span;
+    g.font = '12px JetBrains Mono, monospace'; g.fillStyle = muted; g.textAlign = 'left'; g.fillText('示范时间线（30 fps）', x0, 24);
+    /* axis */
+    g.strokeStyle = line; g.lineWidth = 1; for (let s = 0; s <= span; s++) { g.beginPath(); g.moveTo(sx(s), 60); g.lineTo(sx(s), 240); g.stroke(); g.fillStyle = muted; g.textAlign = 'center'; g.fillText(s + ' s', sx(s), 258); }
+    /* event bar */
+    g.fillStyle = 'rgba(58,168,224,0.22)'; g.fillRect(sx(0), 70, sx(dur) - sx(0), 36); g.strokeStyle = '#3aa8e0'; g.strokeRect(sx(0), 70, sx(dur) - sx(0), 36);
+    g.fillStyle = fg; g.textAlign = 'left'; g.fillText(`一个子任务事件：T = ${T} 帧 = ${dur.toFixed(1)} s`, sx(0) + 6, 93);
+    /* frames ticks (every frame) */
+    g.strokeStyle = 'rgba(142,155,184,0.35)'; for (let i = 0; i <= T; i++) { const x = sx(i / fps); g.beginPath(); g.moveTo(x, 112); g.lineTo(x, 120); g.stroke(); }
+    /* sampled frames */
+    let idx = [], delta, capped = 0;
+    if (mode === 'E') { delta = T / N; for (let k = 0; k <= N; k++) idx.push(Math.min(T, Math.floor(k * delta))); }
+    else { delta = fps * H / N; const t = Math.round(t0 * fps); for (let k = 0; k <= N; k++) { const i = t + Math.floor(k * delta); if (i > T) capped++; idx.push(Math.min(T, i)); } }
+    const col = mode === 'E' ? '#3aa8e0' : '#f0963c';
+    g.fillStyle = muted; g.textAlign = 'left'; g.fillText(mode === 'E' ? `事件级：在 [0, T] 上均匀取 N+1 = ${N + 1} 帧` : `固定时长：从 t = ${t0.toFixed(2)} s 起，每 δ = ${delta} 帧取一帧，共 ${N + 1} 帧，超出 T 的截到末帧`, x0, 150);
+    if (mode === 'C') { g.fillStyle = 'rgba(240,150,60,0.15)'; g.fillRect(sx(t0), 160, sx(Math.min(span, t0 + H)) - sx(t0), 30); g.strokeStyle = '#f0963c'; g.strokeRect(sx(t0), 160, sx(Math.min(span, t0 + H)) - sx(t0), 30); g.fillStyle = muted; g.fillText('H = 8 s 预测窗口', sx(t0) + 6, 180); }
+    g.fillStyle = col; idx.forEach((i, k) => { const x = sx(i / fps); g.beginPath(); g.arc(x, 175, k === 0 ? 6 : 4.5, 0, Math.PI * 2); g.fill(); });
+    /* action chunk */
+    const aStart = mode === 'E' ? 0 : t0; g.fillStyle = 'rgba(79,201,138,0.2)'; g.fillRect(sx(aStart), 200, sx(Math.min(span, aStart + 2)) - sx(aStart), 26); g.strokeStyle = '#4fc98a'; g.strokeRect(sx(aStart), 200, sx(Math.min(span, aStart + 2)) - sx(aStart), 26); g.fillStyle = muted; g.fillText('2 s 动作片段', sx(aStart) + 6, 217);
+    const dSec = delta / fps; const framesIn2s = 2 / dSec;
+    $('r1d').textContent = `${delta.toFixed(2)} 帧 = ${dSec.toFixed(3)} s`; $('r1c').textContent = mode === 'E' ? `0 – ${dur.toFixed(1)} s（整个事件）` : `${t0.toFixed(2)} – ${(t0 + H).toFixed(2)} s`;
+    $('r1k').textContent = mode === 'E' ? '0' : `${capped} / ${N}`; $('r1a').textContent = mode === 'E' ? `${framesIn2s.toFixed(1)} 个间隔（随时长变）` : `${framesIn2s.toFixed(0)} 个间隔（固定）`;
+  }
+  $('smE').onclick = () => { mode = 'E'; $('smE').classList.add('on'); $('smC').classList.remove('on'); draw(); };
+  $('smC').onclick = () => { mode = 'C'; $('smC').classList.add('on'); $('smE').classList.remove('on'); draw(); };
+  $('dur').oninput = e => { dur = +e.target.value; $('durv').value = dur.toFixed(1) + ' s'; draw(); };
+  $('t0').oninput = e => { t0 = +e.target.value; $('t0v').value = t0.toFixed(2) + ' s'; draw(); };
+  document.querySelectorAll('[data-n]').forEach(b => b.onclick = () => { document.querySelectorAll('[data-n]').forEach(x => x.classList.remove('on')); b.classList.add('on'); N = +b.dataset.n; draw(); });
+  addEventListener('resize', draw); matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw); draw();
+})();
+
+/* ---------- Station 2: flow matching particles ---------- */
+(function () {
+  const S = L.makeScene($('st2'), { theta: 0.35, phi: 1.15, dist: 30, target: [0, 1.5, 0] });
+  S.scene.add(L.grid(30, 15)).position.y = -3;
+  const r = L.rng(42); const M = 150; const eps = [], x1 = [];
+  for (let i = 0; i < M; i++) {
+    eps.push(new THREE.Vector3(-7 + L.gauss(r) * 1.6, 2 + L.gauss(r) * 1.6, L.gauss(r) * 1.6));
+    const ring = r() < 0.6 ? 0 : 1; const a = r() * Math.PI * 2; const R = ring === 0 ? 3.0 : 1.4; const cy = ring === 0 ? 2 : 2;
+    x1.push(new THREE.Vector3(7 + (ring === 0 ? Math.cos(a) * R : 2.2 + Math.cos(a) * R), cy + Math.sin(a * 2) * 0.5 + L.gauss(r) * 0.12, (ring === 0 ? Math.sin(a) * R : 1.6 + Math.sin(a) * R)));
+  }
+  /* straight paths */
+  const paths = new THREE.Group(); S.scene.add(paths); eps.forEach((e, i) => paths.add(L.line([e, x1[i]], 0x8e9bb8, { opacity: 0.12 })));
+  const geo = new THREE.SphereGeometry(0.13, 10, 8); const parts = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ roughness: 0.5 }), M); S.scene.add(parts);
+  const m4 = new THREE.Matrix4(), col = new THREE.Color();
+  S.scene.add(L.label('噪声 ε ~ N(0, I)\ns = 0', { pos: [-7, 5.4, 0], size: 20 }), L.label('数据 x₁（视频 latent）\ns = 1', { pos: [7, 5.4, 0], size: 20 }));
+  const hl = new THREE.Group(); S.scene.add(hl); let s = 0, playing = false, mode = 0; const P = 3; /* highlighted pair index */
+  function setParticles() { for (let i = 0; i < M; i++) { const p = eps[i].clone().lerp(x1[i], s); m4.makeTranslation(p.x, p.y, p.z); parts.setMatrixAt(i, m4); col.setHex(i === P && mode > 0 ? 0xffffff : 0x8e9bb8); col.lerp(new THREE.Color(0x38d1ff), s); parts.setColorAt(i, col); } parts.instanceMatrix.needsUpdate = true; if (parts.instanceColor) parts.instanceColor.needsUpdate = true; }
+  function setMode(m) {
+    mode = m; ['fm0', 'fm1', 'fm2', 'fm3'].forEach((id, i) => $(id).classList.toggle('on', i === m)); L.clear(hl); paths.visible = m === 0; const e = eps[P], d = x1[P];
+    if (m >= 1) hl.add(L.tube([e, d], m === 2 ? 0x4fc98a : C.attn, 0.05));
+    if (m === 1) { for (let k = 0; k <= 10; k++) { const p = e.clone().lerp(d, k / 10); const sp = L.sphere(0.2, C.attn); sp.position.copy(p); hl.add(sp); if (k < 10) hl.add(L.arrow(p, e.clone().lerp(d, (k + 0.7) / 10), C.attn, { head: 0.3, headW: 0.18 })); } hl.add(L.label('教师：沿速度场积分 10 步（Wan 默认 40 步）\n每一步一次 14B 前向', { pos: [0, 5.6, 0], size: 18 }));
+      $('ip2').innerHTML = '<b>教师多步积分。</b>阶段 2 训练好的流匹配模型给每个点一个速度 v_θ(x_s, s, c)，推理从 ε 出发反复"走一小步、再问速度"。真实的学习到的路径不一定是直线（不同配对的直线会交叉，模型学的是它们的平均速度），但每步都要一次完整前向，40 步就是 40 次 14B 的计算。'; }
+    if (m === 2) { const a = L.arrow(e, d, 0x4fc98a, { head: 0.7, headW: 0.4 }); hl.add(a); const sp = L.sphere(0.22, 0x4fc98a); sp.position.copy(d); hl.add(sp); hl.add(L.label('学生：x₁ = F_θ(ε, 0, c)，一次前向，约 0.12 s', { pos: [0, 5.6, 0], size: 18 }));
+      $('ip2').innerHTML = '<b>学生单步生成。</b>一致性蒸馏之后，F_θ 从噪声直接输出终点。蒸馏时以 0.5 的概率取 s′ = 1，就是为了把"从 s = 0 一步到位"练得最扎实。代价是画面细节可能略差于多步教师，论文附录图 10 对比了蒸馏前后的预测。'; }
+    if (m === 3) { const sa = 0.3, sb = 0.6; const pa = e.clone().lerp(d, sa), pb = e.clone().lerp(d, sb); [[pa, 'x_s, s = 0.3'], [pb, 'x̂_s′, s′ = 0.6（教师积分得到）']].forEach(([p, t]) => { const sp = L.sphere(0.22, C.gold); sp.position.copy(p); hl.add(sp); hl.add(L.line([p, d], C.gold, { dashed: true, dash: 0.3, gap: 0.2 })); hl.add(L.label(t, { pos: [p.x, p.y + 0.9, p.z], size: 16 })); });
+      const sp = L.sphere(0.26, 0x38d1ff); sp.position.copy(d); hl.add(sp); hl.add(L.label('F_θ(x_s, s) 和 F_θ̄(x̂_s′, s′)\n必须指向同一个终点', { pos: [d.x, d.y + 1.3, d.z], size: 16 }));
+      hl.add(L.arrow(pa, pb, C.attn, { head: 0.4, headW: 0.25 }));
+      $('ip2').innerHTML = '<b>一致性约束。</b>取路径上一点 x_s，用冻结的教师积分到更靠近数据的 x̂_s′。学生 F_θ 对两个点的输出必须一样（目标那一侧用 EMA 参数 θ̄，不回传梯度）。把这个约束沿着 s 一路传下去，再加上边界条件 F(x, 1) = x，F 在任何 s 上的输出都被拉向真实终点。'; }
+    if (m === 0) $('ip2').innerHTML = '<b>流匹配的训练视角。</b>每个噪声点随机配一个数据点，在直线上任取一个 s，让模型预测方向 x₁ − ε。拖动 s 滑块，粒子沿各自的直线从噪声云移动到两个环上。颜色从灰到蓝表示 s 从 0 到 1。';
+    setParticles();
+  }
+  $('s').oninput = e => { s = +e.target.value; $('sv').value = s.toFixed(2); setParticles(); };
+  $('play').onclick = () => { playing = !playing; $('play').textContent = playing ? '暂停' : '播放 s: 0 → 1'; };
+  S.onTick(() => { if (playing) { s += 1 / 240; if (s > 1) s = 0; $('s').value = s; $('sv').value = s.toFixed(2); setParticles(); } $('ov2').innerHTML = `<b>s = ${s.toFixed(2)}</b>\nx_s = (1 − s)·ε + s·x₁\n目标速度 v = x₁ − ε（与 s 无关）`; });
+  ['fm0', 'fm1', 'fm2', 'fm3'].forEach((id, i) => $(id).onclick = () => setMode(i));
+  setMode(0);
+})();
+
+/* ---------- Station 3: three-stage pipeline ---------- */
+(function () {
+  const S = L.makeScene($('st3'), { theta: 0.3, phi: 1.1, dist: 42, target: [0, 4, 0] });
+  S.scene.add(L.grid(60, 30)).position.y = -0.2;
+  const stages = [
+    { x: -15, name: '阶段 1 · 事件级持续预训练', train: 'all', info: '<b>阶段 1 · 事件级持续预训练。</b>输入：首帧 o₀ + 详细描述。输出：覆盖整个子任务、均匀采样的 49 帧，416×240。训练 Wan2.1-I2V-14B 的全部参数：30k 步，batch 1024，lr 1e-5，流匹配目标。产出：一个忠实跟随操作指令的视频模型，指令跟随成功率超过 Cosmos3-64B。', frames: 13, out: '49 帧 · 整个事件' },
+    { x: 0, name: '阶段 2 · 固定时长后训练 + 一致性蒸馏', train: 'all', info: '<b>阶段 2 · 固定时长后训练 + 一致性蒸馏。</b>输入：当前帧 o_t + 子任务描述。输出：固定 8 秒（机器人）或 2 秒（人手）的 17 帧。先用流匹配后训练，再以它为冻结教师做一致性蒸馏，学生用 EMA 作目标。产出：单步视频预测器，约 0.12 秒。全部参数可训练。', frames: 5, out: '17 帧 · 固定 8 s · 1 步' },
+    { x: 15, name: '阶段 3 · 动作专家预训练', train: 'lora', info: '<b>阶段 3 · 动作专家预训练。</b>视频 DiT 的基础参数冻结，只训练它上面的 LoRA 适配器和新初始化的 0.9B 动作 DiT。动作 DiT 通过共享注意力读视频 DiT 的 KV cache，用流匹配学 2 秒动作片段，推理 5 步去噪约 0.10 秒。数据是坐标系统一后的双臂数据。产出：完整策略，每 0.22 秒出一段动作。', frames: 5, out: '17 帧 latent → 2 s 动作' }];
+  const clickable = [];
+  stages.forEach((st, si) => {
+    const g = new THREE.Group(); g.position.x = st.x; S.scene.add(g);
+    const plat = L.box(12, 0.4, 8, C.table, { edgeOpacity: 0.6 }); plat.position.y = 0; plat.userData.stage = si; g.add(plat); clickable.push(plat);
+    for (let i = 0; i < 10; i++) { const tr = st.train === 'all'; const sl = L.box(4.2, 0.32, 2.6, tr ? C.action : C.frozen, { opacity: tr ? 0.95 : 0.7 }); sl.position.set(-2, 0.6 + i * 0.5, 0); sl.userData.stage = si; g.add(sl); clickable.push(sl);
+      if (st.train === 'lora') { const lp = L.box(0.5, 0.26, 1.2, C.lora, { edges: false }); lp.position.set(0.35, 0.6 + i * 0.5, 0); lp.userData.stage = si; g.add(lp); clickable.push(lp); } }
+    g.add(L.label('视频 DiT · 40 层', { pos: [-2, 6.3, 0], size: 16 }));
+    if (st.train === 'lora') { for (let i = 0; i < 6; i++) { const sl = L.box(2.2, 0.32, 1.6, C.action); sl.position.set(3.2, 0.6 + i * 0.5, 0); sl.userData.stage = si; g.add(sl); clickable.push(sl); } g.add(L.label('动作 DiT · 0.9B', { pos: [3.2, 4.3, 0], size: 16 }));
+      const plane = L.box(7.5, 0.04, 2.2, C.attn, { opacity: 0.25, edgeColor: C.attn, edgeOpacity: 0.6 }); plane.position.set(0.6, 1.9, 0); g.add(plane); }
+    /* frames strip above */
+    const nf = st.frames; for (let i = 0; i < nf; i++) { const f = L.box(1.1, 0.7, 0.04, C.video, { opacity: 0.6, edgeColor: C.video, edgeOpacity: 0.9 }); f.position.set(-5 + i * (10 / Math.max(1, nf - 1)) * 0.9, 8.2, -2.5 + i * 0.1); g.add(f); }
+    g.add(L.label(st.out, { pos: [0, 9.6, -2.5], size: 16 })); g.add(L.label(st.name, { pos: [0, -1.4, 3.5], size: 20, border: si === 2 ? '#f0963c' : undefined }));
+    if (si < 2) S.scene.add(L.arrow([st.x + 6.3, 3, 0], [st.x + 15 - 6.3, 3, 0], 0x8e9bb8, { head: 0.8, headW: 0.45 }));
+  });
+  S.scene.add(L.label('延迟：视频 1 步 0.12 s + 动作 5 步 0.10 s = 0.22 s / 2 s 动作片段', { pos: [0, 13.2, -2.5], size: 14, bg: 'rgba(12,18,32,0.55)' }));
+  S.onClick(() => clickable, hit => { if (!hit) return; let o = hit.object; while (o && o.userData.stage == null) o = o.parent; if (!o) return; $('ip3').innerHTML = stages[o.userData.stage].info; });
+  $('ov3').innerHTML = '<b>三个阶段</b>\n橙 = 训练中 · 灰 = 冻结 · 绿 = LoRA\n点击平台或塔查看配置';
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>论文导读 · World Model Lab</title>
+<meta name="description" content="Video Prediction Policy 2（VPP2）讲了一个什么故事：世界动作模型为什么在开放场景里会预测错、作者怎么用详细描述和事件级视频预测把指令到轨迹的映射变得唯一、三阶段训练和三组实验结果。配三个可交互 3D 实验。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="wrap">
+<header class="top"><a class="brand" href="../index.html">World Model Lab</a>
+<nav><a class="on" href="vpp2.html">论文导读</a><a href="wan.html">Wan2.1 架构</a><a href="mot.html">MoT 原理</a><a href="posttrain.html">后训练过程</a><a href="benchmarks.html">评测数据集</a><a href="notes.html">原理问答</a><a href="https://github.com/haoxiangNtu/world-model-lab">GitHub</a></nav></header>
+
+<div class="eyebrow">VPP2 · arXiv 2610.10270 · 2026-10</div>
+<h1>Video Prediction Policy 2 讲了一个什么故事</h1>
+<p class="lead">一句话：先把视频模型教成一个忠实跟随操作指令的"未来预测器"，再小心地在它旁边挂一个动作专家，不让动作训练把预测能力弄坏。论文来自 Robotera、清华、港科大（广州）等团队，原文见 <a href="https://arxiv.org/abs/2610.10270">arXiv</a> 和<a href="https://robert-gyj.github.io/video-prediction-policy-2">项目页</a>。本页把故事讲完，三个 3D 实验分别对应论文的核心观察、数据处理和输入格式。</p>
+<div class="toc"><a href="#problem">问题</a><a href="#insight">核心观察</a><a href="#s1">3D：映射的不确定性</a><a href="#method">方法</a><a href="#s2">3D：坐标系对齐</a><a href="#s3">T 形多视角</a><a href="#results">结果</a><a href="#takeaway">启示</a></div>
+
+<h2 id="problem">1. 问题：世界动作模型为什么在没见过的场景里会"动错"</h2>
+<p>世界动作模型（World Action Model，WAM）是一类通用机器人策略：把视频生成模型里学到的物理动态先验，迁移到动作学习上。思路很诱人：如果模型能按指令准确预测未来几秒的画面，那么动作就可以从"现在的画面"和"预测的画面"之间反推出来，这就是显式或隐式的逆动力学模型。</p>
+<p>但作者发现，现有 WAM 往往只在见过的少数任务上表现好，一到开放场景就预测出错误的运动，动作也跟着错。在要求泛化的新评测里，那些在标准测试上接近满分的策略，一遇到物体位置扰动或新的技能组合，成功率就大幅下降。作者把原因归结为两点：</p>
+<div class="cards">
+<div class="card"><div class="t">① 基础视频模型不是为操作任务优化的</div><div class="d">Wan、Cosmos 这类模型追求创意生成和画面美观，不在乎物理过程是否精确，经常不忠实地跟随操作指令：让它"把左边的瓶子放到矮杯子前面"，它可能挪了别的瓶子。</div></div>
+<div class="card"><div class="t">② 直接往视频模型里塞动作模块会破坏泛化</div><div class="d">动作训练的梯度会损伤预训练好的视频表征。先前工作（Temporal Ratio）专门研究过这个"视频到动作的泛化鸿沟"。</div></div>
+</div>
+
+<h2 id="insight">2. 核心观察：映射越唯一，越容易泛化</h2>
+<p>论文图 1 给出一个更深层的解释。传统策略学的是"简短指令 + 当前观测 → 短动作片段"这个映射。数据规模越大，同一个起点后面可能跟着的短动作越多：有的示范先抬手，有的先平移，有的目标是左边的碗，有的是右边的盒子。映射变得多模态、不稳定，模型只能学到一些短程的虚假相关性。</p>
+<p>反过来，如果输入是一段详细描述（哪只手、哪个物体、放到哪里、相机动不动），输出是整个子任务从头到尾的完整轨迹，那么"描述 → 轨迹"的映射就接近唯一且稳定。VPP2 先用这种事件级的视频预测建立稳定映射，再后训练、蒸馏成固定时长的短片段来对接动作。</p>
+
+<section class="station" id="s1">
+<div class="station-head"><h2>3D 实验 1 · 同一个起点，映射能有多发散</h2><span class="pill">拖动旋转 · 滚轮缩放</span></div>
+<p>桌面上有一个夹爪起点和四个可能的目标。切换"简短指令"和"详细描述"，看从同一个起点出发的示范轨迹如何分布。亮色部分是策略真正要学的那一段：简短指令模式下只有最前面的 2 秒动作片段，详细描述模式下是完整事件。拖动"数据规模"滑块增加示范数量。</p>
+<div class="stage stage3d" id="st1"><div class="overlay" id="ov1"></div><div class="hint">drag · wheel</div></div>
+<div class="controls">
+<div class="ctl"><label>输入与输出的形式</label><div class="seg"><button id="m1a" class="on">简短指令 → 短动作片段</button><button id="m1b">详细描述 → 完整事件轨迹</button></div></div>
+<div class="ctl"><label>数据规模（示范条数）<output id="n1v">12</output></label><input type="range" id="n1" min="4" max="28" value="12"></div>
+</div>
+<div class="readout">
+<div><div class="k">指令文本</div><div class="v" id="r1i" style="font-family:var(--font-body);font-size:13px"></div></div>
+<div><div class="k">轨迹落到的目标数</div><div class="v" id="r1g"></div></div>
+<div><div class="k">起始 2 秒方向的离散度</div><div class="v" id="r1d"></div></div>
+<div><div class="k">要学的映射</div><div class="v" id="r1m" style="font-family:var(--font-body);font-size:13px"></div></div>
+</div>
+<div class="note">离散度是各条轨迹前 2 秒位移方向两两夹角的平均值。简短指令下示范越多、目标越多，前 2 秒的方向越发散，策略在同一个输入上看到互相矛盾的标签；详细描述把目标钉死，轨迹聚成一束，映射基本唯一。这就是论文把"事件级 + 详细描述"放在第一阶段的理由。</div>
+</section>
+
+<h2 id="method">3. 方法：数据、三阶段训练、VLM 规划</h2>
+<h3>数据流水线</h3>
+<p>作者汇集了三类视频：机器人操作数据（OXE、DROID、RoboMIND、AgiBot World、RDT、自采 ALOHA 等，超过 20 种本体）、人类第一视角数据（Ego4D、EPIC-KITCHENS、EgoDex、Something-Something V2 等）和经过筛选只保留操作内容的通用视频（OpenVid、Panda-70M）。处理步骤：</p>
+<ol class="steps">
+<li><b>清洗与切分。</b>去掉相机故障、画面跳变的轨迹，按末端速度的局部最小值、夹爪开合这类自然边界把轨迹切成 1 到 12 秒的语义完整片段，再用 VLM 合并或微调边界。</li>
+<li><b>详细描述。</b>每个片段按模板写描述：怎样完成任务、哪只末端在动、目标物体用什么属性或空间关系唯一指定、相机视角有没有变化。末端和目标物体必须在首帧可见，否则裁掉开头。</li>
+<li><b>统一动作空间。</b>不同数据集的坐标系不一致，同一个"向左"在一个数据集里是 +x，在另一个里是 −y。作者对占 80% 以上的双臂第一视角数据做了工作空间对齐和末端坐标系对齐，见下面的 3D 实验 2。</li>
+<li><b>统一多视角输入。</b>主视角放左边，最多两个辅助视角竖着堆在右边，拼成 T 形，缺的位置补黑图，见 3D 实验 3。</li>
+</ol>
+<div class="caption"><b>一条最终描述的样子：</b>左侧机械臂夹爪夹起左边的不锈钢杯子，放进最左边的黄色盒子里；右侧夹爪在视频中不可见。这是一段合成的机器人视频，右侧有两个腕部视角。<div class="en">The left robot gripper picks up the stainless steel cup in the left side and place it inside the left most yellow box, the right gripper is not visible in the video. This is a composed robot video with two wrist views in the right side.</div></div>
+
+<h3>三阶段训练</h3>
+<div class="tablewrap"><table>
+<tr><th>阶段</th><th>训练什么</th><th>输入 / 输出</th><th>关键数字</th></tr>
+<tr><td>1 事件级持续预训练</td><td>整个 Wan2.1-I2V-14B 视频 DiT</td><td>首帧 + 详细描述 → 整个子任务均匀采样的 49 帧</td><td class="num">416×240，30k 步，batch 1024，lr 1e-5</td></tr>
+<tr><td>2 固定时长后训练 + 一致性蒸馏</td><td>视频 DiT</td><td>当前帧 + 子任务描述 → 固定 8 s（机器人）/ 2 s（人手）的 17 帧</td><td class="num">单步生成约 0.12 s</td></tr>
+<tr><td>3 动作专家预训练</td><td>新增 0.9B 动作 DiT，视频 DiT 冻结 + LoRA</td><td>视频 DiT 的 KV cache → 2 s 动作片段</td><td class="num">5 步去噪约 0.10 s，总延迟约 0.22 s</td></tr>
+</table></div>
+<p>每一步的推导和可视化在<a href="posttrain.html">后训练过程</a>页；视频模型本身的结构在 <a href="wan.html">Wan2.1 架构</a>页；动作专家怎么挂上去在 <a href="mot.html">MoT 原理</a>页。</p>
+<h3>VLM 做高层规划</h3>
+<p>部署时 VPP2 前面还有一个视觉语言模型（本地的 Qwen3-VL 或 API 调用的前沿模型）。它负责把开放式的人类指令拆成明确子任务，并把子任务改写成训练时那种详细描述格式，也就是视频生成领域常说的 prompt enhancement。VPP2 只管把明确的描述映射成轨迹和动作。</p>
+
+<section class="station" id="s2">
+<div class="station-head"><h2>3D 实验 2 · 两个数据集，同一个"向左"</h2><span class="pill">T̃<sub>d</sub> = A<sub>d</sub> T<sub>d</sub> B<sub>d</sub></span></div>
+<p>蓝色是数据集 A，橙色是数据集 B。两个数据集各自有世界坐标系、工作空间（线框盒）和末端坐标系（红绿蓝三轴）。同一个物理上向左的动作，在两套坐标下写出来的数字不一样。依次点击三个按钮，看两步对齐如何把它们统一。</p>
+<div class="stage stage3d" id="st2"><div class="overlay" id="ov2"></div><div class="hint">drag · wheel</div></div>
+<div class="controls">
+<div class="ctl"><label>对齐步骤</label><div class="seg"><button id="al0" class="on">原始数据</button><button id="al1">① 工作空间对齐 A<sub>d</sub></button><button id="al2">② 末端坐标系对齐 B<sub>d</sub></button></div></div>
+</div>
+<div class="readout">
+<div><div class="k">同一个"向左 10 cm"在 A 的末端坐标下</div><div class="v" id="r2a"></div></div>
+<div><div class="k">在 B 的末端坐标下</div><div class="v" id="r2b"></div></div>
+<div><div class="k">工作空间重叠</div><div class="v" id="r2o"></div></div>
+</div>
+<div class="formula">T_d = ᵂᵈT_Ed            数据集 d 原始的末端位姿（世界系 W_d 到末端系 E_d）
+A_d = ᵂ̄T_Wd            把 d 的世界系搬到公共世界系 W̄：平移、旋转、尺度
+B_d = ᴱᵈT_Ē            把 d 的末端系换成公共末端系 Ē：原点和轴向
+T̃_d = A_d · T_d · B_d   对齐后的末端位姿；动作在这个坐标下表示，"向左"在所有数据集里都是同一个向量</div>
+<div class="note mem">如果不对齐，模型看到的监督信号就是矛盾的：画面里同样是往左够，标签却一会儿是 +x 一会儿是 −y，模型得为每个数据集各学一套"动作维度的含义"。对齐之后，跨本体数据才真正能互相补充。</div>
+</section>
+
+<section class="station" id="s3">
+<div class="station-head"><h2>实验 3 · T 形多视角输入</h2></div>
+<div class="twocol">
+<div>
+<p>机器人数据集常带多路相机。VPP2 把它们拼成一张 T 形图：主视角占左边一大块，最多两个辅助视角（通常是左右腕部相机）竖着堆在右边。少于两个辅助视角时用黑图占位，这样所有数据集的输入形状完全一致，视频模型可以同时预测一到三路视角的未来。</p>
+<p>这解释了一个细节：VPP2 的视频分辨率是 416×240，看起来很低，但其中装的是三路视角的拼图。后训练时每个 8 秒片段只取 17 帧，经过 Wan-VAE 压缩和分块后只有 1950 个 token，这是单步 0.12 秒的前提，推导见<a href="notes.html#tokens">原理问答</a>。</p>
+</div>
+<div><div class="tshape"><div class="main">主视角<br>（头部 / 前置相机）</div><div>辅助视角 1<br>左腕相机</div><div>辅助视角 2<br>右腕相机（缺则补黑）</div></div><p class="src" style="margin-top:6px">416 × 240 的一帧里装着三路画面</p></div>
+</div>
+</section>
+
+<h2 id="results">4. 三组结果</h2>
+<div class="stats">
+<div class="stat"><div class="k">视频预测指令跟随（机器人）</div><div class="v">90%</div><div class="s">Cosmos3-64B 78%，Wan2.1-14B 4%</div></div>
+<div class="stat"><div class="k">真实 ALOHA 零样本，10 类任务平均</div><div class="v">58.5%</div><div class="s">π0.5 40.0%，Fast-WAM 20.5%</div></div>
+<div class="stat"><div class="k">LIBERO-Pro 泛化</div><div class="v">45.0%</div><div class="s">最强 VLA 基线 11.0%</div></div>
+<div class="stat"><div class="k">LIBERO-OOD 组合泛化</div><div class="v">63.9%</div><div class="s">视频类策略最高 10.5%</div></div>
+<div class="stat"><div class="k">RoboDojo 仿真成功率</div><div class="v">32.26%</div><div class="s">GPT-6-Astra 22.48%</div></div>
+<div class="stat"><div class="k">加 VLM 子任务规划</div><div class="v">27.6% → 57.6%</div><div class="s">RoboDojo 五个长程任务组</div></div>
+</div>
+<ul class="timeline">
+<li><b>14B 打赢 64B。</b>在 50 组人手和 50 组机器人图片加指令的测试上，VPP2 的指令跟随成功率高于 4 倍大的 Cosmos3-64B，优势集中在需要空间理解的复杂指令上。数据和训练方式比参数量更关键。</li>
+<li><b>分布内满分不代表泛化。</b>LIBERO 标准测试上所有基线都在 94% 以上，但物体位置或任务描述一扰动就掉到 11% 以下；VPP2 在任务扰动上拿到 47.8%，说明它在跟随指令，而不是回放记忆的轨迹。</li>
+<li class="bad"><b>短板也诚实写了。</b>RoboDojo 的开放指令维度上 VPP2 只有 4%，远低于 GPT-6-Astra 的 31%：没有 VLM 规划时，VPP2 对没见过的任务描述理解有限。加上 VLM 子任务规划后，五个长程任务组平均从 27.6% 提到 57.6%。</li>
+</ul>
+<p>每个评测具体在考什么，以及完整的对比图表，见<a href="benchmarks.html">评测数据集</a>页。</p>
+
+<h2 id="takeaway">5. 论文想传达的信息</h2>
+<p>WAM 的研究重点不该只放在动作建模的架构上。先把视频预测的泛化能力做扎实（大规模多样数据、详细描述、事件级预测），再在动作学习时小心保住它（冻结主干、LoRA、单向注意力掩码）。预测得更好，才能动得更好。</p>
+
+<footer>World Model Lab · 世界模型的学习与测试记录 · <a href="https://github.com/haoxiangNtu/world-model-lab">源码</a> · 论文：Guo et al., <a href="https://arxiv.org/abs/2610.10270">Video Prediction Policy 2: Predict Better, Act Better</a>, 2026</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="lab3d.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const L = Lab3D, C = L.C;
+
+/* ---------- Station 1: mapping uncertainty ---------- */
+(function () {
+  const S = L.makeScene($('st1'), { theta: 0.55, phi: 1.08, dist: 26, target: [0, 1, 0] });
+  const table = L.box(22, 0.4, 13, C.table, { edgeOpacity: 0.5 }); table.position.y = -0.2; S.scene.add(table);
+  S.scene.add(L.grid(22, 11)).position.y = 0.01;
+  const start = [-7.5, 0.9, 0];
+  const goals = [
+    { name: '白碗', pos: [6.5, 0.4, -3.6], mesh: () => { const m = L.cyl(0.9, 0.6, 0.7, C.white); return m; } },
+    { name: '透明盒子', pos: [6.5, 0.6, 3.6], mesh: () => L.box(1.8, 1.2, 1.8, C.mug, { opacity: 0.45 }) },
+    { name: '架子', pos: [2.5, 2.4, -4.8], mesh: () => { const g = new THREE.Group(); const p = L.box(2.6, 0.2, 1.6, C.wood); p.position.y = 0; g.add(p); [[-1.1, -1.1], [1.1, -1.1], [-1.1, 1.1], [1.1, 1.1]].forEach(([x, z]) => { const leg = L.box(0.15, 2.4, 0.15, C.wood); leg.position.set(x * 1.0, -1.2, z * 0.6); g.add(leg); }); return g; } },
+    { name: '抽屉', pos: [0.5, 0.5, 4.6], mesh: () => { const g = new THREE.Group(); const b = L.box(2.4, 1.0, 1.4, C.wood); g.add(b); const d = L.box(1.8, 0.5, 0.2, C.metal); d.position.set(0, 0, -0.8); g.add(d); return g; } }];
+  goals.forEach(g => { const m = g.mesh(); m.position.set(...g.pos); S.scene.add(m); S.scene.add(L.label(g.name, { pos: [g.pos[0], g.pos[1] + 1.4, g.pos[2]], size: 24 })); });
+  const gripper = L.box(0.6, 0.5, 0.6, C.video); gripper.position.set(...start); S.scene.add(gripper);
+  S.scene.add(L.label('夹爪起点', { pos: [start[0], start[1] + 1.2, start[2]], size: 24 }));
+  const paths = new THREE.Group(); S.scene.add(paths); const movers = [];
+  let mode = 'a', n = 12;
+  function traj(gi, r) {
+    const g = goals[gi].pos; const lift = 1.6 + r() * 2.2, side = (r() - 0.5) * 4, late = r() * 0.5;
+    const pts = []; for (let i = 0; i <= 24; i++) { const t = i / 24; const tt = Math.pow(t, 1 + late);
+      pts.push(new THREE.Vector3(L.lerp(start[0], g[0], tt), L.lerp(start[1], g[1], tt) + Math.sin(Math.PI * t) * lift, L.lerp(start[2], g[2], tt) + Math.sin(Math.PI * t) * side)); }
+    return pts;
+  }
+  function build() {
+    L.clear(paths); movers.length = 0; const r = L.rng(7 + n * 13 + (mode === 'a' ? 0 : 1000));
+    const dirs = []; const used = new Set();
+    for (let i = 0; i < n; i++) {
+      const gi = mode === 'a' ? Math.floor(r() * goals.length) : 1; used.add(gi);
+      const pts = traj(gi, mode === 'a' ? r : (() => 0.45 + (r() - 0.5) * 0.25));
+      const cut = mode === 'a' ? 6 : 24;
+      const bright = pts.slice(0, cut + 1), dim = pts.slice(cut);
+      paths.add(L.tube(bright, mode === 'a' ? C.action : C.video, 0.07));
+      if (dim.length > 1) paths.add(L.line(dim, C.ghost, { opacity: 0.35 }));
+      const d = pts[6].clone().sub(pts[0]).normalize(); dirs.push(d);
+      const s = L.sphere(0.16, mode === 'a' ? C.action : C.video); paths.add(s); movers.push({ s, pts, ph: r() });
+    }
+    let sum = 0, cnt = 0; for (let i = 0; i < dirs.length; i++) for (let j = i + 1; j < dirs.length; j++) { sum += Math.acos(Math.max(-1, Math.min(1, dirs[i].dot(dirs[j])))) * 180 / Math.PI; cnt++; }
+    $('r1g').textContent = used.size + ' / 4'; $('r1d').textContent = cnt ? (sum / cnt).toFixed(1) + '°' : '–';
+    $('r1i').textContent = mode === 'a' ? '"把碗放进去。"' : '"左侧夹爪夹起左边的白碗，放进透明盒子里。相机静止。"';
+    $('r1m').textContent = mode === 'a' ? '同一起点 → 多个互相矛盾的 2 秒片段' : '一条描述 → 一束几乎相同的完整轨迹';
+    $('ov1').innerHTML = mode === 'a' ? '<b>简短指令</b>\n亮色 = 要学的 2 秒动作片段\n灰线 = 示范的后续（策略看不到）' : '<b>详细描述</b>\n亮色 = 要学的完整事件轨迹\n目标被描述钉死，轨迹聚成一束';
+  }
+  S.onTick(t => { if (L.reduced()) return; movers.forEach(m => { const u = ((t / 240) + m.ph) % 1; const i = Math.min(m.pts.length - 2, Math.floor(u * (m.pts.length - 1))); const f = u * (m.pts.length - 1) - i; m.s.position.lerpVectors(m.pts[i], m.pts[i + 1], f); }); });
+  $('m1a').onclick = () => { mode = 'a'; $('m1a').classList.add('on'); $('m1b').classList.remove('on'); build(); };
+  $('m1b').onclick = () => { mode = 'b'; $('m1b').classList.add('on'); $('m1a').classList.remove('on'); build(); };
+  $('n1').oninput = e => { n = +e.target.value; $('n1v').value = n; build(); };
+  build();
+})();
+
+/* ---------- Station 2: coordinate alignment ---------- */
+(function () {
+  const S = L.makeScene($('st2'), { theta: 0.8, phi: 1.0, dist: 24, target: [0, 1.5, 0] });
+  S.scene.add(L.grid(24, 12)).position.y = 0;
+  function triad(len) { const g = new THREE.Group(); g.add(L.arrow([0, 0, 0], [len, 0, 0], 0xff5a5a), L.arrow([0, 0, 0], [0, len, 0], 0x5ad67d), L.arrow([0, 0, 0], [0, 0, len], 0x5a8dff)); return g; }
+  function dataset(color, name) {
+    const g = new THREE.Group();
+    const ws = L.box(7, 4, 5, color, { opacity: 0.1, edgeColor: color, edgeOpacity: 0.9 }); ws.position.set(0, 2.2, 0); g.add(ws);
+    const base = L.cyl(0.5, 0.6, 0.6, color); base.position.set(-3.8, 0.3, 0); g.add(base);
+    const link = L.box(0.3, 0.3, 4, color); link.position.set(-2.2, 2.0, 0); link.rotation.y = Math.PI / 2; g.add(link);
+    const ee = new THREE.Group(); ee.position.set(-0.3, 2.0, 0); g.add(ee);
+    const hand = L.box(0.5, 0.4, 0.5, color); ee.add(hand); const tri = triad(1.5); ee.add(tri);
+    g.add(L.label(name, { pos: [name.endsWith('A') ? -3.5 : 3.5, 5.2, name.endsWith('A') ? -2.5 : 2.5], size: 20, color: '#' + color.toString(16).padStart(6, '0') }));
+    const wtri = triad(1.2); wtri.position.set(-3.5, 0.05, -2.5); g.add(wtri); g.add(L.label('世界系', { pos: [-3.5, 1.4, -2.5], size: 18 }));
+    return { g, ee, tri };
+  }
+  const A = dataset(C.video, '数据集 A'), B = dataset(C.action, '数据集 B'); S.scene.add(A.g, B.g);
+  /* B's raw frames: workspace rotated 90° about Y and shifted; its end-effector axes rotated 90° about X */
+  const rawB = { pos: new THREE.Vector3(3.5, 0, 2.5), rot: Math.PI / 2, scale: 1.25, eeRot: new THREE.Euler(0, Math.PI / 2, Math.PI / 2) };
+  const idB = { pos: new THREE.Vector3(0, 0, 0), rot: 0, scale: 1, eeRot: new THREE.Euler(0, 0, 0) };
+  let stage = 0, from = { ...rawB }, to = { ...rawB }, t0 = 0, anim = false;
+  const leftWorld = new THREE.Vector3(-1, 0, 0); /* "left" as seen from the camera's default side: −x in the common world */
+  const arrA = L.arrow([0, 0, 0], [-2.2, 0, 0], 0xffffff, { head: 0.5, headW: 0.3 }), arrB = L.arrow([0, 0, 0], [-2.2, 0, 0], 0xffffff, { head: 0.5, headW: 0.3 }); S.scene.add(arrA, arrB);
+  function coords(ee, tri) {
+    const q = new THREE.Quaternion(); tri.getWorldQuaternion(q); const inv = q.clone().invert();
+    const v = leftWorld.clone().applyQuaternion(inv); const f = x => { const r = Math.round(x * 10); return r === 0 ? 0 : r; }; return `(${f(v.x)}, ${f(v.y)}, ${f(v.z)}) cm`;
+  }
+  function apply(p) {
+    B.g.position.copy(p.pos); B.g.rotation.y = p.rot; B.g.scale.setScalar(p.scale); B.tri.rotation.copy(p.eeRot);
+    B.g.updateMatrixWorld(true); A.g.updateMatrixWorld(true);
+    const pa = new THREE.Vector3(), pb = new THREE.Vector3(); A.ee.getWorldPosition(pa); B.ee.getWorldPosition(pb);
+    arrA.position.copy(pa).add(new THREE.Vector3(0, 0.6, 0)); arrB.position.copy(pb).add(new THREE.Vector3(0, 0.6, 0));
+    $('r2a').textContent = coords(A.ee, A.tri); $('r2b').textContent = coords(B.ee, B.tri);
+    const ov = Math.abs(p.pos.x) + Math.abs(p.pos.z) + Math.abs(p.rot) * 3 + Math.abs(p.scale - 1) * 4; $('r2o').textContent = ov < 0.05 ? '完全重合' : (ov < 2 ? '部分重合' : '不重合');
+  }
+  function go(s) {
+    stage = s; ['al0', 'al1', 'al2'].forEach((id, i) => $(id).classList.toggle('on', i === s));
+    from = { pos: B.g.position.clone(), rot: B.g.rotation.y, scale: B.g.scale.x, eeRot: B.tri.rotation.clone() };
+    to = s === 0 ? { ...rawB, pos: rawB.pos.clone(), eeRot: rawB.eeRot.clone() } : s === 1 ? { ...idB, pos: idB.pos.clone(), eeRot: rawB.eeRot.clone() } : { ...idB, pos: idB.pos.clone(), eeRot: idB.eeRot.clone() };
+    t0 = performance.now(); anim = true;
+    $('ov2').innerHTML = s === 0 ? '<b>原始数据</b>\nB 的世界系转了 90°、工作空间更大且偏移\nB 的末端轴向与 A 不同\n白箭头 = 同一个物理上"向左"的动作' : s === 1 ? '<b>工作空间对齐 A_d</b>\n用一个世界系变换把 B 的工作空间\n搬到和 A 可比的位置和尺度\n末端轴向仍然不同' : '<b>末端坐标系对齐 B_d</b>\n再用一个局部变换统一末端原点和轴向\n现在同一个动作在两个数据集里是同一个向量';
+  }
+  S.onTick(() => { if (!anim) return; const u = L.reduced() ? 1 : Math.min(1, (performance.now() - t0) / 900); const e = L.ease(u);
+    const cur = { pos: from.pos.clone().lerp(to.pos, e), rot: L.lerp(from.rot, to.rot, e), scale: L.lerp(from.scale, to.scale, e), eeRot: new THREE.Euler(L.lerp(from.eeRot.x, to.eeRot.x, e), L.lerp(from.eeRot.y, to.eeRot.y, e), L.lerp(from.eeRot.z, to.eeRot.z, e)) };
+    apply(cur); if (u >= 1) anim = false; });
+  $('al0').onclick = () => go(0); $('al1').onclick = () => go(1); $('al2').onclick = () => go(2);
+  apply({ ...rawB }); go(0);
+})();
+</script>
+</body>
+</html>

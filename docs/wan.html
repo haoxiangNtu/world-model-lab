@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wan2.1 架构 · World Model Lab</title>
+<meta name="description" content="VPP2 的底座 Wan2.1-I2V-14B 的技术架构：Wan-VAE 的 4×8×8 因果压缩、扩散 Transformer 的 40 层结构、umT5 文本交叉注意力、I2V 的 36 通道条件注入和 CLIP 图像上下文、流匹配训练目标。用权重文件大小验证参数量，配两个可交互 3D 实验。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="wrap">
+<header class="top"><a class="brand" href="../index.html">World Model Lab</a>
+<nav><a href="vpp2.html">论文导读</a><a class="on" href="wan.html">Wan2.1 架构</a><a href="mot.html">MoT 原理</a><a href="posttrain.html">后训练过程</a><a href="benchmarks.html">评测数据集</a><a href="notes.html">原理问答</a><a href="https://github.com/haoxiangNtu/world-model-lab">GitHub</a></nav></header>
+
+<div class="eyebrow">Wan2.1-I2V-14B · 阿里通义 · 2025-02 · Apache 2.0</div>
+<h1>Wan2.1-I2V-14B 的技术架构</h1>
+<p class="lead">VPP2 的视频底座是 Wan2.1 的图生视频 14B 模型（480P 版本）。这一页把它拆开：视频先被 Wan-VAE 压成 latent，再切成 token 送进 40 层扩散 Transformer，文本靠 umT5 走交叉注意力，条件图片同时从通道拼接和 CLIP 上下文两条路进来，训练目标是流匹配。参数量用权重文件的大小对了一遍账。技术报告见 <a href="https://arxiv.org/abs/2503.20314">arXiv 2503.20314</a>，代码见 <a href="https://github.com/Wan-Video/Wan2.1">GitHub</a>。</p>
+<div class="toc"><a href="#pipeline">全景</a><a href="#vae">Wan-VAE</a><a href="#s1">3D：压缩与 token</a><a href="#dit">DiT</a><a href="#s2">3D：一个 block 的内部</a><a href="#i2v">I2V 条件</a><a href="#train">训练目标</a><a href="#params">参数量对账</a><a href="#vpp2">VPP2 改了什么</a></div>
+
+<h2 id="pipeline">1. 一次图生视频的全景</h2>
+<ol class="steps">
+<li><b>文本编码。</b>提示词进 umT5-XXL 编码器（约 5.7B 参数，只用编码器），得到最多 512 个文本 token。选它而不是 LLM 的原因：多语言、双向注意力，报告里说这对扩散任务更合适。</li>
+<li><b>条件图片两条路。</b>第一条：图片在时间轴上和零帧拼在一起，经 Wan-VAE 编码成条件 latent，再和一个标记"哪几帧是给定的"的二值 mask 一起沿通道拼到噪声 latent 上。第二条：图片过 CLIP 图像编码器（OpenCLIP 的 XLM-RoBERTa-Large + ViT-H/14），特征经三层 MLP 变成全局上下文，通过解耦的交叉注意力注入 DiT。</li>
+<li><b>去噪。</b>36 通道的 latent 经 (1, 2, 2) 的 3D 卷积分块成 token，加时间步调制，过 40 层 DiT，每层做一次视频 token 之间的 3D 全注意力、一次对文本（和图像上下文）的交叉注意力、一次 FFN。模型输出的是流匹配的速度场。</li>
+<li><b>求解。</b>从纯噪声出发按速度场积分，官方脚本 I2V 默认 40 步、无分类器引导系数 5；得到干净的 latent。</li>
+<li><b>解码。</b>Wan-VAE 把 latent 解回像素：480P 版本是 832×480、81 帧、16 fps 的 5 秒视频。</li>
+</ol>
+
+<h2 id="vae">2. Wan-VAE：先把视频压小 256 倍</h2>
+<p>Wan-VAE 是一个 3D 因果变分自编码器，127M 参数。输入 (3, 1+T, H, W) 的视频，输出 (16, 1+T/4, H/8, W/8) 的 latent：时间压 4 倍、空间各压 8 倍、通道扩到 16。第一帧只做空间压缩，所以帧数是 1+T/4 而不是 T/4，这也是为什么 Wan 的帧数总是 4k+1（17、49、81）。</p>
+<div class="kv">
+<dt>因果</dt><dd>3D 卷积只看过去的帧，保证每个 latent 帧只依赖它之前的像素帧。GroupNorm 换成 RMSNorm，就是为了不破坏时间因果。</dd>
+<dt>特征缓存</dt><dd>视频按 4 帧一块分块处理，卷积核为 3 时缓存前两帧的特征，于是任意长度的 1080P 视频都能以恒定显存编解码，历史信息不丢。</dd>
+<dt>效率</dt><dd>报告里在 200 段 720×720、25 帧的视频上，重建速度是 HunyuanVideo VAE 的 2.5 倍，PSNR 相当。上采样层输入通道减半，推理显存降 33%。</dd>
+</div>
+
+<section class="station" id="s1">
+<div class="station-head"><h2>3D 实验 1 · 从像素到 latent 再到 token</h2><span class="pill">拖动旋转 · 滚轮缩放</span></div>
+<p>左边是像素视频（每一片是一帧），中间是 Wan-VAE 压出来的 latent，右边是分块后真正进 DiT 的 token 网格，一个小方块就是一个 token。换帧数和分辨率，看 token 数怎么变。VPP2 后训练用的是 17 帧 416×240，Wan 自己默认 81 帧 832×480。</p>
+<div class="stage stage3d" id="st1"><div class="overlay" id="ov1"></div><div class="hint">drag · wheel</div></div>
+<div class="controls">
+<div class="ctl"><label>帧数</label><div class="seg"><button data-f="17" class="on">17（VPP2 后训练）</button><button data-f="49">49（VPP2 预训练）</button><button data-f="81">81（Wan 默认）</button></div></div>
+<div class="ctl"><label>分辨率</label><div class="seg"><button data-r="416x240" class="on">416×240（VPP2）</button><button data-r="832x480">832×480（Wan 480P）</button><button data-r="1280x720">Wan 720P</button></div></div>
+</div>
+<div class="readout">
+<div><div class="k">像素数</div><div class="v" id="r1p"></div></div>
+<div><div class="k">latent 形状 (C, T′, H′, W′)</div><div class="v" id="r1l"></div></div>
+<div><div class="k">token 数 L = T′ × H′/2 × W′/2</div><div class="v" id="r1t"></div></div>
+<div><div class="k">自注意力的 token 对数 L²</div><div class="v" id="r1a"></div></div>
+<div><div class="k">相对 VPP2 配置的注意力开销</div><div class="v" id="r1x"></div></div>
+</div>
+<div class="note">VPP2 推理时每个 8 秒片段只有 1950 个 token，Wan 默认配置是 32760 个，注意力矩阵相差 282 倍。这就是 VPP2 能把视频预测做到单步 0.12 秒的第一个原因；第二个原因是蒸馏成单步，见<a href="posttrain.html#s2">后训练过程</a>。</div>
+</section>
+
+<h2 id="dit">3. 扩散 Transformer：40 层，每层三件事</h2>
+<p>Wan 的主干是标准的 DiT 结构，1.3B 和 14B 两个尺寸只差宽度和深度：</p>
+<div class="tablewrap"><table>
+<tr><th>超参数</th><th class="num">Wan2.1 1.3B</th><th class="num">Wan2.1 14B</th><th>含义</th></tr>
+<tr><td>dim</td><td class="num">1536</td><td class="num">5120</td><td>token 的隐藏维度</td></tr>
+<tr><td>num_layers</td><td class="num">30</td><td class="num">40</td><td>DiT block 的层数</td></tr>
+<tr><td>num_heads</td><td class="num">12</td><td class="num">40</td><td>注意力头数，每头 128 维</td></tr>
+<tr><td>ffn_dim</td><td class="num">8960</td><td class="num">13824</td><td>FFN 中间层宽度，约 2.7 倍 dim</td></tr>
+<tr><td>in_dim</td><td class="num">16 / 36</td><td class="num">16 / 36</td><td>T2V 是 16 个 latent 通道；I2V 再拼 16 个条件通道和 4 个 mask 通道</td></tr>
+<tr><td>freq_dim</td><td class="num">256</td><td class="num">256</td><td>时间步正弦编码的维度</td></tr>
+<tr><td>text_len</td><td class="num">512</td><td class="num">512</td><td>umT5 文本 token 上限</td></tr>
+<tr><td>patch_size</td><td class="num">(1, 2, 2)</td><td class="num">(1, 2, 2)</td><td>分块：时间不合并，空间 2×2 合并</td></tr>
+</table></div>
+<p class="src">来源：Hugging Face 仓库里的 config.json 和官方代码。</p>
+<h3>每个 block 里发生什么</h3>
+<ol class="steps">
+<li><b>时间步调制（adaLN）。</b>时间步 t 先做 256 维正弦编码，经 MLP 变成 5120 维，再由一个<em>所有 block 共享</em>的 SiLU + Linear 投影成 6 个调制向量：注意力前的 shift、scale 和之后的 gate，FFN 前的 shift、scale 和之后的 gate。每个 block 只保留自己的一组可学习偏置。报告说这比每层各一个投影省约 25% 参数。</li>
+<li><b>3D 自注意力。</b>所有视频 token 两两做全注意力，没有时空分解。位置信息用 3D RoPE：head 的 128 维里分别给时间、高、宽留出旋转分量（代码里按 128 − 4·21、2·21、2·21 划分）。q 和 k 过 RMSNorm。</li>
+<li><b>交叉注意力。</b>视频 token 当 query，umT5 的 512 个文本 token 当 key 和 value。I2V 版本在这里再多一组 k、v 投影给 CLIP 的 257 个图像 token，两路结果相加，这就是"解耦交叉注意力"。</li>
+<li><b>FFN。</b>5120 → 13824 → 5120，GELU 激活。</li>
+</ol>
+
+<section class="station" id="s2">
+<div class="station-head"><h2>3D 实验 2 · 一个 DiT block 的内部</h2><span class="pill">点击模块看说明</span></div>
+<p>从下往上是一个 block 的数据流。左侧金色是时间步调制模块，它给每一层发 6 个调制向量。右侧紫色柱是文本 token，绿色柱是 CLIP 图像 token，只在 I2V 模式出现。右下角的 40 层小堆表示这个 block 在整个网络里的位置。点击任何模块，下方会显示它的作用和参数量。</p>
+<div class="stage stage3d" id="st2"><div class="overlay" id="ov2"></div><div class="hint">click · drag · wheel</div></div>
+<div class="controls">
+<div class="ctl"><label>模型类型</label><div class="seg"><button id="mT2V">T2V（文生视频）</button><button id="mI2V" class="on">I2V（图生视频，VPP2 用的）</button></div></div>
+</div>
+<div class="infopanel" id="ip2">点击 3D 场景中的模块。</div>
+</section>
+
+<h2 id="i2v">4. I2V 的条件图片是怎么进去的</h2>
+<p>两条路，各管一头：</p>
+<div class="cards">
+<div class="card"><div class="t">通道拼接：管"像素级忠实"</div><div class="d">条件图片放在第 0 帧，后面补零帧，一起过 Wan-VAE 得到 16 通道的条件 latent。再造一个 mask：给定的帧填 1，要生成的帧填 0，按 VAE 的时间步长重排成 4 通道。噪声 latent (16) + 条件 latent (16) + mask (4) = 36 通道进 DiT。多出来的输入投影层零初始化，所以刚开始微调时模型的行为和 T2V 一模一样。</div></div>
+<div class="card"><div class="t">CLIP 上下文：管"语义级一致"</div><div class="d">图片过 OpenCLIP 的 ViT-H/14（1.2B 的 CLIP 里只用视觉塔，约 0.6B），得到 257 个 token（16×16 个 patch 加一个 CLS），过三层 MLP 投到 5120 维，每个 block 的交叉注意力里用独立的 k、v 投影读它。这样首帧之外的帧也能"知道"画面里有什么。</div></div>
+</div>
+<p>I2V 模型从 T2V 模型初始化，分别在 480P 和 720P 两个分辨率上微调，所以有两个独立的 checkpoint。VPP2 用的是 480P 版，但把分辨率进一步降到 416×240。</p>
+
+<h2 id="train">5. 训练目标：流匹配</h2>
+<div class="formula">x_t = t · x₁ + (1 − t) · x₀        x₁ 是干净 latent，x₀ ~ N(0, I) 是噪声，t ∈ [0, 1]
+v_t = x₁ − x₀                        从噪声指向数据的恒定速度
+L  = E ‖ v_θ(x_t, t, c) − v_t ‖²     模型学的是速度场；t 从 logit-normal 分布采样，中间时刻采得更多</div>
+<p>推理时从 x₀ 出发沿速度场积分到 t = 1。因为学的是"直线"，步数可以比传统扩散少，但官方默认仍然要 40 到 50 步，每一步都是一次 14B 的前向。Wan 自己的训练分三段升分辨率：先 256p 图片，再 192p 的 5 秒视频，然后 480p，最后 720p；优化器 AdamW，学习率 1e-4。这条"先直线、后多步"的路，正是 VPP2 要用一致性蒸馏压成一步的东西，见<a href="posttrain.html#s2">后训练过程的 3D 实验 2</a>。</p>
+
+<h2 id="params">6. 参数量对账：为什么 I2V-14B 其实有 16.4B</h2>
+<p>按上面的结构可以把每个 block 的参数算出来，再和 Hugging Face 上权重文件的大小对一下。Wan2.1 的 DiT 权重是 fp32 存的，每个参数 4 字节。</p>
+<div class="tablewrap"><table>
+<tr><th>模块（每个 block）</th><th>算式</th><th class="num">参数量</th></tr>
+<tr><td>自注意力 q、k、v、o</td><td>4 × 5120²</td><td class="num">104.9M</td></tr>
+<tr><td>文本交叉注意力 q、k、v、o</td><td>4 × 5120²</td><td class="num">104.9M</td></tr>
+<tr><td>FFN 两层</td><td>2 × 5120 × 13824</td><td class="num">141.6M</td></tr>
+<tr><td>调制偏置、归一化</td><td>6 × 5120 + 若干</td><td class="num">≈ 0.03M</td></tr>
+<tr><td><b>T2V 每 block 小计</b></td><td></td><td class="num"><b>351.3M</b></td></tr>
+<tr><td>I2V 额外的图像 k、v</td><td>2 × 5120²</td><td class="num">52.4M</td></tr>
+<tr><td><b>I2V 每 block 小计</b></td><td></td><td class="num"><b>403.7M</b></td></tr>
+</table></div>
+<div class="formula">T2V 总量 ≈ 40 × 351.3M + 文本嵌入 47.2M + 时间嵌入 27.5M + 共享时间投影 5120 × 30720 = 157.3M ≈ 14.28B
+        权重文件 6 个分片共 57.15 GB ÷ 4 字节 = 14.29B   ✓
+
+I2V 总量 ≈ 40 × 403.7M + 同上 232M + CLIP 投影 MLP 32.8M ≈ 16.41B
+        权重文件 7 个分片共 65.58 GB ÷ 4 字节 = 16.39B   ✓</div>
+<p>所以名字里的"14B"继承自 T2V，I2V 版本因为每层多了一组图像 k、v，实际是 16.4B。VPP2 论文里写的 VPP2-14B 也是沿用这个叫法；加上 0.9B 的动作专家，整套策略约 17.3B，再加 5.7B 的 umT5 编码器和 0.6B 的 CLIP 视觉塔。</p>
+
+<h2 id="vpp2">7. VPP2 在这个底座上改了什么</h2>
+<div class="tablewrap"><table>
+<tr><th>项目</th><th>Wan2.1-I2V-14B-480P 原版</th><th>VPP2</th></tr>
+<tr><td>分辨率</td><td>832 × 480</td><td>416 × 240（T 形三视角拼图）</td></tr>
+<tr><td>帧数</td><td>81 帧，5 秒，16 fps</td><td>预训练 49 帧覆盖整个事件；后训练 17 帧覆盖 8 秒（机器人）或 2 秒（人手）</td></tr>
+<tr><td>token 数</td><td class="num">32 760</td><td class="num">5 070 → 1 950</td></tr>
+<tr><td>文本条件</td><td>任意提示词</td><td>按模板写的详细操作描述，部署时由 VLM 生成</td></tr>
+<tr><td>采样步数</td><td>40 步，CFG 5</td><td>一致性蒸馏后 1 步，约 0.12 秒</td></tr>
+<tr><td>可训练参数</td><td>—</td><td>阶段 1、2 全参数持续预训练；阶段 3 冻结主干，只训 LoRA 和 0.9B 动作专家</td></tr>
+<tr><td>额外模块</td><td>—</td><td>通过 MoT 挂一个动作 DiT，读视频 DiT 的 KV cache</td></tr>
+</table></div>
+
+<footer>World Model Lab · 世界模型的学习与测试记录 · <a href="https://github.com/haoxiangNtu/world-model-lab">源码</a> · 参考：Wan Team, <a href="https://arxiv.org/abs/2503.20314">Wan: Open and Advanced Large-Scale Video Generative Models</a>, 2025；<a href="https://huggingface.co/Wan-AI/Wan2.1-I2V-14B-480P">Wan2.1-I2V-14B-480P</a></footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="lab3d.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const L = Lab3D, C = L.C;
+
+/* ---------- Station 1: VAE compression and tokens ---------- */
+(function () {
+  const S = L.makeScene($('st1'), { theta: 0.45, phi: 1.15, dist: 40, target: [0, 2, 0] });
+  S.scene.add(L.grid(50, 25)).position.y = -4;
+  const g = new THREE.Group(); S.scene.add(g);
+  let F = 17, W = 416, H = 240;
+  const fmt = n => n.toLocaleString('en-US');
+  function build() {
+    L.clear(g);
+    const Tp = 1 + (F - 1) / 4, Hp = H / 8, Wp = W / 8, Ht = Hp / 2, Wt = Wp / 2, Ltok = Tp * Ht * Wt;
+    /* pixel volume: frames as thin slabs, 1 unit = 64 px */
+    const sw = W / 64, sh = H / 64; const depth = Math.min(10, F * 0.14);
+    const px = new THREE.Group(); px.position.set(-15, 0, 0); g.add(px);
+    for (let i = 0; i < F; i++) { const z = -depth / 2 + depth * i / Math.max(1, F - 1); const fr = L.box(sw, sh, 0.02, C.video, { opacity: 0.25, edgeColor: C.video, edgeOpacity: 0.7 }); fr.position.z = z; px.add(fr); }
+    px.add(L.label(`像素视频\n3 × ${F} × ${H} × ${W}`, { pos: [0, sh / 2 + 2.2, 0], size: 22 }));
+    /* latent: 1 unit = 8 latent cells, 16 channels drawn as depth-stacked plates */
+    const lt = new THREE.Group(); lt.position.set(-2, 0, 0); g.add(lt);
+    const lw = Wp / 8, lh = Hp / 8; const ldepth = Math.min(6, Tp * 0.5);
+    for (let i = 0; i < Tp; i++) { const z = -ldepth / 2 + (Tp > 1 ? ldepth * i / (Tp - 1) : 0); const fr = L.box(lw, lh, 0.3, C.weights ?? 0x8f9dff, { opacity: 0.55, edgeColor: 0x8f9dff, edgeOpacity: 0.9 }); fr.position.z = z; lt.add(fr); }
+    lt.add(L.label(`latent\n16 × ${Tp} × ${Hp} × ${Wp}`, { pos: [0, lh / 2 + 2.2, 0], size: 22 }));
+    /* tokens: instanced cubes, one per token */
+    const tk = new THREE.Group(); tk.position.set(12, 0, 0); g.add(tk);
+    const cell = Math.min(0.28, 7 / Wt); const geo = new THREE.BoxGeometry(cell * 0.8, cell * 0.8, cell * 0.8);
+    const inst = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ roughness: 0.6 }), Ltok); const m4 = new THREE.Matrix4(); const col = new THREE.Color(); let k = 0;
+    const tdepth = Math.min(6, Tp * 0.6);
+    for (let t = 0; t < Tp; t++) for (let y = 0; y < Ht; y++) for (let x = 0; x < Wt; x++) {
+      m4.makeTranslation((x - Wt / 2 + 0.5) * cell, (y - Ht / 2 + 0.5) * cell, -tdepth / 2 + (Tp > 1 ? tdepth * t / (Tp - 1) : 0)); inst.setMatrixAt(k, m4);
+      col.setHSL(0.55 - 0.3 * t / Math.max(1, Tp - 1), 0.75, 0.55); inst.setColorAt(k, col); k++; }
+    inst.instanceMatrix.needsUpdate = true; if (inst.instanceColor) inst.instanceColor.needsUpdate = true; tk.add(inst);
+    tk.add(L.label(`token 网格\n${Tp} × ${Ht} × ${Wt} = ${fmt(Ltok)}`, { pos: [0, Ht * cell / 2 + 2.2, 0], size: 22 }));
+    g.add(L.arrow([-15 + sw / 2 + 0.4, 0, 0], [-2 - lw / 2 - 0.4, 0, 0], 0x8e9bb8), L.arrow([-2 + lw / 2 + 0.4, 0, 0], [12 - Wt * cell / 2 - 0.4, 0, 0], 0x8e9bb8));
+    g.add(L.label('Wan-VAE\n时间 ÷4 · 空间 ÷8 · 通道 ×16/3', { pos: [-8.5, -2.6, 0], size: 18, bg: 'rgba(12,18,32,0.5)' }), L.label('分块 (1, 2, 2)\n每 2×2 个 latent 格 = 1 token', { pos: [5, -2.6, 0], size: 18, bg: 'rgba(12,18,32,0.5)' }));
+    const base = 1950;
+    $('r1p').textContent = fmt(3 * F * H * W); $('r1l').textContent = `(16, ${Tp}, ${Hp}, ${Wp})`; $('r1t').textContent = fmt(Ltok); $('r1a').textContent = (Ltok * Ltok / 1e6).toFixed(1) + ' M';
+    $('r1x').textContent = (Ltok * Ltok / (base * base)).toFixed(Ltok * Ltok / (base * base) < 10 ? 2 : 0) + ' ×';
+    $('ov1').innerHTML = `<b>${F} 帧 · ${W}×${H}</b>\n压缩比 ${fmt(Math.round(3 * F * H * W / (16 * Tp * Hp * Wp)))} : 1（像素数 ÷ latent 元素数）\n每个 token 装着 ${fmt(Math.round(3 * F * H * W / Ltok))} 个像素值`;
+  }
+  document.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { document.querySelectorAll('[data-f]').forEach(x => x.classList.remove('on')); b.classList.add('on'); F = +b.dataset.f; build(); });
+  document.querySelectorAll('[data-r]').forEach(b => b.onclick = () => { document.querySelectorAll('[data-r]').forEach(x => x.classList.remove('on')); b.classList.add('on'); [W, H] = b.dataset.r.split('x').map(Number); build(); });
+  S.onTick(t => { if (!L.reduced()) g.rotation.y = Math.sin(t / 600) * 0.08; });
+  build();
+})();
+
+/* ---------- Station 2: inside one DiT block ---------- */
+(function () {
+  const S = L.makeScene($('st2'), { theta: 0.5, phi: 1.3, dist: 42, target: [1.5, 7, 0] });
+  S.scene.add(L.grid(30, 15)).position.y = -1;
+  const g = new THREE.Group(); S.scene.add(g); let i2v = true; const clickable = [];
+  const info = {
+    input: { t: '输入 token', d: 'latent 经 (1,2,2) 分块后的 token 序列，每个 5120 维。T2V 的 latent 是 16 通道；I2V 是 36 通道（噪声 16 + 条件 16 + mask 4），多出来的输入投影零初始化。参数：输入投影 36×4×5120 ≈ 0.74M。' },
+    mod1: { t: 'adaLN 调制 ①', d: '对 token 做 LayerNorm，然后用时间步给的 shift 和 scale 做仿射：x·(1+scale)+shift。调制向量来自左侧共享模块，每个 block 只加一组自己的偏置，6×5120 ≈ 31K 参数。' },
+    attn: { t: '3D 自注意力', d: '所有视频 token 两两做全注意力，40 头 × 128 维，q、k 过 RMSNorm，位置用 3D RoPE（时间、高、宽各占一部分旋转维度）。参数：q、k、v、o 四个 5120×5120 ≈ 104.9M。计算量随 token 数平方增长，所以 VPP2 要把 token 压到 1950 个。' },
+    cross: { t: '交叉注意力', d: '视频 token 当 query，umT5 的 512 个文本 token 当 key、value。I2V 再加一组 k、v 投影读 CLIP 的 257 个图像 token，两路输出相加（解耦交叉注意力）。参数：文本路 104.9M；图像路额外 52.4M。' },
+    ffn: { t: 'FFN', d: '5120 → 13824 → 5120，GELU 激活，前面有第二组 adaLN 调制，后面有 gate。参数：2×5120×13824 ≈ 141.6M，是 block 里最大的一块。' },
+    time: { t: '时间步调制模块（共享）', d: '时间步 t 先做 256 维正弦编码，MLP 升到 5120 维，再由所有 block 共享的 SiLU+Linear(5120→6×5120) 投成 6 个调制向量：注意力的 shift、scale、gate 和 FFN 的 shift、scale、gate。共享投影 157M 参数只存一份，比每层各一份省约 25%。' },
+    text: { t: 'umT5 文本 token', d: 'umT5-XXL 编码器（约 5.7B 参数，推理时只跑一次）输出最多 512 个 4096 维向量，经 MLP 投到 5120 维后供每一层的交叉注意力读取。双向注意力的编码器比因果 LLM 更适合扩散模型的条件。' },
+    img: { t: 'CLIP 图像 token（I2V）', d: '条件图片过 OpenCLIP ViT-H/14 得到 257 个 token，再过三层 MLP（≈ 32.8M 参数）投到 5120 维。它提供全局语义上下文，让后面的帧知道画面里是什么；像素级的忠实度由通道拼接的条件 latent 负责。' },
+    stack: { t: '40 层堆叠', d: '14B 模型有 40 个这样的 block（1.3B 是 30 个）。每层做完一次自注意力、一次交叉注意力、一次 FFN，最后 head 把 5120 维投回 16×(1×2×2)=64 维，还原成 latent 的速度场。' },
+    out: { t: '输出', d: '本层的输出送入下一层。最后一层之后，head 预测每个 token 对应 latent 块的速度 v = x₁ − x₀。' } };
+  function slab(w, h, d, color, y, key, o = {}) { const m = L.box(w, h, d, color, o); m.position.set(0, y, 0); m.userData.key = key; g.add(m); clickable.push(m); return m; }
+  function build() {
+    L.clear(g); clickable.length = 0;
+    const ys = { input: 0, mod1: 2.2, attn: 4.6, cross: 7.6, ffn: 11.0, out: 14.2 };
+    const inp = new THREE.Group(); inp.position.y = ys.input; g.add(inp);
+    const chans = i2v ? [[16, C.video, '噪声 16'], [16, C.image, '条件 16'], [4, C.gold, 'mask 4']] : [[16, C.video, 'latent 16']];
+    let z = -1.6; chans.forEach(([n, c, nm]) => { const d = n * 0.2; const b = L.box(8, 0.5, d, c, { opacity: 0.85 }); b.position.set(0, 0, z + d / 2); b.userData.key = 'input'; inp.add(b); clickable.push(b); inp.add(L.label(nm, { pos: [5.4, 0, z + d / 2], size: 13, bg: 'rgba(12,18,32,0.5)' })); z += d + 0.15; });
+    g.add(L.label(i2v ? '输入 36 通道 → token' : '输入 16 通道 → token', { pos: [0, ys.input, 3.2], size: 13 }));
+    slab(8, 0.35, 4, C.gold, ys.mod1, 'mod1', { opacity: 0.8 }); g.add(L.label('adaLN 调制 ① shift · scale', { pos: [0, ys.mod1, 3.2], size: 13 }));
+    slab(8, 1.2, 4, C.attn, ys.attn, 'attn', { opacity: 0.9 }); g.add(L.label('3D 自注意力 · 40 头 · 3D RoPE · 104.9M', { pos: [0, ys.attn, 3.2], size: 13 }));
+    slab(8, 1.2, 4, C.text, ys.cross, 'cross', { opacity: 0.9 }); g.add(L.label(i2v ? '交叉注意力 · 文本 + 图像 · 157.3M' : '交叉注意力 · 文本 · 104.9M', { pos: [0, ys.cross, 3.2], size: 13 }));
+    const ffnWide = slab(8, 0.5, 4, C.action, ys.ffn - 0.7, 'ffn', { opacity: 0.9 }); const ffnMid = slab(8, 0.9, 10.8, C.action, ys.ffn, 'ffn', { opacity: 0.55 }); const ffnTop = slab(8, 0.5, 4, C.action, ys.ffn + 0.7, 'ffn', { opacity: 0.9 });
+    g.add(L.label('FFN 5120 → 13824 → 5120 · 141.6M', { pos: [0, ys.ffn, 6.4], size: 13 }));
+    slab(8, 0.5, 4, C.video, ys.out, 'out', { opacity: 0.85 }); g.add(L.label('输出 → 下一层', { pos: [0, ys.out, 3.2], size: 13 }));
+    /* arrows along the main stream */
+    [[ys.input + 0.4, ys.mod1 - 0.25], [ys.mod1 + 0.25, ys.attn - 0.7], [ys.attn + 0.7, ys.cross - 0.7], [ys.cross + 0.7, ys.ffn - 1.0], [ys.ffn + 1.0, ys.out - 0.3]].forEach(([a, b]) => g.add(L.arrow([0, a, 2.3], [0, b, 2.3], 0x8e9bb8, { head: 0.35, headW: 0.2 })));
+    /* time modulation module at the left */
+    const tm = L.box(2.2, 1.6, 2.2, C.gold, { opacity: 0.9 }); tm.position.set(-13, 0.8, 2); tm.userData.key = 'time'; g.add(tm); clickable.push(tm);
+    g.add(L.label('时间步 t\n正弦 256 → MLP → 共享 Linear\n→ 6 个调制向量', { pos: [-13, 3.0, 2], size: 13 }));
+    [ys.mod1, ys.attn + 0.6, ys.ffn - 1.0, ys.ffn + 1.0].forEach(y => g.add(L.line([[-11.9, 0.8, 2], [-4.1, y, 0]], C.gold, { dashed: true, opacity: 0.8 })));
+    /* text and image token columns at the right, feeding cross-attention */
+    const tx = new THREE.Group(); tx.position.set(10.2, 0, -1.2); g.add(tx);
+    for (let i = 0; i < 12; i++) { const c = L.box(0.5, 0.35, 0.5, C.text, { edges: false }); c.position.y = ys.cross - 3.6 + i * 0.5; c.userData.key = 'text'; tx.add(c); clickable.push(c); }
+    g.add(L.label('umT5 文本 token ×512', { pos: [10.2, ys.cross + 3.4, -1.2], size: 13 }));
+    g.add(L.arrow([9.8, ys.cross, -1.2], [4.3, ys.cross, -1.2], C.text, { head: 0.35, headW: 0.2 }));
+    if (i2v) { const im = new THREE.Group(); im.position.set(10.2, 0, 1.4); g.add(im);
+      for (let i = 0; i < 8; i++) { const c = L.box(0.5, 0.35, 0.5, C.image, { edges: false }); c.position.y = ys.cross - 2.0 + i * 0.5; c.userData.key = 'img'; im.add(c); clickable.push(c); }
+      g.add(L.label('CLIP 图像 token ×257', { pos: [10.2, ys.cross - 2.8, 1.4], size: 13 })); g.add(L.arrow([9.8, ys.cross, 1.4], [4.3, ys.cross, 1.4], C.image, { head: 0.35, headW: 0.2 })); }
+    /* 40-layer mini stack */
+    const st = new THREE.Group(); st.position.set(16.5, 0, 4); g.add(st);
+    for (let i = 0; i < 40; i++) { const s = L.box(2.2, 0.16, 1.4, i === 12 ? C.attn : C.frozen, { edges: false, opacity: i === 12 ? 1 : 0.6 }); s.position.y = i * 0.36; s.userData.key = 'stack'; st.add(s); clickable.push(s); }
+    g.add(L.label('× 40 层', { pos: [16.5, 15.3, 4], size: 13 }));
+    $('ov2').innerHTML = i2v ? '<b>I2V block</b>\n每层 403.7M 参数 · ×40 ≈ 16.1B\n条件图片：通道拼接 + CLIP 交叉注意力' : '<b>T2V block</b>\n每层 351.3M 参数 · ×40 ≈ 14.05B\n只有文本条件';
+  }
+  S.onClick(() => clickable, hit => { if (!hit) return; let o = hit.object; while (o && !o.userData.key) o = o.parent; if (!o) return; const k = info[o.userData.key]; if (k) $('ip2').innerHTML = `<b>${k.t}</b> · ${k.d}`; });
+  $('mT2V').onclick = () => { i2v = false; $('mT2V').classList.add('on'); $('mI2V').classList.remove('on'); build(); };
+  $('mI2V').onclick = () => { i2v = true; $('mI2V').classList.add('on'); $('mT2V').classList.remove('on'); build(); };
+  build();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>评测数据集 · World Model Lab</title>
+<meta name="description" content="VPP2 用到的评测各自在考什么：视频预测指令跟随、真实 ALOHA 零样本、LIBERO 与它的三种考法（ID、Pro、OOD）、RoboDojo 的五个能力维度。两个可交互 3D 场景演示扰动和维度，附论文全部结果图表。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<div class="wrap">
+<header class="top"><a class="brand" href="../index.html">World Model Lab</a>
+<nav><a href="vpp2.html">论文导读</a><a href="wan.html">Wan2.1 架构</a><a href="mot.html">MoT 原理</a><a href="posttrain.html">后训练过程</a><a class="on" href="benchmarks.html">评测数据集</a><a href="notes.html">原理问答</a><a href="https://github.com/haoxiangNtu/world-model-lab">GitHub</a></nav></header>
+
+<div class="eyebrow">Benchmarks · 视频预测 · ALOHA · LIBERO · RoboDojo</div>
+<h1>这些评测数据集各自在考什么</h1>
+<p class="lead">论文摘要里的五个数字来自四种不同性质的评测：视频预测是在考"预测得对不对"，真实 ALOHA 在考"没训练过的任务能不能零样本做"，LIBERO 的三种考法在考"分布内满分之后还剩多少是真理解"，RoboDojo 在考"五种能力各到什么程度"。本页先说每个评测的来历和规则，再用 3D 场景把"扰动"和"维度"演出来，最后放论文的全部结果图。</p>
+<div class="toc"><a href="#video">视频预测</a><a href="#aloha">ALOHA</a><a href="#libero">LIBERO 三种考法</a><a href="#s1">3D：LIBERO</a><a href="#robodojo">RoboDojo</a><a href="#s2">3D：RoboDojo</a><a href="#baselines">对手是谁</a></div>
+
+<h2 id="video">1. 视频预测指令跟随：预测得对不对</h2>
+<p>这是作者自己设计的评测。随机收集 50 组人手操作和 50 组机器人操作的"图片 + 指令"，图片来自先前工作的测试集、办公室和机器人工作台的照片，指令自由选。每个模型从同一张图和同一条指令生成视频，两种判分：</p>
+<ul>
+<li><b>GPT 判分的成功率</b>：让一个 GPT 评估器判断视频有没有按指令做对，得到表 2 的成功率。</li>
+<li><b>人类两两对比的胜率</b>：人类评估者看两个模型的视频，选哪个更符合指令，得到图 6 的胜 / 平 / 负。</li>
+</ul>
+<p>对手是四个视频基础模型：底座 Wan2.1-I2V-14B 本身；同样基于 Wan2.1-14B 微调的 LVP（MIT 的 Large Video Planner）；NVIDIA 大量机器人数据训练的 Cosmos3-Nano-16B；Cosmos 3 家族最强的 Cosmos3-Super-Image2Video-64B。还有一个消融 VPP2-Fixed-Step：跳过事件级预训练直接预测固定时长。</p>
+<div class="twocol">
+<div id="c-ifsr"></div>
+<div id="c-win"></div>
+</div>
+
+<h2 id="aloha">2. 真实 ALOHA 零样本：没训练过的任务能不能做</h2>
+<p>ALOHA 是斯坦福 2023 年提出的低成本开源双臂遥操作平台：两条 ViperX 从动臂加两条 WidowX 主动臂，四个相机（顶部、前方、两个腕部），整套约两万美元，后来成了双臂数据采集的事实标准，VPP2 训练数据里的 RDT、自采数据都是这类本体。</p>
+<p>评测方式：VPP2 直接部署，不做任何任务专项微调，在 10 类随机选的任务上各测 20 次。对手 π0.5 和 Fast-WAM（Wan-14B 版本）用 VPP2 训练数据里的全部 ALOHA 数据微调，保证公平。"零样本"指的是任务没见过，本体是见过的。</p>
+<div id="c-aloha"></div>
+<p>10 类里 VPP2 赢了 9 类，只有"折叠"输给 π0.5（70% 对 80%）。"倒"这一类两个基线都是 0%，VPP2 40%：倒水需要对液体和容器的动态有预测，正是视频先验能给的东西。</p>
+
+<h2 id="libero">3. LIBERO 和它的三种考法</h2>
+<p><b>LIBERO</b>（2023）是一个基于 robosuite / MuJoCo 的仿真操作基准，用一条 Franka Panda 单臂做桌面任务。VLA 论文最常报的是四个标准套件，每套 10 个任务、每任务 50 条示范：</p>
+<div class="tablewrap"><table>
+<tr><th>套件</th><th>考什么</th><th>例子</th></tr>
+<tr><td>LIBERO-Spatial</td><td>同样的物体，不同的空间布局</td><td>把黑碗放到盘子上（碗在抽屉旁边 / 在炉灶旁边）</td></tr>
+<tr><td>LIBERO-Object</td><td>同样的布局，不同的物体</td><td>把番茄酱 / 牛奶盒 / 奶油芝士放进篮子</td></tr>
+<tr><td>LIBERO-Goal</td><td>同样的物体和布局，不同的目标</td><td>打开中间的抽屉 / 把碗放到炉灶上 / 把酒瓶放到架子上</td></tr>
+<tr><td>LIBERO-Long（LIBERO-10）</td><td>两步组成的长任务</td><td>把两个碗都放进抽屉</td></tr>
+</table></div>
+<p>问题是测试和训练几乎一样，只有初始位置的小扰动。于是出现了两套"考法升级"，VPP2 和所有基线都只在四个标准套件上训练，然后在三种设定下测：</p>
+<dl class="kv">
+<dt>LIBERO-ID</dt><dd>标准的分布内测试。所有近期模型都在 94% 以上，VPP2 98.8%，已经分不出高下。</dd>
+<dt>LIBERO-Pro（2025）</dt><dd>对同一套任务做扰动：物体初始位置、任务指令、物体种类、环境布局。论文发现过 90% 的模型在扰动下可以掉到 0%，说明它们在记忆轨迹。VPP2 按 HarnessVLA 的做法测了两种扰动：<b>位置扰动</b>（物体放到训练里没出现过的位置）和<b>任务扰动</b>（同一个场景换一条指令，比如从"把碗放到盘子上"改成"把杯子放到盘子上"）。一个只会回放轨迹的策略在任务扰动下还是会去拿碗。</dd>
+<dt>LIBERO-OOD（2025–2026）</dt><dd>组合泛化：把训练里见过的物体、容器、布局、目标重新组合成没见过的任务，分 <b>空间</b>（熟悉的布局配新的目的地）、<b>物体</b>（熟悉的布局配别的类别的物体，要求语义理解）、<b>目标</b>（熟悉的物体配新的目的地）三个子集。Temporal Ratio 这篇论文专门研究"视频到动作的泛化鸿沟"，VPP2 沿用了它的评测协议。</dd>
+</dl>
+
+<section class="station" id="s1">
+<div class="station-head"><h2>3D 实验 1 · 同一张桌子，六种考法</h2><span class="pill">拖动旋转 · 滚轮缩放</span></div>
+<p>一条 Franka 风格的单臂和一桌子 LIBERO 常见的物体。点按钮切换设定：场景、指令和动作会跟着变。虚线是"记忆中的轨迹"，也就是一个只会回放训练轨迹的策略会做的事；实线是指令实际要求的动作。右下角的面板给出该设定下 VPP2 和最强基线的成功率。</p>
+<div class="stage stage3d" id="st1"><div class="overlay" id="ov1"></div><div class="hint">drag · wheel</div></div>
+<div class="controls"><div class="ctl" style="max-width:none"><label>设定</label><div class="seg" id="lib-modes"></div></div></div>
+<div class="infopanel" id="ip1"></div>
+</section>
+
+<div class="twocol">
+<div id="c-lib-id"></div>
+<div id="c-lib-pro"></div>
+</div>
+<div id="c-lib-ood"></div>
+<div class="note">三张图合起来看：分布内 98% 和 94% 没有区别，但扰动一来，VLA 基线掉到 11% 以下，视频类策略（Cosmos-Policy、Fast-WAM、DiT4DiT）在组合泛化上掉到 10% 以下，VPP2 保住了 45% 和 64%。任务扰动上的 47.8% 对 6.8% 是最能说明"在跟随指令而不是回放"的一组数。</div>
+
+<h2 id="robodojo">4. RoboDojo：五种能力分开考</h2>
+<p><b>RoboDojo</b>（2026 年 7 月）是一个仿真与真机统一的通用操作策略基准。仿真部分 42 个双臂任务，跑在 Isaac Sim 上，本体是 ARX X5 双臂（两臂基座相距 0.6 米）；真机部分 18 个任务，通过云端远程评测。两个指标：<b>成功率</b>是二值的任务完成，<b>平均分</b>给部分完成的进度打分，长程任务做完一半也有分。42 个仿真任务分五个维度：</p>
+<div class="tablewrap"><table>
+<tr><th>维度</th><th>考什么</th><th class="num">VPP2 成功率</th><th>该维度最强对手</th></tr>
+<tr><td>泛化（标准 / 随机）</td><td>换背景、光照、杂物、目标物体实例还能不能做，随机设定下更难</td><td class="num">29.50</td><td class="num">GPT-6-Astra 32.67 / 28.33</td></tr>
+<tr><td>精度</td><td>细粒度定位和富接触控制，比如插销</td><td class="num">35.17</td><td class="num">Xiaomi-Robotics-1 18.83</td></tr>
+<tr><td>长程</td><td>多步任务要全部完成</td><td class="num">37.00</td><td class="num">OpenWAM-α 25.33</td></tr>
+<tr><td>记忆</td><td>正确动作取决于更早看到、现在看不到的信息</td><td class="num">55.56</td><td class="num">GPT-6-Astra 38.67</td></tr>
+<tr><td>开放指令</td><td>没见过的任务描述，但所需技能在训练里以别的形式出现过</td><td class="num">4.08</td><td class="num">GPT-6-Astra 31.00</td></tr>
+</table></div>
+<p class="src">基线数字取自 2026 年 9 月的官方仿真排行榜；VPP2 的泛化维度按官方协议在标准和随机两种设定下各测 25 回合后合并报告。</p>
+
+<section class="station" id="s2">
+<div class="station-head"><h2>3D 实验 2 · 双臂桌面上的五个维度</h2><span class="pill">拖动旋转 · 滚轮缩放</span></div>
+<p>两条臂相距 0.6 米的 ARX X5 风格双臂。每个维度一个代表性任务：泛化可以切换标准和随机设定（背景、光照、杂物、目标实例全变）；记忆任务里球会被杯子盖住，策略要记得是哪个杯子；精度任务是插销；长程任务要连做三步，面板上显示部分进度，这正是"平均分"衡量的东西；开放指令任务要求理解一条新的描述。</p>
+<div class="stage stage3d" id="st2"><div class="overlay" id="ov2"></div><div class="hint">drag · wheel</div></div>
+<div class="controls"><div class="ctl" style="max-width:none"><label>维度</label><div class="seg" id="rd-modes"></div></div><div class="ctl" id="rd-sub-wrap"><label>泛化设定</label><div class="seg"><button id="rdStd" class="on">标准</button><button id="rdRand">随机</button></div></div></div>
+<div class="infopanel" id="ip2"></div>
+</section>
+
+<div id="c-rd-overall"></div>
+<div id="c-rd-dim"></div>
+<p>开放指令是 VPP2 最弱的维度：没有 VLM 规划时它对新描述的理解有限，GPT-6-Astra 这种前沿基础模型在这里反而强得多。论文接着在五个长程任务组上加了 VLM 子任务规划：</p>
+<div id="c-plan"></div>
+
+<h2 id="baselines">5. 对手都是谁</h2>
+<div class="tablewrap"><table>
+<tr><th>名字</th><th>类型</th><th>一句话</th></tr>
+<tr><td>Wan2.1-14B / Cosmos3-16B / Cosmos3-64B</td><td>视频基础模型</td><td>VPP2 的底座，以及 NVIDIA 的全模态世界模型家族（MoT 双塔结构，Super 版 32B + 32B）</td></tr>
+<tr><td>LVP</td><td>视频规划器</td><td>MIT，把 Wan2.1-14B 微调成生成人手操作视频的规划器，再把手部动作重定向到机器人</td></tr>
+<tr><td>π0 / π0.5</td><td>VLA</td><td>Physical Intelligence，PaliGemma 3B + 流匹配动作专家；π0.5 加了大量异构数据协同训练，开放世界泛化更强</td></tr>
+<tr><td>MolmoAct / X-VLA / AtomVLA / Xiaomi-Robotics-1</td><td>VLA</td><td>2025–2026 年的几个 VLA 代表</td></tr>
+<tr><td>Fast-WAM</td><td>世界动作模型</td><td>训练时用视频协同训练，推理时不生成未来帧，190 ms 延迟；VPP2 在 ALOHA 上用的是它的 Wan-14B 版本</td></tr>
+<tr><td>Cosmos-Policy / DiT4DiT / OpenWAM-α</td><td>世界动作模型</td><td>基于视频模型的几种动作学习方案</td></tr>
+<tr><td>Temporal Ratio</td><td>世界动作模型 + 推理时引导</td><td>提出用注意力比例诊断视频到动作的泛化鸿沟，并在推理时自适应调整条件强度；LIBERO-OOD 协议的来源</td></tr>
+<tr><td>GPT-6-Astra</td><td>前沿基础模型</td><td>RoboDojo 排行榜上开放指令和记忆维度最强的模型</td></tr>
+</table></div>
+
+<footer>World Model Lab · 世界模型的学习与测试记录 · <a href="https://github.com/haoxiangNtu/world-model-lab">源码</a> · 参考：Liu et al., LIBERO, 2023；Zhou et al., <a href="https://arxiv.org/abs/2510.03827">LIBERO-PRO</a>, 2025；Mishra et al., <a href="https://arxiv.org/abs/2607.08127">Temporal Ratio</a>, 2026；Chen et al., <a href="https://arxiv.org/abs/2607.04434">RoboDojo</a>, 2026；Zhao et al., ALOHA, 2023</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="lab3d.js"></script>
+<script src="charts.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const L = Lab3D, C = L.C;
+
+/* ---------- charts (all numbers from the paper) ---------- */
+Charts.register(() => {
+  Charts.hbars($('c-ifsr'), { title: '表 2 · 视频预测指令跟随成功率', sub: 'GPT 评估器判分，人手 / 机器人各 50 组', categories: ['Wan2.1-14B', 'LVP', 'Cosmos3-16B', 'Cosmos3-64B', 'VPP2-Fixed-Step（消融）', 'VPP2'], series: [{ name: '人手', values: [32, 62, 44, 70, 48, 80], slot: 2 }, { name: '机器人', values: [4, 46, 32, 78, 42, 90], slot: 0 }], unit: '%', max: 100, highlight: 'VPP2', labelWidth: 170, catLabel: '模型' });
+  Charts.stacked($('c-win'), { title: '图 6 · 人类两两对比：VPP2 对各基线的胜率', sub: '上四行人手，下四行机器人', categories: ['人手 · vs Wan2.1-14B', '人手 · vs LVP', '人手 · vs Cosmos3-16B', '人手 · vs Cosmos3-64B', '机器人 · vs Wan2.1-14B', '机器人 · vs LVP', '机器人 · vs Cosmos3-16B', '机器人 · vs Cosmos3-64B'], series: [{ name: '基线胜', values: [4, 12, 10, 18, 0, 6, 10, 12], slot: 1 }, { name: '平', values: [44, 58, 44, 54, 4, 44, 22, 64], ties: true }, { name: 'VPP2 胜', values: [52, 30, 46, 28, 96, 50, 68, 24], slot: 0 }], labelWidth: 170, catLabel: '对比' });
+  Charts.bars($('c-aloha'), { title: '图 8 · 真实 ALOHA 零样本成功率，10 类任务', sub: 'π0.5 和 Fast-WAM 用同样的 ALOHA 数据微调；VPP2 不做任务专项训练', categories: ['堆叠', '抓取', '放置', '折叠', '倒', '拉', '插入', '打开', '关闭', '擦拭', '平均'], series: [{ name: 'π0.5', values: [40, 45, 55, 80, 0, 35, 50, 20, 30, 45, 40], slot: 1 }, { name: 'Fast-WAM-14B', values: [25, 20, 40, 35, 0, 20, 15, 20, 0, 30, 20.5], slot: 2 }, { name: 'VPP2', values: [65, 70, 75, 70, 40, 50, 55, 35, 60, 65, 58.5], slot: 0 }], unit: '%', max: 100, label: 'VPP2', boldCat: '平均', catLabel: '任务类别' });
+  Charts.hbars($('c-lib-id'), { title: '表 3 · LIBERO-ID 分布内', sub: '四个标准套件的平均成功率', categories: ['π0', 'π0.5', 'MolmoAct', 'X-VLA', 'AtomVLA', 'Cosmos-Policy', 'Fast-WAM', 'DiT4DiT', 'Temporal Ratio', 'VPP2'], series: [{ name: '成功率', values: [94.2, 96.9, 86.6, 98.1, 97.0, 98.5, 97.6, 98.6, 94.0, 98.8], slot: 0 }], unit: '%', max: 100, highlight: 'VPP2', labelWidth: 120, catLabel: '模型' });
+  Charts.hbars($('c-lib-pro'), { title: '表 3 · LIBERO-Pro 扰动', sub: '位置扰动与任务扰动；视频类基线未报告', categories: ['π0', 'π0.5', 'MolmoAct', 'X-VLA', 'AtomVLA', 'VPP2'], series: [{ name: '位置扰动', values: [0.5, 20.8, 1.5, 0.8, 7.3, 42.3], slot: 2 }, { name: '任务扰动', values: [0.0, 1.3, 1.5, 6.8, 5.3, 47.8], slot: 0 }], unit: '%', max: 60, highlight: 'VPP2', labelWidth: 120, catLabel: '模型' });
+  Charts.hbars($('c-lib-ood'), { title: '表 3 · LIBERO-OOD 组合泛化', sub: '空间 / 物体 / 目标三个子集；VLA 基线中只有 π0 和 π0.5 报告了该设定', categories: ['π0', 'π0.5', 'Cosmos-Policy', 'Fast-WAM', 'DiT4DiT', 'Temporal Ratio', 'VPP2'], series: [{ name: '空间', values: [0.7, 36.7, 30.7, 12.7, 9.0, 58.6, 59.3], slot: 2 }, { name: '物体', values: [0.3, 2.3, 0.3, 0.0, 0.0, 40.0, 44.5], slot: 1 }, { name: '目标', values: [4.3, 41.7, 0.7, 15.7, 10.3, 80.3, 87.7], slot: 0 }], unit: '%', max: 100, highlight: 'VPP2', labelWidth: 130, catLabel: '模型' });
+  Charts.hbars($('c-rd-overall'), { title: '表 4 · RoboDojo 仿真总成绩', sub: '五个维度的平均；平均分计部分进度，成功率只计完成', categories: ['π0', 'π0.5', 'X-VLA', 'Fast-WAM', 'OpenWAM-α', 'Xiaomi-Robotics-1', 'GPT-6-Astra', 'VPP2'], series: [{ name: '平均分', values: [3.48, 11.44, 10.13, 3.48, 17.18, 20.07, 28.97, 39.26], slot: 2 }, { name: '成功率 %', values: [1.53, 6.93, 6.52, 2.03, 11.92, 13.93, 22.48, 32.26], slot: 0 }], max: 50, highlight: 'VPP2', labelWidth: 150, catLabel: '模型' });
+  Charts.bars($('c-rd-dim'), { title: '表 8 · RoboDojo 各维度成功率，VPP2 与两个最强对手', sub: 'VPP2 的泛化维度是标准与随机两种设定合并后的结果，两栏相同', categories: ['泛化·标准', '泛化·随机', '精度', '长程', '记忆', '开放指令'], series: [{ name: 'GPT-6-Astra', values: [32.67, 28.33, 4.00, 8.25, 38.67, 31.00], slot: 1 }, { name: 'Xiaomi-Robotics-1', values: [28.00, 6.00, 18.83, 23.67, 6.56, 3.58], slot: 2 }, { name: 'VPP2', values: [29.50, 29.50, 35.17, 37.00, 55.56, 4.08], slot: 0 }], unit: '%', max: 60, label: 'VPP2', catLabel: '维度' });
+  Charts.bars($('c-plan'), { title: '图 9 · 加上 VLM 子任务规划之后', sub: '五个 RoboDojo 任务组，每组 50 次', categories: ['物体分类', '按语言堆叠', '交换积木', '做麻将杠', '井字棋', '平均'], series: [{ name: 'VPP2', values: [46, 10, 44, 38, 0, 27.6], neutral: true }, { name: 'VPP2 + 子任务规划', values: [70, 52, 76, 52, 38, 57.6], slot: 0 }], unit: '%', max: 100, label: 'VPP2 + 子任务规划', boldCat: '平均', catLabel: '任务组' });
+});
+
+/* ---------- shared object builders ---------- */
+function bowl() { const m = L.cyl(0.75, 0.5, 0.5, C.red); m.position.y = 0.25; return m; }
+function plate() { const m = L.cyl(1.0, 0.95, 0.08, C.white); m.position.y = 0.04; return m; }
+function mug() { const g = new THREE.Group(); const b = L.cyl(0.38, 0.35, 0.6, C.mug); b.position.y = 0.3; g.add(b); const h = L.torus(0.22, 0.06, C.mug); h.position.set(0.45, 0.3, 0); g.add(h); return g; }
+function cabinet() { const g = new THREE.Group(); const b = L.box(2.4, 1.4, 1.6, C.wood); b.position.y = 0.7; g.add(b); const d = L.box(1.8, 0.45, 0.12, C.metal); d.position.set(0, 0.5, 0.86); g.add(d); const k = L.box(0.5, 0.1, 0.1, 0x2b3650); k.position.set(0, 0.5, 0.95); g.add(k); return g; }
+function stove() { const g = new THREE.Group(); const b = L.box(1.6, 0.3, 1.6, 0x3a4256); b.position.y = 0.15; g.add(b); const r = L.torus(0.45, 0.07, 0x5b6a86); r.rotation.x = Math.PI / 2; r.position.y = 0.33; g.add(r); return g; }
+function carton() { const g = new THREE.Group(); const b = L.box(0.6, 1.1, 0.6, C.white); b.position.y = 0.55; g.add(b); const s = L.box(0.62, 0.3, 0.62, 0x4a8dff); s.position.y = 0.55; g.add(s); return g; }
+function block(color) { const m = L.box(0.6, 0.6, 0.6, color); m.position.y = 0.3; return m; }
+function cup(color) { const m = L.cyl(0.45, 0.4, 0.7, color, { opacity: 0.92 }); m.position.y = 0.35; return m; }
+function basket() { const g = new THREE.Group(); const b = L.box(1.6, 0.9, 1.2, C.wood, { opacity: 0.85 }); b.position.y = 0.45; g.add(b); return g; }
+function peg() { const m = L.cyl(0.09, 0.09, 1.0, C.metal); m.position.y = 0.5; return m; }
+function holeBoard() { const g = new THREE.Group(); const b = L.box(1.4, 0.3, 1.4, 0x3a4256); b.position.y = 0.15; g.add(b); const r = L.torus(0.16, 0.05, C.gold); r.rotation.x = Math.PI / 2; r.position.y = 0.32; g.add(r); return g; }
+function apple() { const m = L.sphere(0.32, C.red); m.position.y = 0.32; return m; }
+/* generic pick-and-place animator: moves = [{arm, obj:index, to:[x,z], lift}] */
+function makeRunner(S, arms, objs, moves, opts = {}) {
+  const dur = opts.dur || 2.6, delay = opts.delay || 0; let start = performance.now(); const home = arms.map(a => a.userData.home);
+  const origins = objs.map(o => o.position.clone());
+  function pathFor(mv) { const from = origins[mv.obj].clone(); const to = new THREE.Vector3(mv.to[0], mv.toY ?? from.y, mv.to[1]); const lift = mv.lift ?? 2.2; return { from, to, lift }; }
+  function reset() { objs.forEach((o, i) => o.position.copy(origins[i])); start = performance.now(); if (opts.onReset) opts.onReset(); }
+  function tick() {
+    const raw = (performance.now() - start) / 1000; const el = raw - delay; const total = moves.length * dur + 1.2; if (el > total) { reset(); return; }
+    if (el < 0) { arms.forEach((a, i) => a.userData.reach(home[i])); if (opts.onTick) opts.onTick(raw, -1, 0); return; }
+    const mi = Math.min(moves.length - 1, Math.floor(el / dur)); const f = Math.min(1, (el - mi * dur) / dur); const mv = moves[mi]; const arm = arms[mv.arm]; const o = objs[mv.obj]; const { from, to, lift } = pathFor(mv);
+    const hp = home[mv.arm]; let ee; const grip = new THREE.Vector3(0, 0.3, 0);
+    if (f < 0.25) { const u = L.ease(f / 0.25); ee = hp.clone().lerp(from.clone().add(grip), u); }
+    else if (f < 0.75) { const u = L.ease((f - 0.25) / 0.5); ee = from.clone().lerp(to, u); ee.y += Math.sin(Math.PI * u) * lift; o.position.copy(ee); ee = ee.clone().add(grip); }
+    else { const u = L.ease((f - 0.75) / 0.25); ee = to.clone().add(grip).lerp(hp, u); o.position.copy(to); }
+    arm.userData.reach(ee); arms.forEach((a, i) => { if (i !== mv.arm) a.userData.reach(home[i]); });
+    if (opts.onTick) opts.onTick(raw, mi, f);
+  }
+  return { tick, reset };
+}
+
+/* ---------- Station 1: LIBERO ---------- */
+(function () {
+  const S = L.makeScene($('st1'), { theta: 0.5, phi: 1.05, dist: 17, target: [-1, 0.8, 0] });
+  const table = L.box(11, 0.4, 8, C.table, { edgeOpacity: 0.5 }); table.position.set(-1.2, 0, 0); S.scene.add(table); S.scene.add(L.grid(11, 11)).position.set(-1.2, 0.21, 0);
+  const arm = L.arm(0xd8dde8); arm.scale.setScalar(1.4); arm.position.set(-4.6, 0.2, 0); arm.userData.home = new THREE.Vector3(-2.6, 2.4, 0); S.scene.add(arm);
+  const scene = new THREE.Group(); S.scene.add(scene); let runner = null; const tipMat = L.mat(C.warn);
+  const ID = { bowl: [-1.5, -1.2], plate: [0.5, 1.4], mug: [-0.5, 2.4], cabinet: [0.8, -2.4], stove: [-2.6, 2.4] };
+  const modes = [
+    { id: 'id', name: 'LIBERO-ID 分布内', layout: ID, obj: 'bowl', to: 'plate', instr: '把碗放到盘子上', en: 'Put the bowl on the plate', ghost: null, res: 'VPP2 98.8% · 所有近期基线 ≥ 94%', text: '训练时见过的布局，测试只改初始位置的小扰动。分布内成功率已经饱和，分不出谁在理解、谁在记忆。' },
+    { id: 'pos', name: 'LIBERO-Pro 位置扰动', layout: { bowl: [0.2, 2.2], plate: [-2.2, -2.0], mug: [0.9, -0.3], cabinet: [0.8, -2.4], stove: [-2.6, 2.4] }, obj: 'bowl', to: 'plate', instr: '把碗放到盘子上', en: 'Put the bowl on the plate', ghost: ['bowl', 'plate'], res: 'VPP2 42.3% · π0.5 20.8% · 其余 VLA ≤ 7.3%', text: '同样的指令，物体放到训练分布之外的位置。虚线是回放训练轨迹会走的路：伸向原来碗的位置，那里已经没有碗了。' },
+    { id: 'task', name: 'LIBERO-Pro 任务扰动', layout: ID, obj: 'mug', to: 'plate', instr: '把杯子放到盘子上', en: 'Put the mug on the plate', ghost: ['bowl', 'plate'], res: 'VPP2 47.8% · X-VLA 6.8% · π0.5 1.3%', text: '布局和训练一样，只换一条指令。记忆轨迹的策略看到熟悉的桌面就去拿碗（虚线），真正跟随指令的策略去拿杯子（实线）。这是 VPP2 领先最多的一组。' },
+    { id: 'spatial', name: 'LIBERO-OOD 空间', layout: { bowl: [-2.3, 1.0], plate: [0.6, -0.4], mug: [-0.2, 2.5], cabinet: [0.8, -2.4], stove: [-2.4, -1.6] }, obj: 'bowl', to: 'stove', instr: '把碗放到炉灶上', en: 'Put the bowl on the stove', ghost: null, res: 'VPP2 59.3% · Temporal Ratio 58.6% · π0.5 36.7%', text: '熟悉的布局（来自某个套件）配上熟悉的目的地（来自另一个套件），这个搭配没在训练里出现过。' },
+    { id: 'object', name: 'LIBERO-OOD 物体', layout: { ...ID, bowl: null, carton: ID.bowl }, obj: 'carton', to: 'plate', instr: '把牛奶盒放到盘子上', en: 'Put the milk carton on the plate', ghost: null, res: 'VPP2 44.5% · Temporal Ratio 40.0% · π0.5 2.3% · 其余 ≤ 0.3%', text: '熟悉的布局，换成训练里只在别的场景见过的物体类别。要求策略理解"牛奶盒"指的是哪个东西，视频类基线几乎全军覆没。' },
+    { id: 'goal', name: 'LIBERO-OOD 目标', layout: ID, obj: 'bowl', to: 'drawer', instr: '把碗放进抽屉里', en: 'Put the bowl in the drawer', ghost: null, res: 'VPP2 87.7% · Temporal Ratio 80.3% · π0.5 41.7%', text: '熟悉的物体配一个没和它搭配过的目的地。VPP2 在这一子集最强，因为事件级视频预测学到的是"把 X 放到 Y"这类可组合的映射。' }];
+  const builders = { bowl, plate, mug, cabinet, stove, carton };
+  function build(m) {
+    L.clear(scene); const objs = []; const byName = {};
+    for (const k in m.layout) { const p = m.layout[k]; if (!p) continue; const o = builders[k](); o.position.set(p[0], 0.2, p[1]); o.userData.start = o.position.clone(); scene.add(o); byName[k] = o; objs.push(o); }
+    const dest = k => k === 'drawer' ? new THREE.Vector3(m.layout.cabinet[0], 0.2, m.layout.cabinet[1] + 1.5) : new THREE.Vector3(m.layout[k][0], (k === 'stove' ? 0.55 : k === 'plate' ? 0.3 : 0.2), m.layout[k][1]);
+    const to = dest(m.to); const mv = { arm: 0, obj: objs.indexOf(byName[m.obj]), to: [to.x, to.z], toY: to.y, lift: 2.0 };
+    /* solid: the path the instruction requires */
+    const from = objs[mv.obj].position.clone(); const pts = []; for (let i = 0; i <= 16; i++) { const u = i / 16; const p = from.clone().lerp(to, u); p.y += Math.sin(Math.PI * u) * 2.0 + 0.3; pts.push(p); }
+    scene.add(L.tube(pts, C.video, 0.05));
+    if (m.ghost) { const a = new THREE.Vector3(ID[m.ghost[0]][0], 0.4, ID[m.ghost[0]][1]), b = new THREE.Vector3(ID[m.ghost[1]][0], 0.4, ID[m.ghost[1]][1]); const gp = []; for (let i = 0; i <= 16; i++) { const u = i / 16; const p = a.clone().lerp(b, u); p.y += Math.sin(Math.PI * u) * 2.0 + 0.3; gp.push(p); } scene.add(L.line(gp, C.warn, { dashed: true, dash: 0.35, gap: 0.2 })); scene.add(L.label('记忆中的轨迹', { pos: [(a.x + b.x) / 2, 3.2, (a.z + b.z) / 2], size: 13, color: '#ff7a59' })); }
+    scene.add(L.label(m.instr, { pos: [-1, 4.8, -2.5], size: 16, border: '#3aa8e0' }));
+    const labelMap = { bowl: '碗', plate: '盘子', mug: '杯子', cabinet: '抽屉柜', stove: '炉灶', carton: '牛奶盒' };
+    for (const k in byName) scene.add(L.label(labelMap[k], { pos: [byName[k].position.x, 1.9, byName[k].position.z], size: 15, bg: 'rgba(12,18,32,0.5)' }));
+    runner = makeRunner(S, [arm], objs, [mv], { dur: 3.2 });
+    $('ov1').innerHTML = `<b>${m.name}</b>\n"${m.instr}" · ${m.en}\n${m.res}`; $('ip1').innerHTML = `<b>${m.name}。</b>${m.text}`;
+  }
+  const seg = $('lib-modes'); modes.forEach((m, i) => { const b = document.createElement('button'); b.textContent = m.name; if (i === 0) b.classList.add('on'); b.onclick = () => { seg.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); build(m); }; seg.appendChild(b); });
+  S.onTick(() => { if (runner && !L.reduced()) runner.tick(); else if (runner) arm.userData.reach(arm.userData.home); });
+  build(modes[0]);
+})();
+
+/* ---------- Station 2: RoboDojo ---------- */
+(function () {
+  const S = L.makeScene($('st2'), { theta: 0.0, phi: 1.0, dist: 19, target: [0, 1.2, 0] });
+  const table = L.box(12, 0.4, 7, C.table, { edgeOpacity: 0.5 }); table.position.set(0, 0, 0.5); S.scene.add(table); const grid = L.grid(12, 12); grid.position.set(0, 0.21, 0.5); S.scene.add(grid);
+  const wall = L.box(14, 6, 0.3, 0x1b2436, { opacity: 0.7 }); wall.position.set(0, 3, -3.4); S.scene.add(wall);
+  const armL = L.arm(0xd8dde8), armR = L.arm(0xd8dde8); [armL, armR].forEach((a, i) => { a.scale.setScalar(1.1); a.position.set(i === 0 ? -3 : 3, 0.2, -1.6); a.userData.home = new THREE.Vector3(i === 0 ? -2.2 : 2.2, 2.6, -0.6); S.scene.add(a); });
+  S.scene.add(L.label('ARX X5 双臂 · 基座相距 0.6 m', { pos: [4.2, 6.5, -3.3], size: 11, bg: 'rgba(12,18,32,0.5)' }));
+  const scene = new THREE.Group(); S.scene.add(scene); const clutter = new THREE.Group(); S.scene.add(clutter); let runner = null, mode = null, rand = false;
+  const dims = [
+    { id: 'gen', name: '泛化', instr: '把杯子放进篮子', res: 'VPP2 29.50%（合并）· GPT-6-Astra 标准 32.67% / 随机 28.33% · Xiaomi 28.00% / 6.00%', text: '12 个任务考背景、光照、杂物、目标实例的变化。切换到"随机"设定：桌面换色、光变暗、多出杂物、杯子换了实例。大多数基线在随机设定下成功率掉一半以上。',
+      build: () => { const c = cup(rand ? 0xf2c14e : C.mug); c.position.set(-1.6, 0.2, 1.2); const b = basket(); b.position.set(0.4, 0.2, 0.8); return { objs: [c, b], moves: [{ arm: 0, obj: 0, to: [0.4, 0.8], toY: 0.5, lift: 1.8 }] }; } },
+    { id: 'mem', name: '记忆', instr: '拿起刚才放了球的那个杯子', res: 'VPP2 55.56% · GPT-6-Astra 38.67% · OpenWAM-α 9.11%', text: '6 个任务里正确的动作取决于更早看到、现在看不到的信息。球先露出来，然后被中间的杯子盖住，策略必须记得是哪一个。单帧观测的策略只能猜。',
+      build: () => { const cups = [-1.8, 0, 1.8].map(x => { const c = cup(C.mug); c.position.set(x, 0.2, 1.2); return c; }); const ball = L.sphere(0.25, C.gold); ball.position.set(0, 0.45, 1.2); return { objs: [...cups, ball], moves: [{ arm: 1, obj: 1, to: [0.9, 2.2], lift: 1.6 }], memory: true, delay: 1.6 }; } },
+    { id: 'prec', name: '精度', instr: '把销钉插入孔中', res: 'VPP2 35.17% · Xiaomi-Robotics-1 18.83% · X-VLA 12.00%', text: '细粒度定位和富接触控制。孔比销钉只宽一点点，末端位置差几毫米就失败。视频预测给出的是"销钉应该出现在孔里"的画面，动作专家负责把它变成精确的末端轨迹。',
+      build: () => { const p = peg(); p.position.set(-1.8, 0.2, 1.2); const h = holeBoard(); h.position.set(0.6, 0.2, 0.6); return { objs: [p, h], moves: [{ arm: 0, obj: 0, to: [0.6, 0.6], toY: 0.3, lift: 1.6 }] }; } },
+    { id: 'long', name: '长程', instr: '依次把三块积木叠起来', res: 'VPP2 37.00% · OpenWAM-α 25.33% · Xiaomi 23.67%', text: '多步任务要全部完成才算成功，平均分则按完成的子步骤给部分分。面板上的进度就是"平均分"在度量的东西：叠好两块算部分进度，三块全叠好才算成功。',
+      build: () => { const b1 = block(C.red), b2 = block(0x4fc98a), b3 = block(0x4a8dff); b1.position.set(-2.2, 0.2, 1.4); b2.position.set(-0.8, 0.2, 2.2); b3.position.set(2.4, 0.2, 1.8); const tgt = [0.9, 0.4]; return { objs: [b1, b2, b3], moves: [{ arm: 0, obj: 0, to: tgt, lift: 1.6 }, { arm: 0, obj: 1, to: tgt, lift: 1.8, toY: 0.8 }, { arm: 1, obj: 2, to: tgt, lift: 2.0, toY: 1.4 }], long: true }; } },
+    { id: 'open', name: '开放指令', instr: '把和苹果颜色相同的积木放进篮子', res: 'VPP2 4.08% · GPT-6-Astra 31.00% · Xiaomi 3.58%', text: '任务描述没见过，但"把积木放进篮子"这个技能训练里有。需要先理解"和苹果颜色相同"指的是红色积木。VPP2 在没有 VLM 规划时对这类描述理解有限，这是它最弱的维度，前沿基础模型反而强得多。',
+      build: () => { const a = apple(); a.position.set(-2.4, 0.2, 1.6); const r = block(C.red), g = block(0x4fc98a); r.position.set(0.2, 0.2, 1.6); g.position.set(-1.0, 0.2, 0.8); const b = basket(); b.position.set(1.8, 0.2, 0.4); return { objs: [a, r, g, b], moves: [{ arm: 1, obj: 1, to: [1.8, 0.4], toY: 0.5, lift: 1.8 }] }; } }];
+  function applyEnv() { table.material.color.setHex(rand ? 0x4a3658 : C.table); S.dl.intensity = rand ? 0.2 : 0.55; L.clear(clutter); if (rand) { const r = L.rng(9); for (let i = 0; i < 7; i++) { const c = L.box(0.3 + r() * 0.5, 0.3 + r() * 0.5, 0.3 + r() * 0.5, [0x8a6a4a, 0x5b6a86, 0x7fb8ff, 0xf2c14e][i % 4]); c.position.set(-5.2 + r() * 10.4, 0.45, -0.4 + r() * 3.6); clutter.add(c); } } }
+  function build(d) {
+    mode = d; L.clear(scene); const spec = d.build(); spec.objs.forEach(o => scene.add(o));
+    scene.add(L.label(d.instr, { pos: [0, 4.3, -0.8], size: 16, border: '#3aa8e0' }));
+    $('rd-sub-wrap').style.display = d.id === 'gen' ? '' : 'none'; applyEnv();
+    runner = makeRunner(S, [armL, armR], spec.objs, spec.moves, { dur: 2.8, delay: spec.delay || 0, onReset: () => { if (spec.memory) spec.objs[3].visible = true; },
+      onTick: (raw, mi, f) => {
+        if (spec.memory) { const cups = spec.objs.slice(0, 3); const ball = spec.objs[3]; const u = Math.min(1, raw / 1.2); if (mi < 0) cups.forEach(c => c.position.y = 0.2 + 1.3 * (1 - L.ease(u))); const lifted = mi >= 0 && f > 0.3; ball.visible = u < 0.85 || lifted;
+          $('ov2').innerHTML = `<b>记忆</b>\n${u < 0.85 ? '球在中间的杯子下面，杯子正在落下盖住它' : lifted ? '拿起中间的杯子，球露出来了' : '球已经看不见了：策略要记得是中间那个'}\n${d.res}`; }
+        else if (spec.long) { const done = Math.min(3, mi + (f > 0.75 ? 1 : 0)); $('ov2').innerHTML = `<b>长程 · 子步骤 ${done} / 3</b>\n平均分计部分进度：${(done / 3 * 100).toFixed(0)}%\n成功率只在 3 / 3 时计 1\n${d.res}`; }
+        else $('ov2').innerHTML = `<b>${d.name}${d.id === 'gen' ? (rand ? ' · 随机设定' : ' · 标准设定') : ''}</b>\n"${d.instr}"\n${d.res}`; } });
+    $('ip2').innerHTML = `<b>${d.name}。</b>${d.text}`;
+  }
+  const seg = $('rd-modes'); dims.forEach((d, i) => { const b = document.createElement('button'); b.textContent = d.name; if (i === 0) b.classList.add('on'); b.onclick = () => { seg.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); build(d); }; seg.appendChild(b); });
+  $('rdStd').onclick = () => { rand = false; $('rdStd').classList.add('on'); $('rdRand').classList.remove('on'); build(mode); };
+  $('rdRand').onclick = () => { rand = true; $('rdRand').classList.add('on'); $('rdStd').classList.remove('on'); build(mode); };
+  S.onTick(() => { if (runner && !L.reduced()) runner.tick(); else { armL.userData.reach(armL.userData.home); armR.userData.reach(armR.userData.home); } });
+  build(dims[0]);
+})();
+</script>
+</body>
+</html>
