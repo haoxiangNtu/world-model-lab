@@ -92,7 +92,7 @@
 <tr><td>2 固定时长后训练 + 一致性蒸馏</td><td>视频 DiT</td><td>当前帧 + 子任务描述 → 固定 8 s（机器人）/ 2 s（人手）的 17 帧</td><td class="num">单步生成约 0.12 s</td></tr>
 <tr><td>3 动作专家预训练</td><td>新增 0.9B 动作 DiT，视频 DiT 冻结 + LoRA</td><td>视频 DiT 的 KV cache → 2 s 动作片段</td><td class="num">5 步去噪约 0.10 s，总延迟约 0.22 s</td></tr>
 </table></div>
-<p>每一步的推导和可视化在<a href="posttrain.html">后训练过程</a>页；视频模型本身的结构在 <a href="wan.html">Wan2.1 架构</a>页；动作专家怎么挂上去在 <a href="mot.html">MoT 原理</a>页。</p>
+<p>每一步的推导和可视化在<a href="posttrain.html">后训练过程</a>页；视频模型本身的结构在 <a href="wan.html#s0">Wan2.1 架构</a>页，那里的 3D 实验 1 把 I2V-14B 的一次前向整张画了出来；动作专家怎么挂上去在 <a href="mot.html">MoT 原理</a>页。</p>
 <h3>VLM 做高层规划</h3>
 <p>部署时 VPP2 前面还有一个视觉语言模型（本地的 Qwen3-VL 或 API 调用的前沿模型）。它负责把开放式的人类指令拆成明确子任务，并把子任务改写成训练时那种详细描述格式，也就是视频生成领域常说的 prompt enhancement。VPP2 只管把明确的描述映射成轨迹和动作。</p>
 

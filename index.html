@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>World Model Lab</title>
-<meta name="description" content="世界模型的学习与测试记录：以 Video Prediction Policy 2 为线索，拆开 Wan2.1-I2V-14B 的架构、MoT 的原理、三阶段后训练和各个评测数据集，配十个可交互的 3D 实验。">
+<meta name="description" content="世界模型的学习与测试记录：以 Video Prediction Policy 2 为线索，拆开 Wan2.1-I2V-14B 的架构、MoT 的原理、三阶段后训练和各个评测数据集，配十一个可交互的 3D 实验。">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <link rel="stylesheet" href="docs/site.css">
 </head>
@@ -19,7 +19,7 @@
 
 <div class="cards">
 <a class="card" href="docs/vpp2.html"><div class="t">论文导读</div><div class="d">VPP2 讲了一个什么故事：世界动作模型为什么在开放场景里会动错，详细描述和事件级预测怎么把映射变唯一，三阶段训练，三组结果。3D：同一起点的轨迹分布、两个数据集的坐标系对齐。</div></a>
-<a class="card" href="docs/wan.html"><div class="t">Wan2.1 架构</div><div class="d">Wan-VAE 的 4×8×8 压缩、40 层 DiT 里的三件事、umT5 与 CLIP 两路条件、流匹配目标，用权重文件大小对出 I2V 实际 16.4B。3D：像素到 token 的压缩、一个 block 的内部。</div></a>
+<a class="card" href="docs/wan.html"><div class="t">Wan2.1 架构</div><div class="d">Wan-VAE 的 4×8×8 压缩、40 层 DiT 里的三件事、umT5 与 CLIP 两路条件、流匹配目标，用权重文件大小对出 I2V 实际 16.4B。3D：整张 I2V-14B 的一次前向，点模块看形状和参数量；像素到 token 的压缩、一个 block 的内部。</div></a>
 <a class="card" href="docs/mot.html"><div class="t">MoT 原理</div><div class="d">参数分家、注意力共享：原始论文的结果，和 MoE 的区别，π0、Cosmos 3、VPP2 共用的套路，单向掩码与 KV cache。3D：跟着一个视频 token 和一个动作 token 走过双塔。</div></a>
 <a class="card" href="docs/posttrain.html"><div class="t">后训练过程</div><div class="d">事件级持续预训练、固定时长后训练、一致性蒸馏、动作专家预训练、评测专项后训练，每一步解决上一步留下的什么问题。实验：采样时间线、流匹配与蒸馏的 3D 粒子、三阶段参数冻结图。</div></a>
 <a class="card" href="docs/benchmarks.html"><div class="t">评测数据集</div><div class="d">视频预测指令跟随、真实 ALOHA 零样本、LIBERO 的 ID / Pro / OOD 三种考法、RoboDojo 的五个能力维度各在考什么，附论文全部结果图。3D：一张桌子六种考法、双臂桌面五个维度。</div></a>
@@ -41,7 +41,7 @@
 <h2>建议的学习路径</h2>
 <ol>
 <li>先读<a href="docs/vpp2.html">论文导读</a>，在 3D 实验 1 里切换"简短指令"和"详细描述"，理解论文的核心观察。</li>
-<li>打开 <a href="docs/wan.html">Wan2.1 架构</a>，在实验 1 里把帧数和分辨率拨到 VPP2 的配置，看 token 数怎么掉到 1950。</li>
+<li>打开 <a href="docs/wan.html">Wan2.1 架构</a>，先在实验 1 里看整张 I2V-14B 的数据流，再在实验 2 里把帧数和分辨率拨到 VPP2 的配置，看 token 数怎么掉到 1950。</li>
 <li>读 <a href="docs/mot.html">MoT 原理</a>，在 3D 里跟一个动作 token 走一层，再切到"推理：KV cache"看执行顺序。</li>
 <li>读<a href="docs/posttrain.html">后训练过程</a>，用实验 1 理解为什么要两阶段采样，用实验 2 理解蒸馏成单步的含义。</li>
 <li>看<a href="docs/benchmarks.html">评测数据集</a>，在 LIBERO 场景里切换六种设定，再看结果图里哪些数字真正说明泛化。</li>

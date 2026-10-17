@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Wan2.1 架构 · World Model Lab</title>
-<meta name="description" content="VPP2 的底座 Wan2.1-I2V-14B 的技术架构：Wan-VAE 的 4×8×8 因果压缩、扩散 Transformer 的 40 层结构、umT5 文本交叉注意力、I2V 的 36 通道条件注入和 CLIP 图像上下文、流匹配训练目标。用权重文件大小验证参数量，配两个可交互 3D 实验。">
+<meta name="description" content="VPP2 的底座 Wan2.1-I2V-14B 的技术架构：Wan-VAE 的 4×8×8 因果压缩、扩散 Transformer 的 40 层结构、umT5 文本交叉注意力、I2V 的 36 通道条件注入和 CLIP 图像上下文、流匹配训练目标。用权重文件大小验证参数量，配三个可交互 3D 实验：整张 I2V-14B 的一次前向、像素到 token 的压缩、一个 block 的内部。">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
 <link rel="stylesheet" href="site.css">
 </head>
@@ -16,7 +16,7 @@
 <div class="eyebrow">Wan2.1-I2V-14B · 阿里通义 · 2025-02 · Apache 2.0</div>
 <h1>Wan2.1-I2V-14B 的技术架构</h1>
 <p class="lead">VPP2 的视频底座是 Wan2.1 的图生视频 14B 模型（480P 版本）。这一页把它拆开：视频先被 Wan-VAE 压成 latent，再切成 token 送进 40 层扩散 Transformer，文本靠 umT5 走交叉注意力，条件图片同时从通道拼接和 CLIP 上下文两条路进来，训练目标是流匹配。参数量用权重文件的大小对了一遍账。技术报告见 <a href="https://arxiv.org/abs/2503.20314">arXiv 2503.20314</a>，代码见 <a href="https://github.com/Wan-Video/Wan2.1">GitHub</a>。</p>
-<div class="toc"><a href="#pipeline">全景</a><a href="#vae">Wan-VAE</a><a href="#s1">3D：压缩与 token</a><a href="#dit">DiT</a><a href="#s2">3D：一个 block 的内部</a><a href="#i2v">I2V 条件</a><a href="#train">训练目标</a><a href="#params">参数量对账</a><a href="#vpp2">VPP2 改了什么</a></div>
+<div class="toc"><a href="#pipeline">全景</a><a href="#s0">3D：整张图</a><a href="#vae">Wan-VAE</a><a href="#s1">3D：压缩与 token</a><a href="#dit">DiT</a><a href="#s2">3D：一个 block 的内部</a><a href="#i2v">I2V 条件</a><a href="#train">训练目标</a><a href="#params">参数量对账</a><a href="#vpp2">VPP2 改了什么</a></div>
 
 <h2 id="pipeline">1. 一次图生视频的全景</h2>
 <ol class="steps">
@@ -26,6 +26,27 @@
 <li><b>求解。</b>从纯噪声出发按速度场积分，官方脚本 I2V 默认 40 步、无分类器引导系数 5；得到干净的 latent。</li>
 <li><b>解码。</b>Wan-VAE 把 latent 解回像素：480P 版本是 832×480、81 帧、16 fps 的 5 秒视频。</li>
 </ol>
+<p>这五步在下面的 3D 实验 1 里是一张图：主干在中间，两条条件支路在两侧，求解器循环在左边。</p>
+
+<section class="station" id="s0">
+<div class="station-head"><h2>3D 实验 1 · 整张图：I2V-14B 的一次前向</h2><span class="pill">点击模块看说明 · 拖动旋转 · 滚轮缩放</span></div>
+<p>这是 Wan2.1-I2V-14B 在一次去噪前向里的全貌。中间是主干：底部三块 latent 沿通道拼成 36 通道，分块成 token 后进 40 层 DiT，每层从前到后三道颜色分别是自注意力、交叉注意力、FFN；顶上的 head 把 token 变回速度场。左侧虚线是求解器循环，速度场积分后再送回去；左后方金色是时间步调制，给 40 层发调制向量。两条条件支路在前向之前各跑一次：左前方的 CLIP 把条件图片编成 257 个图像 token，条件图片同时经 Wan-VAE 变成条件 latent 拼进输入；右后方的 umT5 把提示词编成 512 个文本 token。文本和图像 token 被每一层的交叉注意力读取。切换配置看 token 数和计算量怎么变，按播放看一次采样怎么走。</p>
+<div class="stage stage3d" id="st0"><div class="overlay" id="ov0"></div><div class="hint">click · drag · wheel</div></div>
+<div class="controls">
+<div class="ctl"><label>配置</label><div class="seg"><button data-c="vpp2" class="on">VPP2：17 帧 416×240，1 步</button><button data-c="wan">Wan 默认：81 帧 832×480，40 步</button></div></div>
+<div class="ctl"><label>动画</label><div class="seg"><button id="p0">播放一次采样</button></div></div>
+</div>
+<div class="readout">
+<div><div class="k">token 数 L</div><div class="v" id="r0l"></div></div>
+<div><div class="k">单步前向（线性层 + 注意力）</div><div class="v" id="r0f"></div></div>
+<div><div class="k">采样步数</div><div class="v" id="r0s"></div></div>
+<div><div class="k">生成一段视频的 DiT 计算量</div><div class="v" id="r0t"></div></div>
+</div>
+<div class="infopanel" id="ip0">点击 3D 场景中的模块。</div>
+<div class="legend3d"><span><i style="background:#3aa8e0"></i>latent、主干输入输出</span><span><i style="background:#d45fa0"></i>自注意力</span><span><i style="background:#9d8cff"></i>交叉注意力、文本</span><span><i style="background:#f0963c"></i>FFN</span><span><i style="background:#4fc98a"></i>图像条件</span><span><i style="background:#f2c14e"></i>时间步调制</span><span><i style="background:#6b7794"></i>冻结的外部编码器</span></div>
+<div class="note">计算量的估法：线性层 2 × 参数量 × token 数，注意力 4 × L² × 5120 × 40 层；Wan 默认配置用无分类器引导，每步要跑两次前向。VPP2 的 1950 个 token 一步约 67 TFLOP，详细推导在<a href="notes.html#latency">原理问答</a>。</div>
+</section>
+
 
 <h2 id="vae">2. Wan-VAE：先把视频压小 256 倍</h2>
 <p>Wan-VAE 是一个 3D 因果变分自编码器，127M 参数。输入 (3, 1+T, H, W) 的视频，输出 (16, 1+T/4, H/8, W/8) 的 latent：时间压 4 倍、空间各压 8 倍、通道扩到 16。第一帧只做空间压缩，所以帧数是 1+T/4 而不是 T/4，这也是为什么 Wan 的帧数总是 4k+1（17、49、81）。</p>
@@ -36,7 +57,7 @@
 </div>
 
 <section class="station" id="s1">
-<div class="station-head"><h2>3D 实验 1 · 从像素到 latent 再到 token</h2><span class="pill">拖动旋转 · 滚轮缩放</span></div>
+<div class="station-head"><h2>3D 实验 2 · 从像素到 latent 再到 token</h2><span class="pill">拖动旋转 · 滚轮缩放</span></div>
 <p>左边是像素视频（每一片是一帧），中间是 Wan-VAE 压出来的 latent，右边是分块后真正进 DiT 的 token 网格，一个小方块就是一个 token。换帧数和分辨率，看 token 数怎么变。VPP2 后训练用的是 17 帧 416×240，Wan 自己默认 81 帧 832×480。</p>
 <div class="stage stage3d" id="st1"><div class="overlay" id="ov1"></div><div class="hint">drag · wheel</div></div>
 <div class="controls">
@@ -76,7 +97,7 @@
 </ol>
 
 <section class="station" id="s2">
-<div class="station-head"><h2>3D 实验 2 · 一个 DiT block 的内部</h2><span class="pill">点击模块看说明</span></div>
+<div class="station-head"><h2>3D 实验 3 · 一个 DiT block 的内部</h2><span class="pill">点击模块看说明</span></div>
 <p>从下往上是一个 block 的数据流。左侧金色是时间步调制模块，它给每一层发 6 个调制向量。右侧紫色柱是文本 token，绿色柱是 CLIP 图像 token，只在 I2V 模式出现。右下角的 40 层小堆表示这个 block 在整个网络里的位置。点击任何模块，下方会显示它的作用和参数量。</p>
 <div class="stage stage3d" id="st2"><div class="overlay" id="ov2"></div><div class="hint">click · drag · wheel</div></div>
 <div class="controls">
@@ -138,6 +159,123 @@ I2V 总量 ≈ 40 × 403.7M + 同上 232M + CLIP 投影 MLP 32.8M ≈ 16.41B
 <script>
 const $ = id => document.getElementById(id);
 const L = Lab3D, C = L.C;
+
+/* ---------- Station 0: the whole I2V-14B forward pass ---------- */
+(function () {
+  const S = L.makeScene($('st0'), { theta: 0.5, phi: 1.2, dist: 52, target: [1.0, 10.5, 0], maxDist: 180 });
+  S.scene.add(L.grid(70, 35)).position.y = -1.2;
+  const g = new THREE.Group(); S.scene.add(g); const clickable = []; let cfg = 'vpp2';
+  const fmt = n => n.toLocaleString('en-US');
+  const CF = { vpp2: { F: 17, W: 416, H: 240, steps: 1, name: 'VPP2 后训练与推理配置' }, wan: { F: 81, W: 832, H: 480, steps: 40, name: 'Wan2.1 480P 默认配置' } };
+  const P = { total: 16.41e9, d: 5120, layers: 40 };
+  const hex = c => '#' + c.toString(16).padStart(6, '0');
+  let info = {}, geom = {}, anim = null;
+  function mk(obj, key) { obj.userData.key = key; g.add(obj); clickable.push(obj); return obj; }
+  function build() {
+    L.clear(g); clickable.length = 0;
+    const c = CF[cfg]; const Tp = 1 + (c.F - 1) / 4, Hp = c.H / 8, Wp = c.W / 8, Ltok = Tp * (Hp / 2) * (Wp / 2); const sh = `${Tp} × ${Hp} × ${Wp}`;
+    info = {
+      noise: { t: '噪声 latent x_t', d: `形状 16 × ${sh}（通道 × 时间 × 高 × 宽）。采样开始时是纯高斯噪声，每一步被速度场推近干净的 latent。` },
+      cond: { t: '条件 latent', d: `条件图片放在第 0 帧、后面补 ${c.F - 1} 个零帧，一起过 Wan-VAE 得到 16 × ${sh}。它逐像素地告诉模型第一帧长什么样。` },
+      mask: { t: 'mask', d: `4 × ${sh}。给定的帧填 1，要生成的帧填 0，按 VAE 的 4 倍时间压缩重排成 4 个通道。三块沿通道拼起来就是 36 通道的输入。` },
+      patch: { t: '分块与输入投影', d: `3D 卷积，核和步长都是 (1, 2, 2)，36 通道 → 5120 维：每 2×2 个 latent 格变成一个 token，共 L = ${Tp} × ${Hp / 2} × ${Wp / 2} = ${fmt(Ltok)} 个。参数 36 × 4 × 5120 ≈ 0.74M；I2V 多出的 20 个输入通道零初始化，微调起点和 T2V 完全一样。` },
+      stack: { t: '40 层 DiT block', d: `每层从前到后：3D 自注意力（粉，104.9M）→ 文本与图像的交叉注意力（紫，157.3M）→ FFN 5120→13824→5120（橙，141.6M），每层 403.7M 参数，40 层共 16.1B。每层的 token 数都是 ${fmt(Ltok)}，隐藏维 5120，40 个头。一层内部的数据流见下面的 3D 实验 3。` },
+      head: { t: 'head', d: '最后一层之后：LayerNorm，再用时间步给的 shift 和 scale 调制一次，然后 Linear 5120 → 64（= 16 通道 × 1 × 2 × 2），把每个 token 展回它负责的 2×2 个 latent 格。参数 0.33M。' },
+      out: { t: '速度场 v', d: `形状 16 × ${sh}，和 latent 相同。流匹配里 v = x₁ − x₀，求解器用它把 x_t 往干净 latent 推。` },
+      loop: { t: '求解器循环', d: cfg === 'wan' ? 'x ← x + v · Δt。Wan 默认走 40 步，每步一次完整前向；无分类器引导要再跑一次无条件前向，所以是 80 次。动画只画前 3 步。' : 'x ← x + v · Δt。VPP2 经一致性蒸馏后只走 1 步，单步约 0.12 秒，所以这条虚线只走一次。' },
+      time: { t: '时间步调制（所有层共享）', d: 't 做 256 维正弦编码 → MLP 256→5120→5120（27.5M）→ 所有层共享的 SiLU + Linear 5120→6×5120（157.3M）→ 6 个调制向量：自注意力和 FFN 各自的 shift、scale、gate。每层只加一组自己的可学习偏置，head 再用其中两个。' },
+      prompt: { t: '提示词', d: 'Wan 原版是任意文本；VPP2 推理时由 VLM 按模板写详细操作描述：哪只末端在动、目标物体用什么属性指定、放到哪、视角有没有变化。' },
+      umt5: { t: 'umT5-XXL 编码器', d: '约 5.7B 参数，冻结，一段视频只跑一次。双向注意力的多语言编码器，输出最多 512 个 4096 维向量，不足 512 补零。' },
+      tmlp: { t: '文本嵌入 MLP', d: 'Linear 4096→5120 + GELU + Linear 5120→5120，47.2M 参数，把 umT5 的向量投到 DiT 的宽度。' },
+      ttok: { t: '文本 token', d: '512 × 5120。每一层的交叉注意力都用它做 key 和 value，视频 token 做 query。' },
+      img: { t: '条件图片', d: '首帧。两条路：经 Wan-VAE 变成条件 latent，管像素级忠实；经 CLIP 变成 257 个图像 token，管语义级一致。' },
+      vaeenc: { t: 'Wan-VAE 编码器', d: `3D 因果 VAE，127M 参数。时间 ÷4、空间 ÷8、通道 3→16。这里把"图片 + ${c.F - 1} 个零帧"编成 16 × ${sh} 的条件 latent。` },
+      clip: { t: 'CLIP 图像编码器', d: 'OpenCLIP ViT-H/14 的视觉塔，约 0.6B 参数，冻结，一段视频只跑一次。输出 257 个 1280 维 token：16×16 个 patch 加一个 CLS。' },
+      cmlp: { t: '图像上下文 MLP', d: 'LayerNorm + Linear 1280→5120 + GELU + Linear 5120→5120 + LayerNorm，32.8M 参数。' },
+      itok: { t: '图像 token', d: '257 × 5120。每层交叉注意力里有一组独立的 k、v 投影读它，输出和文本路相加，这就是解耦交叉注意力。' },
+      vaedec: { t: 'Wan-VAE 解码器', d: `采样结束后把 16 × ${sh} 的干净 latent 解回像素，时间 ×4、空间 ×8。` },
+      video: { t: '输出视频', d: `3 × ${c.F} × ${c.H} × ${c.W}。${cfg === 'wan' ? '5 秒、16 fps。' : 'VPP2 里它是 T 形三视角拼图，覆盖未来 8 秒（机器人）或 2 秒（人手）。'}` } };
+    /* ---- main stream, x = 0, z = 0 ---- */
+    const chans = [[16, C.video, '噪声 16', 'noise'], [16, C.image, '条件 16', 'cond'], [4, C.gold, 'mask 4', 'mask']];
+    let z = -2.3; chans.forEach(([n, col, nm, key]) => { const d = n * 0.12; const b = L.box(8, 0.5, d, col, { opacity: 0.85 }); b.position.set(0, 0, z + d / 2); mk(b, key); z += d + 0.15; });
+    g.add(L.label('噪声 16 ＋ 条件 16 ＋ mask 4 = 36 通道', { pos: [9.2, 0.1, 1.4], size: 17 }));
+    const patch = L.box(8, 0.7, 4.6, 0x8f9dff, { opacity: 0.9 }); patch.position.set(0, 1.9, 0); mk(patch, 'patch');
+    g.add(L.label(`分块 (1,2,2) → ${fmt(Ltok)} 个 token × 5120`, { pos: [0, 1.9, 3.6], size: 20 }));
+    const y0 = 3.6, dy = 0.34; const stripes = [[C.attn, -2.7], [C.text, 0], [C.action, 2.7]];
+    for (let i = 0; i < 40; i++) stripes.forEach(([col, xx]) => { const b = L.box(2.5, 0.26, 4.6, col, { edges: false, opacity: 0.92 }); b.position.set(xx, y0 + i * dy, 0); mk(b, 'stack'); });
+    const yTop = y0 + 39 * dy;
+    g.add(L.label('× 40 层 DiT block', { pos: [-0.5, yTop + 1.1, -1.0], size: 20 }));
+    [['自注意力', C.attn, -2.7, yTop - 0.6], ['交叉注意力', C.text, 0, yTop - 2.2], ['FFN', C.action, 2.7, yTop - 3.8]].forEach(([nm, col, xx, yy]) => { g.add(L.label(nm, { pos: [9.0, yy, 2.6], size: 17, border: hex(col) })); g.add(L.line([[6.7, yy, 2.6], [xx, yTop + 0.25, 2.6]], col, { opacity: 0.95 })); });
+    const head = L.box(8, 0.7, 4.6, C.video, { opacity: 0.9 }); head.position.set(0, yTop + 2.0, 0); mk(head, 'head');
+    g.add(L.label('head → Linear 5120→64 → 反分块', { pos: [0, yTop + 2.0, 3.6], size: 20 }));
+    const yOut = yTop + 3.6; const out = L.box(8, 0.5, 1.92, C.data, { opacity: 0.85 }); out.position.set(0, yOut, 0); mk(out, 'out');
+    g.add(L.label(`速度场 v：16 × ${sh}`, { pos: [0, yOut + 1.3, 0], size: 20 }));
+    [[0.3, 1.5], [2.3, 3.3], [yTop + 0.2, yTop + 1.6], [yTop + 2.4, yOut - 0.3]].forEach(([a, b]) => g.add(L.arrow([0, a, 2.6], [0, b, 2.6], 0x8e9bb8, { head: 0.35, headW: 0.2 })));
+    /* solver loop, left of the stack */
+    const lx = -7.5; g.add(L.line([[-4.2, yOut, 0], [lx, yOut, 0], [lx, 0, 0], [-5.2, 0, 0]], C.data, { dashed: true, dash: 0.5, gap: 0.3, opacity: 0.9 })); g.add(L.arrow([-5.3, 0, 0], [-4.2, 0, 0], C.data, { head: 0.5, headW: 0.3 }));
+    const loopHit = L.box(0.8, yOut, 0.8, C.data, { opacity: 0.001, edges: false }); loopHit.position.set(lx, yOut / 2, 0); mk(loopHit, 'loop');
+    g.add(L.label(`求解器循环 × ${c.steps}\nx ← x + v·Δt`, { pos: [lx - 2.4, 4.8, 0.8], size: 17 }));
+    /* time modulation, back-left */
+    const tm = L.box(2.6, 1.8, 2.6, C.gold, { opacity: 0.9 }); tm.position.set(-22, 17, -2); mk(tm, 'time');
+    g.add(L.label('时间步 t\n正弦 256 → MLP → 共享 Linear\n→ 6 × 5120 调制向量', { pos: [-22, 14.2, -2], size: 17 }));
+    [4.5, 8.5, 12.5, 16.5, yTop + 2.0].forEach(yy => g.add(L.line([[-20.7, 17, -2], [-4.1, yy, -1.2]], C.gold, { dashed: true, opacity: 0.75 })));
+    /* image path, front-left */
+    const ix = -15, iz = 5;
+    const img = L.box(2.6, 1.6, 0.12, C.image, { opacity: 0.9 }); img.position.set(ix, 0.8, iz); mk(img, 'img');
+    g.add(L.label('条件图片（首帧）', { pos: [ix, -0.6, iz + 0.6], size: 17 }));
+    const ve = L.box(2.8, 1.4, 2.0, C.frozen, { opacity: 0.9 }); ve.position.set(-8.6, 0.8, 6.2); mk(ve, 'vaeenc');
+    g.add(L.label('Wan-VAE 编码器 127M', { pos: [-8.6, -0.7, 6.8], size: 17 }));
+    g.add(L.arrow([ix + 1.4, 0.8, iz], [-10.1, 0.8, 6.0], C.image, { head: 0.4, headW: 0.22 }), L.arrow([-7.1, 0.7, 5.8], [-4.3, 0.3, 1.0], C.image, { head: 0.4, headW: 0.22 }));
+    const cl = L.box(3.4, 2.2, 2.4, C.frozen, { opacity: 0.9 }); cl.position.set(ix, 3.5, iz); mk(cl, 'clip');
+    g.add(L.label('CLIP ViT-H/14 0.6B · 冻结', { pos: [ix - 6.0, 3.5, iz], size: 17 }));
+    const cm = L.box(2.4, 0.6, 2, C.image, { opacity: 0.9 }); cm.position.set(ix, 5.4, iz); mk(cm, 'cmlp');
+    g.add(L.label('MLP 1280 → 5120', { pos: [ix - 5.2, 5.4, iz], size: 17 }));
+    for (let i = 0; i < 8; i++) { const cube = L.box(0.5, 0.36, 0.5, C.image, { edges: false }); cube.position.set(ix, 6.4 + i * 0.5, iz); mk(cube, 'itok'); }
+    g.add(L.label('257 × 5120 图像 token', { pos: [ix, 11.0, iz], size: 17 }));
+    g.add(L.arrow([ix, 1.7, iz], [ix, 2.3, iz], 0x8e9bb8, { head: 0.3, headW: 0.18 }), L.arrow([ix, 4.65, iz], [ix, 5.05, iz], 0x8e9bb8, { head: 0.25, headW: 0.15 }));
+    [6.5, 10.5, 14.5, yTop - 1.2].forEach((yy, i) => g.add(L.line([[ix + 0.3, 8.1, iz], [-4.1, yy, 0.4]], C.image, { opacity: 0.6, dashed: i > 0 })));
+    /* text path, back-right */
+    const tx = 14.5, tz = -4;
+    const promptHit = L.box(3, 0.7, 1.6, C.text, { opacity: 0.25 }); promptHit.position.set(tx, -0.4, tz); mk(promptHit, 'prompt');
+    g.add(L.label('提示词', { pos: [tx + 3.4, -0.4, tz], size: 17 }));
+    const um = L.box(3.4, 2.2, 2.4, C.frozen, { opacity: 0.9 }); um.position.set(tx, 1.8, tz); mk(um, 'umt5');
+    g.add(L.label('umT5-XXL 5.7B · 冻结', { pos: [tx + 5.6, 1.8, tz], size: 17 }));
+    const tml = L.box(2.4, 0.6, 2, C.text, { opacity: 0.9 }); tml.position.set(tx, 3.7, tz); mk(tml, 'tmlp');
+    g.add(L.label('MLP 4096 → 5120', { pos: [tx + 5.2, 3.7, tz], size: 17 }));
+    for (let i = 0; i < 12; i++) { const cube = L.box(0.5, 0.36, 0.5, C.text, { edges: false }); cube.position.set(tx, 4.7 + i * 0.5, tz); mk(cube, 'ttok'); }
+    g.add(L.label('512 × 5120 文本 token', { pos: [tx, 11.4, tz], size: 17 }));
+    g.add(L.arrow([tx, 0.0, tz], [tx, 0.6, tz], 0x8e9bb8, { head: 0.3, headW: 0.18 }), L.arrow([tx, 2.95, tz], [tx, 3.35, tz], 0x8e9bb8, { head: 0.25, headW: 0.15 }));
+    [5.5, 9.5, 13.5, yTop - 0.5].forEach((yy, i) => g.add(L.line([[tx - 0.3, 7.6, tz], [4.1, yy, -0.4]], C.text, { opacity: 0.6, dashed: i > 0 })));
+    /* decoder, top-right */
+    g.add(L.arrow([4.2, yOut, 0], [8.5, yOut, 0], 0x8e9bb8, { head: 0.45, headW: 0.25 }));
+    const vd = L.box(2.8, 1.4, 2.2, C.frozen, { opacity: 0.9 }); vd.position.set(10.3, yOut, 0); mk(vd, 'vaedec');
+    g.add(L.label('Wan-VAE 解码器', { pos: [14.6, yOut - 1.5, 0.6], size: 17 }));
+    g.add(L.arrow([11.9, yOut, 0], [17.6, yOut, 0], 0x8e9bb8, { head: 0.45, headW: 0.25 }));
+    const vid = new THREE.Group(); vid.position.set(21.2, yOut, 0); g.add(vid);
+    const nfr = Math.min(9, c.F); for (let i = 0; i < nfr; i++) { const fr = L.box(4.4, 2.5, 0.04, C.video, { opacity: 0.3, edgeColor: C.video, edgeOpacity: 0.8 }); fr.position.z = -1.2 + 2.4 * i / Math.max(1, nfr - 1); fr.userData.key = 'video'; vid.add(fr); clickable.push(fr); }
+    g.add(L.label(`视频 3 × ${c.F} × ${c.H} × ${c.W}`, { pos: [21.2, yOut + 2.6, 0], size: 17 }));
+    /* readouts */
+    const flopLin = 2 * P.total * Ltok, flopAttn = 4 * Ltok * Ltok * P.d * P.layers, step = flopLin + flopAttn; const passes = cfg === 'wan' ? 2 : 1;
+    const tf = v => v >= 1e15 ? (v / 1e15).toFixed(2) + ' PFLOP' : (v / 1e12).toFixed(0) + ' TFLOP';
+    $('r0l').textContent = fmt(Ltok); $('r0f').textContent = tf(step); $('r0s').textContent = c.steps + (cfg === 'wan' ? ' 步 × 2 次前向（CFG）' : ' 步'); $('r0t').textContent = tf(step * c.steps * passes);
+    $('ov0').innerHTML = `<b>${c.name}</b>\n${c.F} 帧 ${c.W}×${c.H} → latent 16 × ${sh} → ${fmt(Ltok)} token\n16.4B 参数 · 40 层 · 5120 维 · ${c.steps} 步采样`;
+    geom = { yOut, lx };
+  }
+  const pulse = L.sphere(0.6, 0xffffff, { emissive: 0xffffff }); pulse.visible = false; S.scene.add(pulse);
+  S.onClick(() => clickable, hit => { if (!hit) return; let o = hit.object; while (o && !o.userData.key) o = o.parent; if (!o) return; const k = info[o.userData.key]; if (k) $('ip0').innerHTML = `<b>${k.t}</b> · ${k.d}`; });
+  document.querySelectorAll('[data-c]').forEach(b => b.onclick = () => { document.querySelectorAll('[data-c]').forEach(x => x.classList.remove('on')); b.classList.add('on'); cfg = b.dataset.c; anim = null; pulse.visible = false; build(); });
+  $('p0').onclick = () => { anim = { t0: performance.now(), shown: Math.min(CF[cfg].steps, 3) }; };
+  S.onTick(() => {
+    if (!anim) return; const { yOut, lx } = geom; const up = 1800, loop = 1000, dec = 1600; const e = performance.now() - anim.t0;
+    const lastUpEnd = (anim.shown - 1) * (up + loop) + up;
+    pulse.visible = true;
+    if (e >= lastUpEnd) { const u = (e - lastUpEnd) / dec; if (u > 1) { anim = null; pulse.visible = false; return; } pulse.position.set(4.2 + L.ease(u) * 17.0, yOut, 0); return; }
+    const k = Math.floor(e / (up + loop)), r = e - k * (up + loop);
+    if (r < up) { pulse.position.set(0, L.ease(r / up) * yOut, 2.6); }
+    else { const u = (r - up) / loop; const path = [[-4.2, yOut], [lx, yOut], [lx, 0], [-4.2, 0]]; const si = Math.min(2, Math.floor(u * 3)), su = u * 3 - si; pulse.position.set(L.lerp(path[si][0], path[si + 1][0], su), L.lerp(path[si][1], path[si + 1][1], su), 0); }
+  });
+  build();
+})();
 
 /* ---------- Station 1: VAE compression and tokens ---------- */
 (function () {

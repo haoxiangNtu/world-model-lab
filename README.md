@@ -7,7 +7,7 @@
 | 页面 | 内容 | 3D / 交互实验 |
 |---|---|---|
 | [论文导读](https://haoxiangntu.github.io/world-model-lab/docs/vpp2.html) | VPP2 的问题、核心观察、数据流水线（22 个训练数据来源，附主页与论文链接）、三阶段训练、三组结果 | 同一起点的轨迹分布；两个数据集的坐标系对齐 |
-| [Wan2.1 架构](https://haoxiangntu.github.io/world-model-lab/docs/wan.html) | Wan-VAE、40 层 DiT、umT5 与 CLIP 条件、流匹配、参数量对账（I2V 实际 16.4B） | 像素 → latent → token；一个 DiT block 的内部 |
+| [Wan2.1 架构](https://haoxiangntu.github.io/world-model-lab/docs/wan.html) | Wan-VAE、40 层 DiT、umT5 与 CLIP 条件、流匹配、参数量对账（I2V 实际 16.4B） | 整张 I2V-14B 的一次前向；像素 → latent → token；一个 DiT block 的内部 |
 | [MoT 原理](https://haoxiangntu.github.io/world-model-lab/docs/mot.html) | Mixture-of-Transformers 原始论文、与 MoE 的区别、π0 / Cosmos 3 / VPP2 的用法、单向掩码与 KV cache | 双塔共享注意力；注意力掩码 |
 | [后训练过程](https://haoxiangntu.github.io/world-model-lab/docs/posttrain.html) | 事件级持续预训练、固定时长后训练、一致性蒸馏、动作专家预训练、评测专项后训练 | 采样时间线；流匹配与蒸馏的 3D 粒子；三阶段参数冻结图 |
 | [评测数据集](https://haoxiangntu.github.io/world-model-lab/docs/benchmarks.html) | 视频预测指令跟随、ALOHA 零样本、LIBERO 的 ID / Pro / OOD、RoboDojo 五维度，附全部结果图 | 一张桌子六种考法；双臂桌面五个维度 |
