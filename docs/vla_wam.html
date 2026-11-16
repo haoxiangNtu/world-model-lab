@@ -37,7 +37,7 @@ details.tasks summary{cursor:pointer;color:var(--compute);margin:6px 0}
 世界-动作模型的训练过程复现成功（<a href="#retrain">第四节</a>）。
 第一步也已完成：两个开源策略模型用作者发布的权重在 LIBERO 的 40 个任务上各跑满 2000 次，成功率与论文相差 0.2–0.4 个百分点，在统计波动之内。
 MolmoAct2 按论文完整配方（5 万步）11-16 晚开始重训，约 14 天；之后 Think 版（3 万步，约 8 天），预计 12 月 9 日前后全部完成。
-不熟悉 LIBERO 的话，可以先看<a href="#tasks">第一节</a>：四组任务各自在考什么，每个任务配一段示范视频。</p>
+不熟悉 LIBERO 的话，可以先看<a href="#tasks">第一节</a>：四组任务各自在考什么，每个任务配一段示范视频；<a href="#paper">第五节</a>整理了 MolmoAct2 论文里的全部实验和设置。</p>
 <p>两个模型代表两条路线：<a href="https://github.com/OpenWAM-Official/OpenWAM">OpenWAM-α</a> 是“世界-动作模型”（WAM），
 在 Wan2.2 视频生成模型（50 亿参数）上同时预测未来画面和动作；
 <a href="https://github.com/allenai/molmoact2">MolmoAct2</a> 是 Ai2 的“视觉-语言-动作模型”（VLA），在 Molmo2 视觉语言模型上接一个流匹配动作专家，
@@ -45,7 +45,7 @@ Think 版在出动作之前先预测一张压缩的深度图。LIBERO 是常用�
 Spatial（同一物体、不同摆放）、Object（不同物体）、Goal（同一场景、不同目标）、Long（两步以上的长任务），详见<a href="#tasks">第一节</a>。</p>
 
 <div class="toc"><b>目录</b>
-  <a href="#tasks">一、四组任务是什么</a><a href="#results">二、成功率对比</a><a href="#videos">三、并排视频</a><a href="#retrain">四、重新训练</a><a href="#setup">五、测试条件</a>
+  <a href="#tasks">一、四组任务是什么</a><a href="#results">二、成功率对比</a><a href="#videos">三、并排视频</a><a href="#retrain">四、重新训练</a><a href="#paper">五、MolmoAct2 论文的实验</a><a href="#setup">六、测试条件</a>
 </div>
 
 <h2 id="tasks">一、LIBERO 的四组任务分别在做什么</h2>
@@ -216,7 +216,55 @@ Spatial 99.2 / Object 100.0 / Goal 99.6 / Long 99.0，<b>平均 99.45 %</b>（�
 <p>OpenWAM-α 的重训用的是作者仓库自带的训练脚本和发布的配置，只改了两处以适配 4 张卡：每卡 batch 不变、梯度累积 16 步凑出作者的全局 batch 256；数据集从 Hugging Face 的 OpenWAM/LIBERO 原样下载、逐文件校验。
 重训权重和发布权重的成功率在统计上无法区分，说明论文的 LIBERO 结果可以用公开的基座、数据和代码从头得到。MolmoAct2 训练完成后，检查点同样用第二节的 2000 次评测打分，结果补在这一节。</p>
 
-<h2 id="setup">五、测试条件</h2>
+<h2 id="paper">五、MolmoAct2 论文里做了哪些实验</h2>
+<p>这一节只是整理 MolmoAct2 论文（<a href="https://arxiv.org/abs/2605.02881">arXiv 2605.02881</a>，第 6 节与附录 C）里的全部实验：每个实验在问什么、用什么平台、怎么设置、得到什么数字。
+我们目前只复现其中的 LIBERO 一项（第二、四节）；其余实验<b>暂不复现</b>，列在这里是为了看清这篇论文的全貌，以及以后哪些可以在仿真里接着做。</p>
+
+<h3 id="paper-pipeline">模型是怎么一步步训出来的</h3>
+<p>论文里的“MolmoAct2”其实是一串检查点，后面的实验分别从不同的检查点出发：</p>
+<div class="tablewrap"><table>
+<thead><tr><th>阶段</th><th>从哪里开始</th><th>做什么</th><th>规模</th></tr></thead>
+<tbody>
+<tr><td><b>Molmo2-ER</b></td><td>Molmo2 视觉语言模型（SigLIP2 视觉编码器 + 语言模型）</td><td>用指向、空间问答等具身推理数据专门强化，再回炼通用数据（specialize-then-rehearse）</td><td>—</td></tr>
+<tr><td><b>MolmoAct2-Pretrain</b></td><td>Molmo2-ER</td><td>把动作离散成 token（自研 MolmoAct2-FAST 分词器），像说话一样逐个预测动作；数据 90 % 机器人轨迹（YAM、SO-100/101、DROID 各占 30 %，其余 BC-Z、Bridge、RT-1 等）、10 % 多模态数据</td><td>20 万步</td></tr>
+<tr><td><b>MolmoAct2-Post</b>（发布名 MolmoAct2）</td><td>Pretrain</td><td>接上一个流匹配“动作专家”，通过逐层 KV 读取大模型的注意力状态，直接输出连续动作块；离散动作和连续动作一起训练；每个动作块取 4 个流时间点；动作专家的梯度不回传大模型（知识隔离）</td><td>10 万步，全局 batch 128，64 张 H100，约 2304 GPU·小时</td></tr>
+<tr><td><b>MolmoAct2-Think</b></td><td>Pretrain</td><td>和 Post 同样的流程，另外学预测 100 个“深度 token”（压缩的深度图），出动作前先想一下场景的远近</td><td>同上</td></tr>
+<tr><td><b>针对机器人 / 基准的微调</b></td><td>Post（Think 版从深度版 Post）</td><td>只用目标机器人的数据；流时间点改为 8 个；去掉知识隔离；学习率视觉 5e-6 / 语言模型 1e-5 / 动作专家 5e-5</td><td>DROID、SO-100/101、LIBERO：10 万 / 10 万 / 5 万步，32 张 H100；双臂 YAM：10 万步，64 张 H100；真机小任务：8 张 H100、batch 16、5 万步</td></tr>
+</tbody></table></div>
+<p class="small">我们第四节的重训对应最后一行的 LIBERO 微调：从发布的 MolmoAct2（即 MolmoAct2-Post）出发，4 组任务合在一起训一个模型，前视 + 腕部相机，动作块 10 步（LIBERO 是 10 Hz 末端增量控制），不用额外的语言标注。</p>
+
+<h3 id="paper-list">八组实验一览</h3>
+<p>论文把实验组织成 8 个问题。“仿真”一列标明能否不靠真机复现。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>#</th><th>问题</th><th>平台</th><th>设置</th><th>主要结果</th><th>仿真</th></tr></thead>
+<tbody>
+<tr><td>1</td><td><b>底座 VLM 的具身推理够不够强</b></td><td>13 个视觉语言基准：Point-Bench、RefSpatial、RoboSpatial-Point、Where2Place、BLINK、CV-Bench、ERQA、EmbSpatial、MindCube、SAT、OpenEQA、VSI-Bench 等</td><td>Molmo2-ER 对比 Gemini 系列（含 Gemini-ER 1.5）、GPT-5 系列、Qwen3-VL、LLaVA-OneVision、InternVLA 和原版 Molmo2</td><td>13 项里 9 项第一，平均 63.8 %，比第二名 Gemini-ER 1.5 Thinking 高 2.5；比 Molmo2 高 17 %</td><td>可（纯推理）</td></tr>
+<tr><td>2a</td><td><b>不微调，直接用：仿真</b></td><td>MolmoSpaces、MolmoBot 两个仿真基准，都复刻 DROID 的 Franka 单臂 + 相机设置</td><td>MolmoAct2-DROID 零样本；MolmoSpaces 分 Pick / Pick&amp;Place / Open / Close，3 次独立评测求标准误；MolmoBot 每任务 1000 回合，放置类任务同时报“中途达成”和“结束时仍成立”两个数</td><td>MolmoSpaces 37.7 %（π0.5-DROID 34.5）；MolmoBot 20.6 %（π0.5-DROID 10.0）。开柜门（Open）仍落后</td><td>可</td></tr>
+<tr><td>2b</td><td><b>不微调，直接用：真机</b></td><td>DROID Franka（厨房）：苹果放盘、移液管放托盘、红方块放进胶带圈、刀放盒子、多个物体放碗；SO-100 低成本臂：叉子放盘、叠积木、纸巾进篮、笔放本子、积木进盒</td><td>相机位置随机、物体和场景都没见过；每任务 15 次（3 个摆放位置 × 5 次），部分完成给部分分</td><td>DROID 87.1 %（MolmoBot 48.4、π0.5 45.2）；SO-100 56.7 %（π0 45.3、SmolVLA 2.3）</td><td>否</td></tr>
+<tr><td>3a</td><td><b>微调到新基准：LIBERO</b></td><td>LIBERO 四组 × 10 任务（第一节）</td><td>四组合训一个模型，5 万步、全局 batch 64，选 4 万步检查点；每任务 50 次共 2000 次；对比 OpenVLA、π0、π0.5、GR00T N1.7、NORA-1.5 等 10 个模型</td><td>97.2 %，Object 100 %；Think 版 98.1 %</td><td><b>可（我们正在复现）</b></td></tr>
+<tr><td>3b</td><td><b>微调到新基准：RoboEval</b></td><td>仿真双臂 Franka，8 个任务：交接方块、抬锅、抬托盘、装箱、桌上拿书、拧阀门、把书放上架、叠两块积木</td><td>8 个任务合训，8 张卡、batch 64、1 万步；每个任务有静止、位置扰动、朝向扰动、两者都扰动等 3–5 种变体</td><td>44.3 %，比 π0.5 高 3.8；对比还有 Diffusion Policy、GR00T N1.5、X-VLA</td><td>可</td></tr>
+<tr><td>3c</td><td><b>微调到新任务：真机双臂 YAM</b></td><td>8 个任务，实验室、厨房、书房、储藏室、湿实验室和移动底盘：叠杯、收试管、收糖果、挂工具、收玩具、杯子上架、准备移液管、做爆米花</td><td>每任务单独训一个策略，每任务 50 次，3 个摆放变体；对比 Cosmos Policy、X-VLA、OpenVLA-OFT、π0.5；评测由第三方（Cortex AI）执行</td><td>平均 50.1 %（正文；附录表 19 逐任务平均为 50.6 %），8 个任务里 7 个第一，比第二名 OpenVLA-OFT 高约 15</td><td>否</td></tr>
+<tr><td>4</td><td><b>深度 token 有没有用（Think 版）</b></td><td>LIBERO、MolmoSpaces、MolmoBot</td><td>同样的微调配方，比较 MolmoAct2 和 MolmoAct2-Think</td><td>LIBERO 97.2 → 98.1，最大提升在最难的 Long 组（+2.2）</td><td>可</td></tr>
+<tr><td>5</td><td><b>换了环境还行不行（分布外鲁棒性）</b></td><td>真机 YAM 中的 4 个任务（叠杯、收试管、收糖果、准备移液管）</td><td>4 种扰动：物体放到训练没见过的位置、改变光照、指令换 3 种说法、加没见过的干扰物；每种扰动 5 次</td><td>Think 版平均 50.7 %，第二名 OpenVLA-OFT 39.9；最弱的是位置变化（26.3 %）</td><td>否</td></tr>
+<tr><td>6</td><td><b>动作质量好不好（不只看成功率）</b></td><td>RoboEval</td><td>记录完成时间、轨迹长度、关节 / 笛卡尔路径长度与加加速度（jerk）、自碰撞与环境碰撞、物体打滑次数、双臂同步程度，以及人类示范作为参照</td><td>例如“叠两块积木”用时 4.70 s（π0.5 5.87 s、Diffusion 7.27 s），关节路径约短一半</td><td>可</td></tr>
+<tr><td>7</td><td><b>哪些设计真正带来提升（消融）</b></td><td>LIBERO</td><td>见下表</td><td>见下表</td><td>可</td></tr>
+<tr><td>8</td><td><b>推理有多快</b></td><td>LIBERO，单张 H100，动作块 10 步</td><td>原始实现 / 加缓存 / 再加 CUDA Graph 三种推理路径；控制频率 = 动作块长度 ÷ 生成一块的延迟</td><td>MolmoAct2 23.0 → 27.4 → 55.8 Hz；Think 8.0 → 9.7 → 12.7 Hz；离散动作路径慢 2–4 倍</td><td>可</td></tr>
+</tbody></table></div>
+
+<h3 id="paper-ablation">LIBERO 上的消融（实验 7）</h3>
+<p>都在 LIBERO 上做，数据、相机、动作块和评测与正式结果相同，每次只改一处。表 11、12 的变体直接从 Pretrain 出发（没有经过 Post 阶段），所以绝对值比正式结果低。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>论文表</th><th>改了什么</th><th>各选项（LIBERO 平均）</th><th>结论</th></tr></thead>
+<tbody>
+<tr><td style="white-space:nowrap">表 10</td><td>底座用 Molmo2 还是 Molmo2-ER（只训离散动作，只测 Long，各 6 万步）</td><td>Molmo2 77.6 % → Molmo2-ER <b>83.6 %</b></td><td>具身推理强化能直接迁移到动作预测</td></tr>
+<tr><td style="white-space:nowrap">表 11</td><td>动作专家怎么读大模型的信息</td><td>最后一层隐状态 94.0 %；按注意力头分别投影的逐层 KV 94.8 %；<b>逐层 KV 95.9 %</b></td><td>读每一层的注意力状态最好，差距主要在 Object、Goal、Long</td></tr>
+<tr><td style="white-space:nowrap">表 12</td><td>每个动作块取几个流时间点 K</td><td>K=1 94.15 %；2 95.05 %；4 95.15 %；<b>8 95.90 %</b></td><td>同一条流轨迹上多取点，监督更密，整体更好</td></tr>
+<tr><td style="white-space:nowrap">表 13</td><td>微调方式</td><td>不加离散动作联合训练 96.95 %；加知识隔离 97.05 %；LoRA 96.25 %（Long 掉 2.8）；只训动作专家 93.05 %；<b>最终配方 97.20 %</b></td><td>全参数微调 + 离散 / 连续动作联合训练最好；只训动作头明显不够</td></tr>
+<tr><td style="white-space:nowrap">表 14</td><td>Think 版的深度设计</td><td>全部关闭 97.50 %；只开混合训练 97.65 %；<b>再加 10 % 深度码噪声和逐层深度门控 98.10 %</b></td><td>训练时要让模型适应“自己预测的深度不完全准”，并保留纯动作的路径</td></tr>
+</tbody></table></div>
+<p class="small">数字均摘自论文正文、表 4–14、表 17–20 与附录 C。我们没有复现除 LIBERO 以外的任何一项；“仿真”一列只表示原理上不需要真机。</p>
+
+<h2 id="setup">六、测试条件</h2>
 <ul>
 <li>硬件：一台 8 卡 A800（80 GB）服务器中的 4 张卡，驱动 535（CUDA 12.2）。</li>
 <li>权重：OpenWAM-Alpha-Sim-LIBERO（checkpoint_step_10690）、MolmoAct2-LIBERO、MolmoAct2-Think-LIBERO，均与 Hugging Face 上发布文件的 SHA-256 逐一核对一致。</li>
