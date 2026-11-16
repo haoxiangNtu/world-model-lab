@@ -12,7 +12,7 @@
 | [后训练过程](https://haoxiangntu.github.io/world-model-lab/docs/posttrain.html) | 事件级持续预训练、固定时长后训练、一致性蒸馏、动作专家预训练、评测专项后训练 | 采样时间线；流匹配与蒸馏的 3D 粒子；三阶段参数冻结图 |
 | [评测数据集](https://haoxiangntu.github.io/world-model-lab/docs/benchmarks.html) | 视频预测指令跟随、ALOHA 零样本、LIBERO 的 ID / Pro / OOD、RoboDojo 五维度，附全部结果图 | 一张桌子六种考法；双臂桌面五个维度 |
 | [原理问答](https://haoxiangntu.github.io/world-model-lab/docs/notes.html) | 14B 为什么赢 64B、token 数和延迟怎么算、一致性蒸馏、8 s 与 2 s、MoT 与 MoE、LoRA、LIBERO 98% 为什么不算泛化 | — |
-| [复现实验](https://haoxiangntu.github.io/world-model-lab/docs/vla_wam.html) | 在 4 张 A800 上复现 OpenWAM-α（WAM）和 MolmoAct2 / Think（VLA）：发布权重的 LIBERO 2000 次评测（99.0 / 97.0 / 97.7 %，论文 99.3 / 97.2 / 98.1），四组任务说明，按原配方重新训练 | 40 段任务示范视频、5 段三模型并排视频 |
+| [复现实验](https://haoxiangntu.github.io/world-model-lab/docs/vla_wam.html) | 在 4 张 A800 上复现 OpenWAM-α（WAM）和 MolmoAct2 / Think（VLA）：OpenWAM-α 从基座重训后 99.45 %（论文 99.3）；发布权重的 LIBERO 2000 次评测（99.0 / 97.0 / 97.7 %，论文 99.3 / 97.2 / 98.1），四组任务说明，按原配方重新训练 | 40 段任务示范视频、5 段三模型并排视频 |
 
 ## 目录
 
