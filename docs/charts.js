@@ -20,7 +20,7 @@ window.Charts = (function () {
     move(e) { const r = host.getBoundingClientRect(); let x = e.clientX - r.left + 12, y = e.clientY - r.top - 10; if (x + t.offsetWidth > r.width - 4) x = e.clientX - r.left - t.offsetWidth - 12; t.style.left = x + 'px'; t.style.top = Math.max(0, y) + 'px'; },
     hide() { t.style.display = 'none'; } }; }
 
-  function legend(host, series) { if (series.length < 2) return; const lg = h('div', 'lg'); series.forEach(s => { const sp = h('span'); const i = h('i'); i.style.background = s.color; sp.appendChild(i); sp.appendChild(document.createTextNode(s.name)); lg.appendChild(sp); }); host.appendChild(lg); }
+  function legend(host, series) { if (series.length < 2) return; const lg = h('div', 'lg'); series.forEach(s => { const sp = h('span'); const i = h('i'); i.style.background = s.dash ? `repeating-linear-gradient(90deg, ${s.color} 0 3px, transparent 3px 5px)` : s.color; sp.appendChild(i); sp.appendChild(document.createTextNode(s.name)); lg.appendChild(sp); }); host.appendChild(lg); }
   function tableView(host, cats, series, unit, catLabel, dec) {
     const d = h('details'); d.appendChild(h('summary', null, '表格视图')); const t = h('table'); const tr = h('tr'); tr.appendChild(h('th', null, catLabel || ''));
     series.forEach(s => { const th = h('th', 'num', s.name); tr.appendChild(th); }); t.appendChild(tr);
