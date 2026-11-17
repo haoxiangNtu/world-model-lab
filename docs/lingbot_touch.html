@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>复现 LingBot-Touch · World Model Lab</title>
+<meta name="description" content="复现触觉基础模型 LingBot-Touch（arXiv 2611.12806）：核对开源权重，把冻结编码器接到同事的 mortar 软指尖仿真器上做 probe，按论文附录搭 Isaac Sim TacMap 仿真触觉，复现 Sharpa 手的 in-hand rotation 强化学习。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="site.css">
+<style>
+.fig{border:1px solid var(--line);background:var(--bg2);border-radius:10px;margin:14px 0 20px;padding:8px}
+.fig img.narrow{max-width:560px;margin:0 auto}
+.fig img{width:100%;height:auto;display:block;border-radius:6px;background:#fff}
+.fig figcaption{color:var(--muted);font-size:13.5px;line-height:1.6;padding:8px 6px 2px}
+figure{margin:0}
+.tag{display:inline-block;border-radius:999px;padding:0 8px;font-size:12px;font-weight:600;border:1px solid var(--line);white-space:nowrap}
+.tag.ok{color:var(--token)} .tag.run{color:var(--compute)} .tag.todo{color:var(--muted)} .tag.no{color:var(--warn)}
+h4{margin:18px 0 6px;font-size:15px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top"><a class="brand" href="../index.html">World Model Lab</a>
+<nav><a href="vpp2.html">论文导读</a><a href="wan.html">Wan2.1 架构</a><a href="mot.html">MoT 原理</a><a href="posttrain.html">后训练过程</a><a href="benchmarks.html">评测数据集</a><a href="notes.html">原理问答</a><a href="vla_wam.html">复现实验</a><a class="on" href="lingbot_touch.html">触觉复现</a><a href="https://github.com/haoxiangNtu/world-model-lab">GitHub</a></nav></header>
+
+<div class="eyebrow">Tactile foundation model · LingBot-Touch · 2026-11</div>
+<h1>复现 LingBot-Touch：开源权重、接入 mortar 仿真器、仿真强化学习</h1>
+<p class="lead"><b>现状（11-17 晚）：开源权重核对完成（E0）；编码器已接入同事的 mortar 软指尖仿真器，probe 正在跑（E1），第一个任务的结果显示预训练权重在 mortar 的触觉信号上有效。</b>
+夹持力 probe 的相对误差：冻结的 LingBot Tiny 为 11–38 %，结构相同但随机权重的冻结编码器为 22–92 %（3 个数据划分）。
+Isaac Sim TacMap probe（E2）和 Sharpa 手 in-hand rotation 强化学习（E3）的环境已装好，下一步开始；从零重新预训练（E4）放在最后。</p>
+
+
+<div class="toc"><b>目录</b>
+<a href="#list">实验清单</a><a href="#release">一、开源了什么</a><a href="#e0">二、权重核对</a><a href="#mortar">三、接入 mortar</a><a href="#tacmap">四、Isaac TacMap probe</a><a href="#rl">五、仿真强化学习</a><a href="#retrain">六、重新训练</a><a href="#setup">七、测试条件</a>
+</div>
+
+<h2 id="list">实验清单</h2>
+<p>论文 <a href="https://arxiv.org/abs/2611.12806">LingBot-Touch</a>（蚂蚁灵波，2026-11）提出一个跨传感器的触觉编码器：磁、压阻、视触觉三类信号先映射到同一个“标准指尖空间”，再用共享 Transformer 和 JEPA 隐空间预测做预训练；下游策略只在冻结编码器后面接一个可训练的读出层。导读见 <a href="https://haoxiangntu.github.io/paper-reading-lab/papers/lingbot-touch.html">Paper Reading Lab</a>。下表是我们能做的全部实验，以及它们和论文哪一部分对应。</p>
+<div class="tablewrap"><table><thead><tr><th>编号</th><th>实验</th><th>对应论文</th><th>状态</th></tr></thead><tbody>
+<tr><td>E0</td><td>开源权重核对：sha256、120 个样例推理、官方单元测试、特征可视化</td><td>发布的代码与权重</td><td><span class="tag ok">完成</span></td></tr>
+<tr><td>E1</td><td>接入同事的 mortar 仿真器（FEM 软指尖），在 164 段抓取录制上做 probe：力、接触图、接触中心、未来力变化</td><td>附录 C.1 的做法，换成 mortar</td><td><span class="tag run">运行中</span></td></tr>
+<tr><td>E2</td><td>Isaac Sim + TacMap 仿真触觉，Sharpa 手抓取数据上的 probe</td><td>附录 C.1，图 16</td><td><span class="tag todo">待开始</span></td></tr>
+<tr><td>E3</td><td>Sharpa 手 in-hand rotation 强化学习，5 种触觉输入 × 3 个种子</td><td>表 3 中 In-Hand Rotation 一行</td><td><span class="tag todo">待开始</span></td></tr>
+<tr><td>E4</td><td>按论文实现 Tactile-JEPA 预训练，用公开或仿真数据从零训练，再重复 E1–E3</td><td>第 3 节方法</td><td><span class="tag todo">最后做</span></td></tr>
+
+</tbody></table></div>
+
+<h2 id="release">一、作者开源了什么，哪些能复现</h2>
+<div class="tablewrap"><table><thead><tr><th>内容</th><th>是否开源</th><th>影响</th></tr></thead><tbody>
+<tr><td>冻结的目标编码器（推理代码，Apache-2.0）</td><td><span class="tag ok">是</span></td><td>可以直接提取特征</td></tr>
+<tr><td>Tiny 5.46 M、Small 21.76 M 两个权重</td><td><span class="tag ok">是</span></td><td>sha256 与 Hugging Face 的 LFS 记录一致</td></tr>
+<tr><td>120 个样例输入（Sharpa、XHand 各 30 对，每个 16 帧）</td><td><span class="tag ok">是</span></td><td>只能跑推理，没有标签</td></tr>
+<tr><td>4983 小时预训练数据</td><td><span class="tag no">否</span></td><td>无法按原数据重训</td></tr>
+<tr><td>预训练代码（predictor、masking、EMA、数据增强）</td><td><span class="tag no">否</span></td><td>重训需要按论文自己实现</td></tr>
+<tr><td>probe 头、带标签的 probe 数据</td><td><span class="tag no">否</span></td><td>真实数据上的 probe 数字（力误差 0.81 N 等）无法重测</td></tr>
+<tr><td>12 个仿真 RL 任务的环境代码</td><td><span class="tag no">否</span></td><td>只能用 Sharpa 官方开源的 in-hand rotation 环境重建其中一个</td></tr>
+<tr><td>真机策略（π0.5、LingBot-VLA 等接入代码）</td><td><span class="tag no">否</span></td><td>需要真机，不在本页范围</td></tr>
+</tbody></table></div>
+<div class="note">所以“用开源权重复现”能做到的是：论文附录 C 的两件事（仿真 probe、仿真 RL），按论文写的方法自己搭环境再测；外加我们自己的问题：权重放进同事的 mortar 仿真器还有没有用。论文附录 C.3 写明了仿真触觉怎么生成：在指尖曲面上预设一组采样点，沿法向做射线查询得到物体的压入深度（TacMap 方法），归一化后堆 8 帧，放进 Z 通道，X、Y 置零，再送进冻结编码器。</div>
+
+<h2 id="e0">二、E0：开源权重核对</h2>
+<div class="stats">
+<div class="stat"><div class="k">权重校验</div><div class="v">2 / 2</div><div class="s">sha256 与 HF LFS 一致</div></div>
+<div class="stat"><div class="k">样例推理</div><div class="v">120 / 120</div><div class="s">输出全部有限：是</div></div>
+<div class="stat"><div class="k">官方单元测试</div><div class="v">23 / 26</div><div class="s">3 个失败只是浮点逐位比较</div></div>
+<div class="stat"><div class="k">token 数（16 帧）</div><div class="v">8000</div><div class="s">Sharpa 5 指 × 200 点 × 8 时间块</div></div>
+</div>
+<p>3 个失败的测试用 <code>torch.equal</code> 要求命令行推理和进程内推理逐位相同；实测相对误差 5×10⁻⁷，来自多线程浮点累加顺序，不是权重或流程的问题。</p>
+<figure class="fig"><img src="../media/lbt_e0_inputs.png" alt="样例输入"><figcaption><b>输入长什么样。</b>两种手的触觉点都画在同一个标准指尖坐标里（编码器真正看到的位置）。Sharpa 是视触觉，每指 200 点；XHand 是磁传感器，用官方适配器从 120 点选成 96 点。颜色是归一化后的 Z 值。</figcaption></figure>
+<figure class="fig"><img src="../media/lbt_e0_tokens_pca.png" alt="token PCA"><figcaption><b>输出长什么样。</b>Small 编码器每个 token 的特征取前三个主成分当 RGB，按 token 所在的手指和位置画出来。接触区域的 token 和其它位置明显分开，而且随时间变化，说明特征里保留了接触的空间分布。</figcaption></figure>
+<figure class="fig"><img class="narrow" src="../media/lbt_e0_similarity.png" alt="相似度"><figcaption>120 个样例平均池化后的余弦相似度。同一种手内部更相似（Sharpa 0.58、XHand 0.80），两种手之间 0.45：不同传感器进入了同一个特征空间，但还能区分。README 建议下游用注意力读出而不是平均池化，这张图只用来做整体检查。</figcaption></figure>
+
+<h2 id="mortar">三、E1：把编码器接到同事的 mortar 仿真器上</h2>
+<p><b>能不能接？能。</b>LingBot-Touch 不依赖 Isaac Sim，只需要每根手指一组采样点的位置和每个点的形变量。mortar 的指尖本身就是 FEM 软体，比论文用的“刚体指尖 + 射线测穿透深度”更接近真实的形变。我们用的是 mortar 抓取实验录下的 164 段过程（立方块 57、杯子 30、茶壶 75、其它 2），每 30 ms 一帧，记录了两根指尖全部 1481 个 FEM 节点的位置。</p>
+<ol class="steps">
+<li><b>形变量。</b>去掉手指的整体刚体运动（用离物体表面 8 mm 以外的节点做刚体拟合），剩下的位移投到接触面的法向上，得到每个节点的压入深度（mm）。最大压入深度和夹持力的相关系数 0.999。</li>
+<li><b>接触面。</b>UMI 指尖是 Fin-ray 结构，内部肋板也朝着对面的手指。我们只取从对面手指看过去最外层的那个平面（约 122 × 26 mm，129 个节点）。</li>
+<li><b>映射到标准指尖空间。</b>把这块接触面沿长、宽方向线性地对到 Sharpa 视触觉 96 点参考布局上（96 个点全部落在接触面内）；左指放拇指槽，右指放食指槽，其余三指不生成 token。</li>
+<li><b>数值。</b>深度用 Sharpa 官方 TacMap 里的量化函数换成 0–255（0.5 mm 以内每 0.005 mm 加 1，之后每 0.03 mm 加 1，5.15 mm 饱和），除以 255 放进 Z 通道，和真实 Sharpa 传感器的尺度一致。</li>
+</ol>
+<figure class="fig"><img class="narrow" style="max-width:820px" src="../media/lbt_mortar_mapping.png" alt="mortar 映射"><figcaption><b>映射检查。</b>左列：峰值夹持时左指外接触面的 FEM 节点深度（颜色）和 96 个采样点（蓝）。中、右列：编码器实际收到的两根手指输入。立方块和茶壶的接触在指垫中段，杯子在指尖，空间分布能区分不同的抓法。</figcaption></figure>
+
+<h3>probe 结果</h3>
+<p>做法和论文附录 C.1 相同：编码器冻结，只训练一个注意力读出头（8 个可学习 query + 交叉注意力 + MLP），每个任务单独训练。输入是 8 帧（0.24 s）窗口，步长 2 帧，约 4.9 万个窗口。对照组：同样结构但随机权重的冻结编码器（检验“是预训练在起作用，而不是结构或读出头”）、同结构从零训练（相当于论文里和策略一起训练的 Tactile CNN）、直接在原始信号上训练的 MLP。</p>
+<h4>按抓取分组随机留出 20 %（3 个划分）</h4><div class='tablewrap'><table><thead><tr><th>表示</th><th class='num'>夹持力 相对误差（接触窗口） ↓</th><th class='num'>接触图 Dice（有接触的窗口） ↑</th><th class='num'>接触面积 MAE ↓</th><th class='num'>接触中心误差 ↓</th><th class='num'>未来 0.24 s 力变化 MAE（变化 > 0.5 N 的窗口） ↓</th></tr></thead><tbody>
+<tr><td>LingBot Tiny（冻结）</td><td class='num'><b>20.43% ± 12.34</b></td><td class='num'>—</td><td class='num'>—</td><td class='num'>—</td><td class='num'>—</td></tr>
+<tr><td>LingBot Small（冻结）</td><td class='num'>22.60% ± 9.92</td><td class='num'>—</td><td class='num'>—</td><td class='num'>—</td><td class='num'>—</td></tr>
+<tr><td>同结构从零训练</td><td class='num'>27.28% ± 9.47</td><td class='num'>—</td><td class='num'>—</td><td class='num'>—</td><td class='num'>—</td></tr>
+<tr><td>随机权重（冻结，对照）</td><td class='num'>67.45% ± 32.52</td><td class='num'>—</td><td class='num'>—</td><td class='num'>—</td><td class='num'>—</td></tr>
+<tr><td>原始信号 MLP</td><td class='num'>—</td><td class='num'>—</td><td class='num'>—</td><td class='num'>—</td><td class='num'>—</td></tr>
+</tbody></table></div>
+<figure class='fig'><img src='../media/lbt_mortar_probe_group.png' alt='probe results group'><figcaption>柱高 = 各划分的平均值，黑点 = 每个划分的结果（同一个划分里各表示用的是同一批训练、测试窗口）。</figcaption></figure>
+
+<h2 id="tacmap">四、E2：Isaac Sim TacMap 仿真 probe（论文附录 C.1）</h2>
+<p>环境已装好（Isaac Sim 5.1 + Isaac Lab 2.3，Sharpa 官方仓库测试过的版本），接下来在 Sharpa 手上接 TacMap 传感器、采集抓取数据。论文报告的仿真 probe：接触区域 Dice 0.708，面积 MAE 1.089 个百分点，力 MAE 3.264 N，未来力变化 MAE 0.459 N。</p>
+
+
+<h2 id="rl">五、E3：Sharpa 手 in-hand rotation 强化学习（论文表 3）</h2>
+<p>计划：用 Sharpa 官方开源的 in-hand rotation 环境，把观测里的触觉换成论文的 5 种配置（无触觉、二值接触、原始信号、和策略一起训练的 CNN、冻结 LingBot + 可训练读出），各 3 个种子。论文这一行的成功率：11.5 / 18.3 / 33.4 / 26.6 / 56.4 %。</p>
+
+
+<h2 id="retrain">六、E4：从零重新预训练</h2>
+<p>预训练数据（4983 小时）和训练代码都没有开源，只能按论文第 3 节自己实现 Tactile-JEPA（掩码隐空间预测、EMA 目标编码器、多层目标），用仿真数据（mortar + TacMap）或公开触觉数据训练，再用 E1–E3 同样的测试比较它和官方权重。这一步得到的不是论文数字的严格复现，而是“方法在我们的数据上是否成立”。</p>
+
+
+<h2 id="setup">七、测试条件</h2>
+<div class="tablewrap"><table><tbody>
+<tr><td>代码与权重</td><td>robbyant/lingbot-touch（commit dec8025）；Tiny / Small encoder.pt，sha256 ddb8b435… / f87cdc17…</td></tr>
+<tr><td>E0</td><td>CPU，PyTorch 2.11，官方 120 个样例</td></tr>
+<tr><td>E1</td><td>mortar 录制（G2 夹爪 + UMI 软指尖，FEM）；probe 在 RTX PRO 6000 上训练，PyTorch 2.7，8 epoch，AdamW</td></tr>
+<tr><td>E2 / E3</td><td>Isaac Sim 5.1 + Isaac Lab 2.3（Sharpa 官方 RL 仓库测试过的版本），sharpa-tacmap、sharpa-rl-lab</td></tr>
+</tbody></table></div>
+<footer>World Model Lab · 世界模型的学习与测试记录 · <a href="https://github.com/haoxiangNtu/world-model-lab">源码</a></footer>
+</div>
+</body>
+</html>
