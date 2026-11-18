@@ -49,8 +49,8 @@ td.num b{color:var(--fg)}
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_mortar_hand3.jpg?v=1118b" src="../media/lbt_mortar_hand3.mp4?v=1118b" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>mortar 五指手捏起 8 cm 立方块（同事接进 Isaac Lab 3 的捏取任务），实时播放 11 秒。</b>三格回放的是同一段人工示教，各自加了不同的扰动（手的位置、偏转角、捏合幅度）：左边没捏稳，方块掉回桌面；中间捏住并提起约 19 cm；右边提起后方块在手里下滑了约 2 cm。手只画了骨架（连杆的连线），五个指尖的 FEM 软垫和方块按仿真数据画出，软垫按形变量上色；下方是同一时刻五根手指送进编码器的输入。128 次回放里 117 次提起成功，测试结果见<a href="#wuji">第四节</a>。</figcaption></figure>
 <h3 id="video-cap">PhysX：自建的拧瓶盖任务</h3>
-<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_cap_twist_cnn.jpg?v=1118a" src="../media/lbt_cap_twist_cnn.mp4?v=1118a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
-<figcaption><b>Sharpa 手拧瓶盖（自建的仿真任务，PhysX），6 个不同的瓶子，实时播放 20 秒。</b>瓶盖装在带阻力矩的转动关节上，左上角是已转过的圈数。这是用 CNN 触觉输入做的试训练（1200 万步）；用冻结的官方 LingBot-Touch 编码器的训练在进行中。任务设置和评测结果见<a href="#cap">第八节</a>。</figcaption></figure>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_cap_twist_lbt.jpg?v=1118a" src="../media/lbt_cap_twist_lbt.mp4?v=1118a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>Sharpa 手拧瓶盖（自建的仿真任务，PhysX），6 个不同的瓶子，实时播放 20 秒。</b>这是用冻结的官方 LingBot-Touch 编码器训练 3000 万步得到的策略：瓶盖装在带阻力矩的转动关节上，左上角是已转过的圈数。1026 个回合的评测里 99.7 % 转满 2 圈。任务设置、和其他触觉输入的对比见<a href="#cap">第八节</a>。</figcaption></figure>
 
 
 <h2 id="summary">目前的结论（逐条对照论文）</h2>
@@ -848,7 +848,7 @@ td.num b{color:var(--fg)}
 
 <div class='tablewrap'><table><thead><tr><th>进入策略的触觉输入</th><th class='num'>九物体：成功率（各个种子）</th><th class='num'>尺度 0.8 / 1.0 / 1.2</th><th class='num'>平均圈数</th><th class='num'>对照：单圆柱（平均 ± 标准差）</th></tr></thead><tbody>
 <tr><td>无触觉</td><td class='num'>6.2 %</td><td class='num'>4 / 7 / 8 %</td><td class='num'>0.27</td><td class='num'>46.2 ± 32.5</td></tr>
-<tr><td>二值接触</td><td class='num'><span class='small'>排队中</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>77.6 ± 7.2</td></tr>
+<tr><td>二值接触</td><td class='num'><span class='small'>训练中（1 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>77.6 ± 7.2</td></tr>
 <tr><td>原始信号</td><td class='num'><span class='small'>排队中</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>51.7 ± 40.8</td></tr>
 <tr><td>CNN（和策略一起训练）</td><td class='num'>67.3 %</td><td class='num'>55 / 74 / 73 %</td><td class='num'>1.58</td><td class='num'>85.5 ± 3.6</td></tr>
 <tr><td>LingBot-Touch（冻结）</td><td class='num'><span class='small'>排队中</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>84.6 ± 3.8</td></tr>
@@ -864,7 +864,13 @@ td.num b{color:var(--fg)}
 <tr><td>鼓形</td><td class='num'>6.1</td><td class='num'>79.0</td></tr>
 <tr><td>多面体球</td><td class='num'>9.7</td><td class='num'>79.0</td></tr>
 </tbody></table></div><p class='small'>每个策略评测 1026 个回合（27 个物体变体各 38 个），满重力，判据和单圆柱时相同（掉落之前绕轴净转满一圈）。分形状的数字每种形状只有 114 个回合，误差约 ±4 个百分点。</p>
-<p><b>目前能说的（只有部分结果）。</b>任务确实难了很多：同样的 CNN 配置、同一个种子，单圆柱时成功率 89.6 %，九物体时 67.3 %；重力课程在单圆柱时 1200 万步就走完，这里到 1 亿步快结束时才走完，说明还可以再训练得更久。分形状看差别很大：圆柱最容易（86.8 %），上小下大的圆台最难（25.4 %），棱柱里棱越少越难；小尺度（0.8 倍）比另外两个尺度低约 18 个百分点。其余三种基线正在逐个训练；LingBot 的三个种子等另一台机器的显卡空出来后开始，每次约 11 小时。</p>
+<p><b>目前能说的（只有部分结果）。</b></p>
+<ul>
+<li><b>任务确实难了很多。</b>同样的 CNN 配置、同一个种子，单圆柱时成功率 89.6 %，九物体时 67.3 %；重力课程在单圆柱时 1200 万步就走完，这里到 1 亿步快结束时才走完，说明还可以再训练得更久。</li>
+<li><b>物体一多，不用触觉就学不起来了。</b>无触觉的策略满重力下成功率只有 6.2 %。它在整个训练过程中掉落率一直降不下来，重力课程根本没有启动（一直停在 0.05 m/s²）；即使在这个几乎没有重力的条件下评测，成功率也只有 21.4 %。单圆柱时无触觉的三个种子是 50.9 / 76.1 / 11.6 %。这和论文的数字（无触觉 11.5 %）是同一个量级，说明多物体的设置才接近论文的难度。</li>
+<li>分形状看差别很大：圆柱最容易（CNN 86.8 %），上小下大的圆台最难（25.4 %），棱柱里棱越少越难；小尺度（0.8 倍）比另外两个尺度低约 18 个百分点。</li>
+</ul>
+<p>其余结果在路上：二值接触和原始信号的种子 0 正在训练；四种基线的种子 1、2 和 LingBot 的三个种子在另一台机器上，LingBot 每次约 11 小时，11-19 上午出结果。到时候才能回答这一节要回答的问题：在更难的任务上，冻结的预训练编码器是不是比和策略一起训练的 CNN 更好。</p>
 
 
 <h3>这个设置是怎么定下来的</h3>
@@ -969,8 +975,12 @@ td.num b{color:var(--fg)}
 </ul>
 <p class="small">实现上的一个说明：仿真里是把整个场景倒过来算的（手在下、瓶子在上、重力方向取反），渲染出的画面再转 180°。这样可以原样复用转圆柱环境里手的位置和初始抓取姿态，物理上和“手在上、瓶子在下”等价。</p>
 <h3>结果</h3>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_cap_twist_lbt.jpg?v=1118a" src="../media/lbt_cap_twist_lbt.mp4?v=1118a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>冻结的官方 LingBot-Touch 编码器训练出的策略，6 个不同的瓶子，实时播放 20 秒。</b>27 个瓶子里每隔 5 个取一个，没有按结果挑选；左上角是瓶盖已转过的圈数，转满 2 圈变绿。这 6 个瓶子转了 2.2–4.1 圈，27 个瓶子全部没有松手。</figcaption></figure>
+<details class="tasks"><summary>对照：CNN 输入的试训练策略（同样 6 个瓶子）</summary>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_cap_twist_cnn.jpg?v=1118a" src="../media/lbt_cap_twist_cnn.mp4?v=1118a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
-<figcaption><b>试训练出的策略在 6 个不同的瓶子上，实时播放 20 秒。</b>27 个瓶子里每隔 5 个取一个，没有按结果挑选；左上角是瓶盖已转过的圈数，转满 2 圈变绿。这 6 个瓶子里转了 1.7–4.0 圈，没有松手。</figcaption></figure>
+<figcaption><b>CNN 输入、1200 万步的试训练。</b>27 个瓶子里每隔 5 个取一个，没有按结果挑选；左上角是瓶盖已转过的圈数，转满 2 圈变绿。这 6 个瓶子里转了 1.7–4.0 圈，没有松手。</figcaption></figure>
+</details>
 <div class='tablewrap'><table><thead><tr><th>触觉输入</th><th class='num'>训练步数</th><th class='num'>转满 1 圈</th><th class='num'>转满 2 圈</th><th class='num'>转满 3 圈</th><th class='num'>平均圈数</th><th class='num'>没有松手</th></tr></thead><tbody><tr><td>无触觉</td><td class='num'>3000 万</td><td class='num'>98.7 %</td><td class='num'>96.8 %</td><td class='num'>71.6 %</td><td class='num'>3.37</td><td class='num'>98.7 %</td></tr>
 <tr><td>二值接触</td><td class='num'>3000 万</td><td class='num'>99.4 %</td><td class='num'>97.1 %</td><td class='num'>61.7 %</td><td class='num'>3.18</td><td class='num'>99.4 %</td></tr>
 <tr><td>原始信号</td><td class='num'>3000 万</td><td class='num'>99.2 %</td><td class='num'>93.8 %</td><td class='num'>60.7 %</td><td class='num'>3.17</td><td class='num'>99.2 %</td></tr>
