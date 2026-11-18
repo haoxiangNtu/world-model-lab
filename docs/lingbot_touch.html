@@ -847,7 +847,7 @@ td.num b{color:var(--fg)}
 <figure class="fig"><img src="../media/lbt_nine_shapes.jpg" alt="九种形状"><figcaption><b>九种形状（图中是 1.0 倍尺度）。</b>每个物体的网格都是不超过 64 个顶点的凸多面体，这样物理引擎用的碰撞外形和触觉计算用的网格是同一个。4104 个并行环境里每个物体占 152 个；每个物体用仓库自带的脚本各生成了 600 组稳定的初始抓取。价值网络额外能看到物体是哪种形状、多大（只在训练时用），策略本身看不到。其余设置和单圆柱时完全相同。</figcaption></figure>
 
 <div class='tablewrap'><table><thead><tr><th>进入策略的触觉输入</th><th class='num'>九物体：成功率（各个种子）</th><th class='num'>尺度 0.8 / 1.0 / 1.2</th><th class='num'>平均圈数</th><th class='num'>对照：单圆柱（平均 ± 标准差）</th></tr></thead><tbody>
-<tr><td>无触觉</td><td class='num'><span class='small'>训练中（1 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>46.2 ± 32.5</td></tr>
+<tr><td>无触觉</td><td class='num'><span class='small'>训练中（6 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>46.2 ± 32.5</td></tr>
 <tr><td>二值接触</td><td class='num'><span class='small'>排队中</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>77.6 ± 7.2</td></tr>
 <tr><td>原始信号</td><td class='num'><span class='small'>排队中</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>51.7 ± 40.8</td></tr>
 <tr><td>CNN（和策略一起训练）</td><td class='num'>67.3 %</td><td class='num'>55 / 74 / 73 %</td><td class='num'>1.58</td><td class='num'>85.5 ± 3.6</td></tr>
@@ -971,12 +971,17 @@ td.num b{color:var(--fg)}
 <h3>结果</h3>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_cap_twist_cnn.jpg?v=1118a" src="../media/lbt_cap_twist_cnn.mp4?v=1118a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>试训练出的策略在 6 个不同的瓶子上，实时播放 20 秒。</b>27 个瓶子里每隔 5 个取一个，没有按结果挑选；左上角是瓶盖已转过的圈数，转满 2 圈变绿。这 6 个瓶子里转了 1.7–4.0 圈，没有松手。</figcaption></figure>
-<div class='tablewrap'><table><thead><tr><th>触觉输入</th><th class='num'>训练步数</th><th class='num'>转满 1 圈</th><th class='num'>转满 2 圈</th><th class='num'>转满 3 圈</th><th class='num'>平均圈数</th><th class='num'>没有松手</th></tr></thead><tbody><tr><td>无触觉</td><td class='num'>3000 万</td><td class='num' colspan='5'>训练中（已到 2879 万步）</td></tr>
+<div class='tablewrap'><table><thead><tr><th>触觉输入</th><th class='num'>训练步数</th><th class='num'>转满 1 圈</th><th class='num'>转满 2 圈</th><th class='num'>转满 3 圈</th><th class='num'>平均圈数</th><th class='num'>没有松手</th></tr></thead><tbody><tr><td>无触觉</td><td class='num'>3000 万</td><td class='num'>98.7 %</td><td class='num'>96.8 %</td><td class='num'>71.6 %</td><td class='num'>3.37</td><td class='num'>98.7 %</td></tr>
 <tr><td>CNN（和策略一起训练）</td><td class='num'>3000 万</td><td class='num'>99.9 %</td><td class='num'>94.7 %</td><td class='num'>54.1 %</td><td class='num'>3.05</td><td class='num'>99.9 %</td></tr>
-<tr><td>LingBot-Touch 官方编码器（冻结）</td><td class='num'>3000 万</td><td class='num' colspan='5'>训练中（已到 1484 万步）</td></tr>
+<tr><td>LingBot-Touch 官方编码器（冻结）</td><td class='num'>3000 万</td><td class='num' colspan='5'>训练中（已到 1566 万步）</td></tr>
 <tr><td>CNN，最初的试训练</td><td class='num'>1200 万</td><td class='num'>99.5 %</td><td class='num'>92.4 %</td><td class='num'>57.0 %</td><td class='num'>3.10</td><td class='num'>99.5 %</td></tr></tbody></table></div>
-<p><b>目前能说的。</b>这个任务在 PhysX 里能学起来，而且很快：CNN 输入训练 1200 万步（约 15 分钟）后，99.5 % 的回合转满 1 圈、92.4 % 转满 2 圈。按阻力矩分三档看，阻力越大转得略少（平均 3.21、3.09、3.00 圈），差别不大。训练过程中踩过一个坑：最初没有“松手即结束”这条规则，策略学成了把手指挪开、什么都不做，因为那样没有任何代价。</p>
-<p><b>还没做的和局限。</b>官方编码器的那次训练在进行中，从训练曲线看它同样学得起来（790 万步时的转速和 CNN 试训练 900 万步时相当）；正式评测出来后和同样步数的 CNN、无触觉、二值接触、原始信号对照放在一起比较，这几个对照正在另一台机器上逐个训练。CNN 多训练到 3000 万步后成绩和 1200 万步时基本一样（转满 2 圈 94.7 % 对 92.4 %），说明这个任务 1200 万步左右就学到头了。任务本身也还简单：没有螺纹（瓶盖不会随着转动升起、脱落），阻力矩取得偏小，瓶身只有外观、没有碰撞。</p>
+<p><b>目前能说的。</b></p>
+<ul>
+<li><b>这个任务在 PhysX 里能学起来，而且很快。</b>CNN 输入训练 1200 万步（约 15 分钟）后，99.5 % 的回合转满 1 圈、92.4 % 转满 2 圈；训练到 3000 万步成绩基本不变。</li>
+<li><b>但目前这个版本不需要触觉。</b>完全不给触觉输入的策略同样学会了，而且转得更多：96.8 % 的回合转满 2 圈、平均 3.37 圈（CNN 是 94.7 %、3.05 圈）。原因大概是瓶盖的位置固定、阻力矩小，手指按固定的节奏拨就能转起来；手指有没有碰到瓶盖，从关节“目标角度和实际角度的差”里也能间接看出来。所以这个版本只能回答“用官方编码器能不能训练出拧瓶盖”，不能回答“触觉有没有帮助”。</li>
+<li>训练过程中踩过一个坑：最初没有“松手即结束”这条规则，策略学成了把手指挪开、什么都不做，因为那样没有任何代价。</li>
+</ul>
+<p><b>还没做的和局限。</b>官方编码器的那次训练在进行中，从训练曲线看它同样学得起来（790 万步时的转速和 CNN 试训练 900 万步时相当），正式评测约 21:45 出；二值接触和原始信号的对照在排队。任务本身还简单：没有螺纹（瓶盖不会随着转动升起、脱落），阻力矩取得偏小，瓶身只有外观、没有碰撞。要让触觉输入之间拉开差距，需要一个离不开触觉的版本，例如瓶子的位置和瓶盖的大小在每个回合里随机偏移、阻力矩加大并随机变化，这是下一步。</p>
 
 
 <h2 id="setup">九、测试条件</h2>
