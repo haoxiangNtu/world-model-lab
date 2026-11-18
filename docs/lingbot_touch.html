@@ -853,27 +853,27 @@ td.num b{color:var(--fg)}
 <figcaption><b>九物体任务：不用触觉（上）和用触觉（下，CNN）的策略，同样的 5 个物体、同样的初始抓取，满重力，实时播放 20 秒。</b>左上角是这一回合已转过的圈数（转满 1 圈变绿），左下角是掉落次数，红框表示刚掉落。不用触觉的策略握不住物体：不断掉落、重新开始，几乎转不起来（1026 个回合的成功率 6.2 %）。用触觉的策略在圆柱、四棱柱、六棱柱、多面体球上能持续转动（成功率 67.3 %），上小下大的圆台是它最差的形状（25 %），画面里也转不动。LingBot 编码器的策略训练完后补在第三行。</figcaption></figure>
 
 <div class='tablewrap'><table><thead><tr><th>进入策略的触觉输入</th><th class='num'>九物体：成功率（各个种子）</th><th class='num'>尺度 0.8 / 1.0 / 1.2</th><th class='num'>平均圈数</th><th class='num'>对照：单圆柱（平均 ± 标准差）</th></tr></thead><tbody>
-<tr><td>无触觉</td><td class='num'>6.2 %；<span class='small'>训练中（100 / 100 百万步）</span><span class='small'>训练中（16 / 100 百万步）</span></td><td class='num'>4 / 7 / 8 %</td><td class='num'>0.27</td><td class='num'>46.2 ± 32.5</td></tr>
-<tr><td>二值接触</td><td class='num'>47.3 %；<span class='small'>训练中（16 / 100 百万步）</span><span class='small'>训练中（3 / 100 百万步）</span></td><td class='num'>34 / 52 / 56 %</td><td class='num'>1.04</td><td class='num'>77.6 ± 7.2</td></tr>
-<tr><td>原始信号</td><td class='num'><span class='small'>训练中（11 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>51.7 ± 40.8</td></tr>
+<tr><td>无触觉</td><td class='num'>6.2 / 0.0 %；<span class='small'>训练中（19 / 100 百万步）</span></td><td class='num'>2 / 3 / 4 %</td><td class='num'>0.27 / 0.02</td><td class='num'>46.2 ± 32.5</td></tr>
+<tr><td>二值接触</td><td class='num'>47.3 %；<span class='small'>训练中（18 / 100 百万步）</span><span class='small'>训练中（5 / 100 百万步）</span></td><td class='num'>34 / 52 / 56 %</td><td class='num'>1.04</td><td class='num'>77.6 ± 7.2</td></tr>
+<tr><td>原始信号</td><td class='num'><span class='small'>训练中（14 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>51.7 ± 40.8</td></tr>
 <tr><td>CNN（和策略一起训练）</td><td class='num'>67.3 / 52.3 / 57.2 %</td><td class='num'>47 / 64 / 66 %</td><td class='num'>1.58 / 1.13 / 1.36</td><td class='num'>85.5 ± 3.6</td></tr>
 <tr><td>LingBot-Touch（冻结）</td><td class='num'><span class='small'>训练中（17 / 100 百万步）</span><span class='small'>训练中（16 / 100 百万步）</span><span class='small'>训练中（16 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>84.6 ± 3.8</td></tr>
 </tbody></table></div>
 <div class='tablewrap'><table><thead><tr><th>分形状的成功率 %</th><th class='num'>无触觉</th><th class='num'>二值接触</th><th class='num'>CNN</th></tr></thead><tbody>
-<tr><td>圆柱</td><td class='num'>15.8</td><td class='num'>72.8</td><td class='num'>83.9</td></tr>
+<tr><td>圆柱</td><td class='num'>7.9</td><td class='num'>72.8</td><td class='num'>83.9</td></tr>
 <tr><td>三棱柱</td><td class='num'>0.0</td><td class='num'>35.1</td><td class='num'>33.6</td></tr>
-<tr><td>四棱柱</td><td class='num'>6.1</td><td class='num'>43.0</td><td class='num'>55.3</td></tr>
-<tr><td>五棱柱</td><td class='num'>7.9</td><td class='num'>31.6</td><td class='num'>56.1</td></tr>
-<tr><td>六棱柱</td><td class='num'>7.9</td><td class='num'>53.5</td><td class='num'>70.8</td></tr>
+<tr><td>四棱柱</td><td class='num'>3.1</td><td class='num'>43.0</td><td class='num'>55.3</td></tr>
+<tr><td>五棱柱</td><td class='num'>3.9</td><td class='num'>31.6</td><td class='num'>56.1</td></tr>
+<tr><td>六棱柱</td><td class='num'>3.9</td><td class='num'>53.5</td><td class='num'>70.8</td></tr>
 <tr><td>椭圆柱</td><td class='num'>0.0</td><td class='num'>46.5</td><td class='num'>61.1</td></tr>
-<tr><td>圆台</td><td class='num'>2.6</td><td class='num'>21.1</td><td class='num'>25.4</td></tr>
-<tr><td>鼓形</td><td class='num'>6.1</td><td class='num'>60.5</td><td class='num'>73.4</td></tr>
-<tr><td>多面体球</td><td class='num'>9.7</td><td class='num'>61.4</td><td class='num'>71.1</td></tr>
+<tr><td>圆台</td><td class='num'>1.3</td><td class='num'>21.1</td><td class='num'>25.4</td></tr>
+<tr><td>鼓形</td><td class='num'>3.1</td><td class='num'>60.5</td><td class='num'>73.4</td></tr>
+<tr><td>多面体球</td><td class='num'>4.8</td><td class='num'>61.4</td><td class='num'>71.1</td></tr>
 </tbody></table></div><p class='small'>每个策略评测 1026 个回合（27 个物体变体各 38 个），满重力，判据和单圆柱时相同（掉落之前绕轴净转满一圈）。分形状的数字每种形状只有 114 个回合，误差约 ±4 个百分点。</p>
 <p><b>目前能说的（只有部分结果）。</b></p>
 <ul>
 <li><b>任务确实难了很多。</b>同样的 CNN 配置，单圆柱时三个种子的成功率是 89.6 / 82.6 / 84.4 %，九物体时三个种子是 67.3 / 52.3 / 57.2 %（平均 58.9 ± 7.7）；重力课程在单圆柱时 1200 万步就走完，这里到 1 亿步快结束时才走完，说明还可以再训练得更久。</li>
-<li><b>物体一多，不用触觉就学不起来了。</b>无触觉的策略满重力下成功率只有 6.2 %。它在整个训练过程中掉落率一直降不下来，重力课程根本没有启动（一直停在 0.05 m/s²）；即使在这个几乎没有重力的条件下评测，成功率也只有 21.4 %。单圆柱时无触觉的三个种子是 50.9 / 76.1 / 11.6 %。这和论文的数字（无触觉 11.5 %）是同一个量级，说明多物体的设置才接近论文的难度。</li>
+<li><b>物体一多，不用触觉就学不起来了。</b>无触觉的策略满重力下成功率只有 6.2 %（种子 0）和 0.0 %（种子 1）。下面说的是种子 0：它在整个训练过程中掉落率一直降不下来，重力课程根本没有启动（一直停在 0.05 m/s²）；即使在这个几乎没有重力的条件下评测，成功率也只有 21.4 %。单圆柱时无触觉的三个种子是 50.9 / 76.1 / 11.6 %。这和论文的数字（无触觉 11.5 %）是同一个量级，说明多物体的设置才接近论文的难度。</li>
 <li><b>几种输入拉开了差距。</b>种子 0 的成功率：无触觉 6.2 %，二值接触 47.3 %，CNN 67.3 %。单圆柱时这三种的平均是 46 %、78 %、86 %，差距没有这么大。</li>
 <li>分形状看差别很大：圆柱最容易（CNN 86.8 %），上小下大的圆台最难（25.4 %），棱柱里棱越少越难；小尺度（0.8 倍）比另外两个尺度低约 18 个百分点。</li>
 </ul>
@@ -1042,8 +1042,9 @@ td.num b{color:var(--fg)}
 <figcaption><b>预览：试训练的策略（CNN 输入，1500 万步）拧开并提起瓶盖，6 个不同的瓶子，实时播放 20 秒。</b>每格第二行文字先是“还在螺纹上”，拧够圈数后变成“已拧开，提起多少毫米”（从螺纹顶端算起）。瓶盖提起后能看到瓶口露出来。这 27 个瓶子全部在 5–12 秒内拧开，之后提起 8–13 mm 并保持到结束，其中 3 个中途松过手。</figcaption></figure>
 <p class="small">实现上的说明：螺纹是一个沿瓶轴方向的弹簧-阻尼力，每个物理步施加一次；瓶盖只能绕瓶轴转动和沿瓶轴移动，不会倾斜或横移，所以“提起”是沿瓶轴提起。手掌的位置是固定的，提起完全靠手指，行程只有一两厘米。这段预览用的是试训练的策略，它训练时的参数是 2 圈、每圈 3 mm，正式训练用上面写的 1.5 圈、每圈 4 mm。</p>
 <h4>正式训练的结果</h4>
-<div class='tablewrap'><table><thead><tr><th>触觉输入（各 3000 万步）</th><th class='num'>拧开</th><th class='num'>拧开并提起 10 mm 以上、保持到结束</th><th class='num'>提起 5 mm 以上</th><th class='num'>平均拧开用时</th><th class='num'>没有松手</th><th class='num'>27 个瓶子各自的成功率范围</th></tr></thead><tbody><tr><td>CNN（和策略一起训练）</td><td class='num'>99.7 %</td><td class='num'><b>64.4 %</b></td><td class='num'>88.6 %</td><td class='num'>8.8 s</td><td class='num'>90.6 %</td><td class='num'>21–95 %</td></tr>
-<tr><td>LingBot-Touch 官方编码器（冻结）</td><td class='num' colspan='6'>训练中（已到 591 / 3000 万步）</td></tr></tbody></table></div><p class='small'>1026 个回合（27 个瓶子各 38 个），每回合 20 秒。“提起”从螺纹顶端算起，要在回合的最后 0.5 秒里一直保持在 10 mm 以上才算成功。</p>
+<div class='tablewrap'><table><thead><tr><th>触觉输入（各 3000 万步）</th><th class='num'>拧开</th><th class='num'>拧开并提起 10 mm 以上、保持到结束</th><th class='num'>提起 5 mm 以上</th><th class='num'>平均拧开用时</th><th class='num'>没有松手</th><th class='num'>27 个瓶子各自的成功率范围</th></tr></thead><tbody><tr><td>无触觉</td><td class='num' colspan='6'>训练中（已到 92 / 3000 万步）</td></tr>
+<tr><td>CNN（和策略一起训练）</td><td class='num'>99.7 %</td><td class='num'><b>64.4 %</b></td><td class='num'>88.6 %</td><td class='num'>8.8 s</td><td class='num'>90.6 %</td><td class='num'>21–95 %</td></tr>
+<tr><td>LingBot-Touch 官方编码器（冻结）</td><td class='num' colspan='6'>训练中（已到 627 / 3000 万步）</td></tr></tbody></table></div><p class='small'>1026 个回合（27 个瓶子各 38 个），每回合 20 秒。“提起”从螺纹顶端算起，要在回合的最后 0.5 秒里一直保持在 10 mm 以上才算成功。</p>
 <p><b>目前能说的。</b>改回转速奖励之后，CNN 输入的策略 99.7 % 的回合拧开了瓶盖，64.4 % 在拧开后把瓶盖提起 10 mm 以上并保持到结束，提起 5 mm 以上的占 88.6 %；平均 8.8 秒拧开。不同瓶子之间差别很大（成功率 21–95 %），说明这 27 个瓶子虽然看起来几乎一样，瓶盖高度和阻力矩的不同对“提不提得起来”影响不小。其余几种输入的结果出来后再比较。</p>
 <p><b>进度。</b>五种触觉输入各训练 3000 万步：CNN、无触觉、二值接触、原始信号在一台机器上逐个进行，冻结的官方 LingBot-Touch 编码器在另一台机器上（约 3.3 小时）。这组训练在 11-18 23:21 重新开始过一次：第一次我把转速奖励的上限从 0.5 rad/s 提到了 1.5 rad/s，想让它拧得更快，结果 CNN 那次学成了只顾快转，99 % 的回合拧开了瓶盖，但没有一次把它提起来（提起需要手指边转边往上带，转得越快越带不住）。现在改回 0.5 rad/s，和上面预览用的试训练一致。结果和正式的视频预计 11-19 凌晨到上午出来，补在这里。</p>
 
