@@ -29,11 +29,11 @@ td.num b{color:var(--fg)}
 <div class="eyebrow">Tactile foundation model · LingBot-Touch · 2026-11</div>
 <h1>复现 LingBot-Touch：开源权重、接入 mortar 仿真器、仿真强化学习</h1>
 <p class="lead"><b>现状（11-19 凌晨）：开源权重核对、mortar 两种手和 Sharpa 仿真触觉上的 probe 已经做完；论文表 3 的强化学习对比 15 次训练全部完成；按论文方法从零重新预训练已完成，用它重复 probe 和强化学习的结果都接近官方权重；预训练设置的消融 10 组也已完成。</b>
-另外按要求自建了一个 PhysX 里的<a href="#cap">拧瓶盖任务</a>，用冻结的官方编码器训练 3000 万步后 99.7 % 的回合能拧满 2 圈，是五种输入里最好的一次（每种只有一个种子，差距不大；不给触觉的策略也能拧到 96.8 %）。带螺纹、要求拧开后把瓶盖提起来的版本，冻结的官方编码器也训练出来了（种子 0：98.4 % 拧开，98.2 % 拧开并把瓶盖提到高过瓶口）；不给触觉的策略三个种子是 80 / 93 / 70 %，主要输在提起以后又松手，带触觉的四种都在 94 % 以上、彼此分不出高下；官方编码器的另外两个种子在训练；手指的动作是 PPO 学出来的，<a href="#cap-how">人定了什么、学了什么、触觉怎么进去</a>单独写了说明；正式训练第一次用的奖励设置学成了只转不提，它和改回之后的<a href="#caplift-clip15">对比视频和统计</a>已放上。更接近论文的<a href="#multi">多物体版本</a>（九种形状 × 三种尺度）基线已有部分结果，冻结的 LingBot 编码器三个种子在训练，预计 11-19 上午出结果。画面见下面的<a href="#video">效果视频</a>：转圆柱的策略（Isaac Sim 的 PhysX 引擎）和 mortar 上两指夹爪、五指手的抓取回放；编码器怎么接进强化学习见<a href="#arch">结构示意图</a>；逐条结论见<a href="#summary">总表</a>。一句话版本：权重可以直接用，接到同事的 mortar 仿真器上不用改仿真器，特征里确实带着接触信息（远好于同结构的随机权重）；但在 probe 任务上它并不比直接用原始信号训练的小网络好，训练充分后只是持平。它值不值得用，要看强化学习里的对比：冻结的 LingBot 编码器三个种子的成功率是 80.3 / 87.1 / 86.4 %，稳定，明显好于无触觉（平均 46 %）和原始信号（52 %），但和与策略一起训练的 CNN（85.5 %）打平，没有复现论文“好于 CNN”的结论。我们的任务只有一个圆柱，比论文简单，这个结论还要看多物体版本。</p>
+另外按要求自建了一个 PhysX 里的<a href="#cap">拧瓶盖任务</a>，用冻结的官方编码器训练 3000 万步后 99.7 % 的回合能拧满 2 圈，是五种输入里最好的一次（每种只有一个种子，差距不大；不给触觉的策略也能拧到 96.8 %）。带螺纹、要求拧开后把瓶盖提起来的版本，冻结的官方编码器也训练出来了（种子 0：98.4 % 拧开，98.2 % 拧开并把瓶盖提到高过瓶口）；不给触觉的策略三个种子是 80 / 93 / 70 %，主要输在提起以后又松手，带触觉的四种都在 94 % 以上、彼此分不出高下；官方编码器的另外两个种子在训练；又做了一个<a href="#capdiv">瓶盖形状和大小各不相同的版本</a>（九种形状 × 三种大小，更难），CNN 的第一次训练成功率 86.1 %，其余输入在训练；手指的动作是 PPO 学出来的，<a href="#cap-how">人定了什么、学了什么、触觉怎么进去</a>单独写了说明；正式训练第一次用的奖励设置学成了只转不提，它和改回之后的<a href="#caplift-clip15">对比视频和统计</a>已放上。更接近论文的<a href="#multi">多物体版本</a>（九种形状 × 三种尺度）基线已有部分结果，冻结的 LingBot 编码器三个种子在训练，预计 11-19 上午出结果。画面见下面的<a href="#video">效果视频</a>：转圆柱的策略（Isaac Sim 的 PhysX 引擎）和 mortar 上两指夹爪、五指手的抓取回放；编码器怎么接进强化学习见<a href="#arch">结构示意图</a>；逐条结论见<a href="#summary">总表</a>。一句话版本：权重可以直接用，接到同事的 mortar 仿真器上不用改仿真器，特征里确实带着接触信息（远好于同结构的随机权重）；但在 probe 任务上它并不比直接用原始信号训练的小网络好，训练充分后只是持平。它值不值得用，要看强化学习里的对比：冻结的 LingBot 编码器三个种子的成功率是 80.3 / 87.1 / 86.4 %，稳定，明显好于无触觉（平均 46 %）和原始信号（52 %），但和与策略一起训练的 CNN（85.5 %）打平，没有复现论文“好于 CNN”的结论。我们的任务只有一个圆柱，比论文简单，这个结论还要看多物体版本。</p>
 
 
 <div class="toc"><b>目录</b>
-<a href="#video">效果视频</a><a href="#summary">目前的结论</a><a href="#list">实验清单</a><a href="#release">一、开源了什么</a><a href="#e0">二、权重核对</a><a href="#mortar">三、mortar 两指夹爪</a><a href="#wuji">四、mortar 五指手</a><a href="#tacmap">五、Isaac 仿真触觉</a><a href="#rl">六、仿真强化学习</a><a href="#inputs">五种触觉输入怎么接进策略</a><a href="#multi">九种物体的版本</a><a href="#retrain">七、重新训练</a><a href="#cap">八、拧瓶盖（自建）</a><a href="#cap-how">拧瓶盖的动作是怎么学出来的</a><a href="#caplift-clip15">拧瓶盖：只转不提的那次设置</a><a href="#setup">九、测试条件</a>
+<a href="#video">效果视频</a><a href="#summary">目前的结论</a><a href="#list">实验清单</a><a href="#release">一、开源了什么</a><a href="#e0">二、权重核对</a><a href="#mortar">三、mortar 两指夹爪</a><a href="#wuji">四、mortar 五指手</a><a href="#tacmap">五、Isaac 仿真触觉</a><a href="#rl">六、仿真强化学习</a><a href="#inputs">五种触觉输入怎么接进策略</a><a href="#multi">九种物体的版本</a><a href="#retrain">七、重新训练</a><a href="#cap">八、拧瓶盖（自建）</a><a href="#cap-how">拧瓶盖的动作是怎么学出来的</a><a href="#caplift-clip15">拧瓶盖：只转不提的那次设置</a><a href="#capdiv">拧瓶盖：形状和大小各不相同的瓶盖</a><a href="#setup">九、测试条件</a>
 </div>
 
 <h2 id="video">效果视频</h2>
@@ -51,6 +51,8 @@ td.num b{color:var(--fg)}
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_mortar_hand3.jpg?v=1118b" src="../media/lbt_mortar_hand3.mp4?v=1118b" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>mortar 五指手捏起 8 cm 立方块（同事接进 Isaac Lab 3 的捏取任务），实时播放 11 秒。</b>三格回放的是同一段人工示教，各自加了不同的扰动（手的位置、偏转角、捏合幅度）：左边没捏稳，方块掉回桌面；中间捏住并提起约 19 cm；右边提起后方块在手里下滑了约 2 cm。手只画了骨架（连杆的连线），五个指尖的 FEM 软垫和方块按仿真数据画出，软垫按形变量上色；下方是同一时刻五根手指送进编码器的输入。128 次回放里 117 次提起成功，测试结果见<a href="#wuji">第四节</a>。</figcaption></figure>
 <h3 id="video-cap">PhysX：自建的拧瓶盖任务</h3>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_capdiv_cnn.jpg?v=1119a" src="../media/lbt_capdiv_cnn.mp4?v=1119a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>11-19 新增：瓶盖的形状和大小各不相同的版本（九种形状 × 三种大小），这里是九种形状各取中号，CNN 输入的策略，实时播放 20 秒。</b>每种形状配一个颜色和瓶身形状都不同的瓶子。9 个里 8 个拧开并提了起来，圆台那个没拧开。任务设置、27 个瓶盖的总览和各种触觉输入的结果见<a href="#capdiv">第八节</a>；官方 LingBot-Touch 编码器在这个版本上的训练正在进行。</figcaption></figure>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_cap_lift_lbt.jpg?v=1119a" src="../media/lbt_cap_lift_lbt.mp4?v=1119a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>11-19 新增：冻结的官方 LingBot-Touch 编码器训练出的策略拧开并提起瓶盖（自建的仿真任务，PhysX），6 个瓶子，实时播放 20 秒。</b>瓶盖沿螺纹上升，转满 1.5 圈后脱开，再被手指提离瓶口并保持住；每格左上角标出已转圈数和“还在螺纹上 / 已拧开，提起多少毫米”。1026 个回合的评测和其他触觉输入的对比见<a href="#caplift">第八节</a>。</figcaption></figure>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_cap_lift_grid_s0.jpg?v=1119a" src="../media/lbt_cap_lift_grid_s0.mp4?v=1119a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
@@ -863,7 +865,7 @@ td.num b{color:var(--fg)}
 <tr><td>二值接触</td><td class='num'>47.3 / 26.7 / 32.5 %</td><td class='num'>28 / 38 / 40 %</td><td class='num'>1.04 / 0.61 / 0.75</td><td class='num'>77.6 ± 7.2</td></tr>
 <tr><td>原始信号</td><td class='num'>52.5 / 38.9 / 38.7 %</td><td class='num'>32 / 46 / 52 %</td><td class='num'>1.15 / 0.80 / 0.88</td><td class='num'>51.7 ± 40.8</td></tr>
 <tr><td>CNN（和策略一起训练）</td><td class='num'>67.3 / 52.3 / 57.2 %</td><td class='num'>47 / 64 / 66 %</td><td class='num'>1.58 / 1.13 / 1.36</td><td class='num'>85.5 ± 3.6</td></tr>
-<tr><td>LingBot-Touch（冻结）</td><td class='num'><span class='small'>训练中（50 / 100 百万步）</span><span class='small'>训练中（49 / 100 百万步）</span><span class='small'>训练中（49 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>84.6 ± 3.8</td></tr>
+<tr><td>LingBot-Touch（冻结）</td><td class='num'><span class='small'>训练中（54 / 100 百万步）</span><span class='small'>训练中（53 / 100 百万步）</span><span class='small'>训练中（53 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>84.6 ± 3.8</td></tr>
 </tbody></table></div>
 <div class='tablewrap'><table><thead><tr><th>分形状的成功率 %</th><th class='num'>无触觉</th><th class='num'>二值接触</th><th class='num'>原始信号</th><th class='num'>CNN</th></tr></thead><tbody>
 <tr><td>圆柱</td><td class='num'>12.0</td><td class='num'>65.2</td><td class='num'>70.5</td><td class='num'>83.9</td></tr>
@@ -1074,9 +1076,9 @@ td.num b{color:var(--fg)}
 <figcaption><b>五种触觉输入训练出的策略（种子 0），每行一种输入，同样 4 个瓶子，实时播放 20 秒。</b>27 个瓶子里每隔 7 个取一个，没有按结果挑选。每格左上角是已转圈数和“还在螺纹上 / 已拧开，提起多少毫米”（从螺纹顶端算起，10 mm 以上变绿）；左下角出现“回合提前结束”表示这一格的回合中途结束、重新开始了。这 20 格里有两格提前结束：无触觉的 1 号瓶子在 11.2 秒时被判松手（瓶盖当时已经提起 12.6 mm，但压在瓶盖上的指尖只剩 1 个），重新开始后到结束还没拧开；二值接触的 22 号瓶子起始的抓取姿势不好，0.6 秒时就被判松手，重新开始后正常拧开并提起。其余 18 格都拧开并把瓶盖提到了高过瓶口。</figcaption></figure>
 <div class='tablewrap'><table><thead><tr><th>触觉输入（各 3000 万步）</th><th class='num'>拧开</th><th class='num'>拧开，并把瓶盖提到高过瓶口<br>（被高度限制截断的也算提起）</th><th class='num'>平均 ± 标准差</th><th class='num'>松手</th><th class='num'>提得太高、被高度限制截断</th><th class='num'>去掉高度限制重新评测：<br>提到高过瓶口并拿到回合结束</th><th class='num'>平均 ± 标准差</th></tr></thead><tbody><tr><td>无触觉</td><td class='num'>96.0 / 97.5 / 95.9 %</td><td class='num'><b>80.3 / 93.2 / 69.9 %</b></td><td class='num'><b>81.1 ± 11.7</b></td><td class='num'>14.7 / 5.8 / 27.0 %</td><td class='num'>4.2 / 12.4 / 10.6 %</td><td class='num'>77.4 / 88.7 / 61.1 %</td><td class='num'>75.7 ± 13.9</td></tr>
 <tr><td>二值接触</td><td class='num'>99.1 / 96.6 / 96.5 %</td><td class='num'><b>99.1 / 96.1 / 94.3 %</b></td><td class='num'><b>96.5 ± 2.4</b></td><td class='num'>0.2 / 0.1 / 2.8 %</td><td class='num'>1.3 / 5.5 / 5.5 %</td><td class='num'>98.9 / 94.6 / 91.6 %</td><td class='num'>95.1 ± 3.7</td></tr>
-<tr><td>原始信号</td><td class='num'>98.2 / 97.9 / 96.2 %</td><td class='num'><b>97.0 / 97.0 / 68.2 %</b></td><td class='num'><b>87.4 ± 16.6</b></td><td class='num'>2.0 / 1.6 / 20.4 %</td><td class='num'>1.7 / 3.6 / 40.2 %</td><td class='num'>96.3 / 96.5 / … %</td><td class='num'>—</td></tr>
+<tr><td>原始信号</td><td class='num'>98.2 / 97.9 / 96.2 %</td><td class='num'><b>97.0 / 97.0 / 68.2 %</b></td><td class='num'><b>87.4 ± 16.6</b></td><td class='num'>2.0 / 1.6 / 20.4 %</td><td class='num'>1.7 / 3.6 / 40.2 %</td><td class='num'>96.3 / 96.5 / 32.8 %</td><td class='num'>75.2 ± 36.7</td></tr>
 <tr><td>CNN（和策略一起训练）</td><td class='num'>99.7 / 99.7 / 94.7 %</td><td class='num'><b>98.1 / 99.5 / 94.2 %</b></td><td class='num'><b>97.3 ± 2.7</b></td><td class='num'>0.1 / 0.2 / 2.5 %</td><td class='num'>9.1 / 10.5 / 3.4 %</td><td class='num'>96.5 / 99.5 / 93.5 %</td><td class='num'>96.5 ± 3.0</td></tr>
-<tr><td>LingBot-Touch 官方编码器（冻结）<br><span class='small'>训练中（1543 / 3000 万步）；训练中（1569 / 3000 万步）</span></td><td class='num'>98.4 / … / … %</td><td class='num'><b>98.2 / … / … %</b></td><td class='num'><b>—</b></td><td class='num'>0.8 / … / … %</td><td class='num'>1.1 / … / … %</td><td class='num'>97.3 / … / … %</td><td class='num'>—</td></tr></tbody></table></div><p class='small'>一格里用 / 隔开的依次是随机种子 0、1、2，“…”表示这个种子还没有训练完或者还没有重新评测；每个种子评测 1026 个回合（27 个瓶子各 38 个），每回合 20 秒。瓶口伸进瓶盖里 10 mm：瓶盖沿螺纹升 6 mm 后脱开，再提 5 mm，瓶盖的下沿就高过了瓶口。“松手”= 压在瓶盖上的指尖少于 2 个、超过 0.5 秒，回合结束；“被高度限制截断”= 瓶盖被提到螺纹顶端以上约 14 mm，碰到转圆柱环境留下来的高度限制，回合结束。中间三列按训练时的规则评测；最后两列把高度限制去掉再评测一次，看策略在不被截断的情况下能不能把瓶盖一直拿到 20 秒结束。</p><details class='tasks'><summary>最初的统计方式（数字偏低，留作对照）</summary><div class='tablewrap'><table><thead><tr><th>触觉输入</th><th class='num'>提到 5 mm 以上并保持到结束</th><th class='num'>提到 10 mm 以上并保持 0.5 秒</th><th class='num'>回合提前结束（松手或被截断）</th><th class='num'>平均拧开用时</th></tr></thead><tbody><tr><td>无触觉</td><td class='num'>76.1 / 80.8 / 59.4 %</td><td class='num'>32.3 / 21.2 / 23.8 %</td><td class='num'>18.8 / 18.0 / 37.5 %</td><td class='num'>9.0 s</td></tr>
+<tr><td>LingBot-Touch 官方编码器（冻结）<br><span class='small'>训练中（1914 / 3000 万步）；训练中（1947 / 3000 万步）</span></td><td class='num'>98.4 / … / … %</td><td class='num'><b>98.2 / … / … %</b></td><td class='num'><b>—</b></td><td class='num'>0.8 / … / … %</td><td class='num'>1.1 / … / … %</td><td class='num'>97.3 / … / … %</td><td class='num'>—</td></tr></tbody></table></div><p class='small'>一格里用 / 隔开的依次是随机种子 0、1、2，“…”表示这个种子还没有训练完或者还没有重新评测；每个种子评测 1026 个回合（27 个瓶子各 38 个），每回合 20 秒。瓶口伸进瓶盖里 10 mm：瓶盖沿螺纹升 6 mm 后脱开，再提 5 mm，瓶盖的下沿就高过了瓶口。“松手”= 压在瓶盖上的指尖少于 2 个、超过 0.5 秒，回合结束；“被高度限制截断”= 瓶盖被提到螺纹顶端以上约 14 mm，碰到转圆柱环境留下来的高度限制，回合结束。中间三列按训练时的规则评测；最后两列把高度限制去掉再评测一次，看策略在不被截断的情况下能不能把瓶盖一直拿到 20 秒结束。</p><details class='tasks'><summary>最初的统计方式（数字偏低，留作对照）</summary><div class='tablewrap'><table><thead><tr><th>触觉输入</th><th class='num'>提到 5 mm 以上并保持到结束</th><th class='num'>提到 10 mm 以上并保持 0.5 秒</th><th class='num'>回合提前结束（松手或被截断）</th><th class='num'>平均拧开用时</th></tr></thead><tbody><tr><td>无触觉</td><td class='num'>76.1 / 80.8 / 59.4 %</td><td class='num'>32.3 / 21.2 / 23.8 %</td><td class='num'>18.8 / 18.0 / 37.5 %</td><td class='num'>9.0 s</td></tr>
 <tr><td>二值接触</td><td class='num'>97.9 / 91.4 / 89.3 %</td><td class='num'>65.7 / 32.6 / 66.5 %</td><td class='num'>1.5 / 5.6 / 8.2 %</td><td class='num'>9.2 s</td></tr>
 <tr><td>原始信号</td><td class='num'>95.3 / 93.4 / 28.4 %</td><td class='num'>48.2 / 48.9 / 9.6 %</td><td class='num'>3.7 / 5.2 / 60.2 %</td><td class='num'>10.6 s</td></tr>
 <tr><td>CNN（和策略一起训练）</td><td class='num'>88.6 / 89.5 / 90.8 %</td><td class='num'>64.4 / 46.7 / 49.1 %</td><td class='num'>9.4 / 10.2 / 5.9 %</td><td class='num'>9.3 s</td></tr>
@@ -1086,7 +1088,7 @@ td.num b{color:var(--fg)}
 <li><b>用冻结的官方 LingBot-Touch 编码器能训练出“拧开并提起瓶盖”。</b>已完成的种子：拧开 98.4 %（已完成 1 个种子）；拧开并把瓶盖提到高过瓶口 98.2 %（已完成 1 个种子）；松手 0.8 %（已完成 1 个种子）。</li>
 <li><b>触觉有用，而且是用在“提住”上。</b>五种输入都能拧开（已完成的 13 次训练在 94.7–99.7 % 之间）。拧开并把瓶盖提到高过瓶口的比例：不给触觉 80.3 / 93.2 / 69.9 %（平均 81.1 ± 11.7）；带触觉的四种是二值接触 99.1 / 96.1 / 94.3 %（平均 96.5 ± 2.4），CNN 98.1 / 99.5 / 94.2 %（平均 97.3 ± 2.7），LingBot-Touch 98.2 %（已完成 1 个种子），原始信号 97.0 / 97.0 / 68.2 %（平均 87.4 ± 16.6）。差别主要来自松手：不给触觉 14.7 / 5.8 / 27.0 %（平均 15.8 ± 10.7）；二值接触 0.2 / 0.1 / 2.8 %（平均 1.0 ± 1.5）；CNN 0.1 / 0.2 / 2.5 %（平均 0.9 ± 1.4）；LingBot-Touch 0.8 %（已完成 1 个种子）；原始信号 2.0 / 1.6 / 20.4 %（平均 8.0 ± 10.7）。不给触觉的策略多数是把瓶盖提起来以后又松开的，它没有办法知道手指还有没有压在瓶盖上。</li>
 <li><b>带触觉的四种输入之间分不出高下。</b>除了原始信号的种子 2（它有两成的回合松手，和不给触觉的策略差不多），带触觉的各次训练都在 94 % 以上，不同输入之间的差距比同一种输入换个种子的波动还小。原始信号换个种子不稳定，这在转圆柱时也出现过（三个种子 60.9 / 7.0 / 87.0 %）。也就是说，这个任务对带触觉的策略已经接近满分，没有区分度：它能说明“用官方编码器可以训练出这个任务”和“触觉有用”，但不能说明哪一种触觉表示更好。要比较，需要更难的版本（瓶盖的形状和大小差别更大），已经在做。</li>
-<li><b>去掉高度限制再评测，结论一样。</b>把瓶盖提到高过瓶口并一直拿到 20 秒结束的比例：不给触觉 77.4 / 88.7 / 61.1 %（平均 75.7 ± 13.9）；二值接触 98.9 / 94.6 / 91.6 %（平均 95.1 ± 3.7）；原始信号 96.3 / 96.5 %（已完成 2 个种子）；CNN 96.5 / 99.5 / 93.5 %（平均 96.5 ± 3.0）；LingBot-Touch 97.3 %（已完成 1 个种子）。</li>
+<li><b>去掉高度限制再评测，结论一样。</b>把瓶盖提到高过瓶口并一直拿到 20 秒结束的比例：不给触觉 77.4 / 88.7 / 61.1 %（平均 75.7 ± 13.9）；二值接触 98.9 / 94.6 / 91.6 %（平均 95.1 ± 3.7）；原始信号 96.3 / 96.5 / 32.8 %（平均 75.2 ± 36.7）；CNN 96.5 / 99.5 / 93.5 %（平均 96.5 ± 3.0）；LingBot-Touch 97.3 %（已完成 1 个种子）。</li>
 <li><b>更正两处我之前的统计。</b>第一，我把“回合提前结束”都标成了“中途松手”，这不对：带触觉的策略提前结束的回合，多数是把瓶盖提到了螺纹顶端以上约 14 mm，碰到转圆柱环境留下来、我没有关掉的高度限制。这种情况其实是提起来了，却被算成了失败。第二，我原来定的成功线（提到 10 mm 以上）正好是提起奖励封顶的位置，各个策略都把瓶盖停在 10 mm 上下（结束时平均在螺纹顶端以上 9.6–11.0 mm），差零点几毫米就从成功变成失败，同一种输入换个种子能差十几个百分点。所以把所有策略重新评测了一遍：分开统计松手和被截断，并且去掉高度限制再评测一次。原来的数字收在表下面的折叠栏里。</li>
 </ul>
 
@@ -1110,6 +1112,39 @@ td.num b{color:var(--fg)}
 <li><b>更正我之前的一句话。</b>我原先写的原因是“转得越快越带不住”，这个说法不准确：两种策略脱开之前的转速只差 25 %（1.44 对 1.15 rad/s），改回之后的策略也远快于 0.5 rad/s。真正的差别是上面说的压着转还是带着转。</li>
 </ul>
 <p class="small">模型上的一个简化会让上排看起来比真实情况更顺：瓶盖脱开以后螺纹不再起作用，落回瓶口时不会重新旋上，所以能一直空转。表和图只来自这两段回放（各 27 个回合）；1026 个回合的评测结果见上面的表。</p>
+
+<h3 id="capdiv">瓶盖的形状和大小各不相同的版本</h3>
+<p>上面那 27 个瓶子看起来几乎一样（瓶盖都是直径 37–42 mm 的圆盖），而且对带触觉的策略来说已经接近满分，分不出几种触觉输入的高下。所以又做了一个版本：<b>九种形状 × 三种大小的 27 个瓶盖</b>，每种形状配一个颜色和瓶身形状都不同的瓶子。</p>
+<figure class="fig"><img src="../media/lbt_capdiv_sheet.jpg?v=1119a" alt="27 个形状和大小各不相同的瓶盖" style="width:100%;height:auto;display:block;border-radius:6px">
+<figcaption><b>27 个瓶盖：九种形状（列）× 三种大小（行）。</b>形状是转九种物体时用过的那九种，压扁成瓶盖的比例：小、中、大号的直径约 32、40、48 mm（棱柱按外接圆算更大一些），高 18、22、27 mm。瓶身只是外观，没有碰撞。画面是每个回合开始时的样子，手指的起始姿势取自为这九种形状各自生成的抓取缓存。</figcaption></figure>
+<p><b>和上一个版本相比改了三处。</b></p>
+<ul>
+<li>瓶盖：形状和大小不再相近，三棱柱、圆台这类不好抓的形状也在里面。</li>
+<li>去掉了转圆柱环境留下来的高度限制，回合只会因为松手提前结束。</li>
+<li>提起的奖励一直加到螺纹顶端以上 15 mm，成功线定在它下面：<b>成功 = 拧开，把瓶盖提到高过瓶口（5 mm），并且一直拿到 20 秒结束</b>。螺纹（1.5 圈、每圈 4 mm）、阻力矩（0.02–0.06 N·m）、松手的判定和训练步数都没变。</li>
+</ul>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_capdiv_cnn.jpg?v=1119a" src="../media/lbt_capdiv_cnn.mp4?v=1119a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>CNN 输入的策略（种子 0）在九种形状的瓶盖上，各取中号，实时播放 20 秒。</b>每格右上角是瓶盖的形状，左上角是已转圈数和“还在螺纹上 / 已拧开，提起多少毫米”。这 9 个里 8 个拧开并提了起来（瓶盖被一直提到滑动行程的尽头，约 24 mm），圆台那个到结束也没拧开。27 个瓶盖全部算上：25 个拧开，23 个提到高过瓶口并拿到结束，2 个中途松手。</figcaption></figure>
+<h4>结果</h4>
+<div class='tablewrap'><table><thead><tr><th>触觉输入（各 3000 万步）</th><th class='num'>拧开</th><th class='num'>拧开，并把瓶盖提到高过瓶口、拿到回合结束</th><th class='num'>平均 ± 标准差</th><th class='num'>松手</th><th class='num'>其中提起以后才松手</th><th class='num'>平均拧开用时</th></tr></thead><tbody><tr><td>无触觉</td><td class='num' colspan='6'>训练中（749 / 3000 万步）</td></tr>
+<tr><td>二值接触</td><td class='num' colspan='6'>排队中</td></tr>
+<tr><td>原始信号</td><td class='num' colspan='6'>排队中</td></tr>
+<tr><td>CNN（和策略一起训练）<br><span class='small'>训练中（348 / 3000 万步）</span></td><td class='num'>91.6 / … / … %</td><td class='num'><b>86.1 / … / … %</b></td><td class='num'><b>—</b></td><td class='num'>9.8 / … / … %</td><td class='num'>4.7 / … / … %</td><td class='num'>9.5 s</td></tr>
+<tr><td>LingBot-Touch 官方编码器（冻结）</td><td class='num' colspan='6'>训练中（295 / 3000 万步）；训练中（295 / 3000 万步）</td></tr></tbody></table></div><p class='small'>一格里用 / 隔开的依次是随机种子 0、1、2，“…”表示这个种子还没有跑完；每个种子评测 1026 个回合（27 个瓶盖各 38 个），每回合 20 秒。这个版本没有高度限制，回合只会因为松手提前结束。</p><div class='tablewrap'><table><thead><tr><th>拧开并提到高过瓶口、拿到结束 %（三种大小平均）</th><th class='num'>CNN<br><span class='small'>1 个种子</span></th></tr></thead><tbody><tr><td>圆柱</td><td class='num'>96</td></tr>
+<tr><td>三棱柱</td><td class='num'>50</td></tr>
+<tr><td>四棱柱</td><td class='num'>91</td></tr>
+<tr><td>五棱柱</td><td class='num'>99</td></tr>
+<tr><td>六棱柱</td><td class='num'>94</td></tr>
+<tr><td>椭圆柱</td><td class='num'>83</td></tr>
+<tr><td>圆台</td><td class='num'>81</td></tr>
+<tr><td>鼓形</td><td class='num'>92</td></tr>
+<tr><td>球形</td><td class='num'>89</td></tr><tr><td><i>小号（九种形状平均）</i></td><td class='num'>82</td></tr>
+<tr><td><i>中号（九种形状平均）</i></td><td class='num'>89</td></tr>
+<tr><td><i>大号（九种形状平均）</i></td><td class='num'>87</td></tr></tbody></table></div><p><b>目前能说的（只完成了 1 次训练，其余在进行）。</b></p>
+<ul>
+<li><b>这个版本确实更难，而且不同形状之间拉开了差距。</b>同样的 CNN 输入、同样的训练步数，上一个版本里拧开并提起的比例是 94–99.5 %，这里种子 0 是 86.1 %。三棱柱最难（只有一半成功），圆台和椭圆柱其次，圆柱、五棱柱、六棱柱在 94 % 以上。</li>
+<li><b>其余结果在路上。</b>四种基线各三个种子在两台机器上逐个训练，每次约 20 分钟，预计 11-19 早上 6 点半前跑完；冻结的官方 LingBot-Touch 编码器三个种子每次约 3.3 小时，预计 7 点到 9 点之间陆续出来。到时候再比较五种输入。</li>
+</ul>
 
 
 
