@@ -842,6 +842,31 @@ td.num b{color:var(--fg)}
 <p class='small'>加粗的五行是正式对比（策略只看本体感觉和各自的触觉输入，价值网络另看特权信息），每次训练 1 亿步。成功率、净转圈数、持续时间在 9.8 m/s² 下评测，持续时间是 20 s 回合里掉落之前的平均时间；低重力指 0.05 m/s²；末期重力是训练结束时课程加到的重力（m/s²）。多个种子的结果用“/”隔开，“…”表示还在训练或评测。论文一列是表 3 里 3 个种子的均值 ± 标准差。“参照”是 Sharpa 原版设置（训练 1.05 亿步）：策略带特权信息和接触力观测、刚性接触、16384 个环境。“最初的设置”是价值网络不看特权信息的那一版。“重新预训练的编码器”一行把冻结的 LingBot 换成<a href='#retrain'>第七节</a>里自己训练的编码器，其余设置相同。</p>
 <div id='c_rl_gravity'></div><div id='c_rl_reward'></div><div id='c_rl_yaw'></div>
 
+<h3 id="multi">更接近论文的版本：九种形状 × 三种尺度</h3>
+<p>上面的对比只有一个圆柱，这是和论文设置差得最远的一处：论文对这个任务的描述是转动“九种形状、三种尺度”的物体（表 8），但没有列出是哪九种形状、尺寸多大，环境也没有公开。为了看结论在更难的任务上是否成立，我们自己定了一组：九种凸的形状，每种三个尺度（基准的 0.8、1.0、1.2 倍），共 27 个物体。基准大小取 Sharpa 仓库自带圆柱的大小（直径 40 mm、高 32 mm）。</p>
+<figure class="fig"><img src="../media/lbt_nine_shapes.jpg" alt="九种形状"><figcaption><b>九种形状（图中是 1.0 倍尺度）。</b>每个物体的网格都是不超过 64 个顶点的凸多面体，这样物理引擎用的碰撞外形和触觉计算用的网格是同一个。4104 个并行环境里每个物体占 152 个；每个物体用仓库自带的脚本各生成了 600 组稳定的初始抓取。价值网络额外能看到物体是哪种形状、多大（只在训练时用），策略本身看不到。其余设置和单圆柱时完全相同。</figcaption></figure>
+
+<div class='tablewrap'><table><thead><tr><th>进入策略的触觉输入</th><th class='num'>九物体：成功率（各个种子）</th><th class='num'>尺度 0.8 / 1.0 / 1.2</th><th class='num'>平均圈数</th><th class='num'>对照：单圆柱（平均 ± 标准差）</th></tr></thead><tbody>
+<tr><td>无触觉</td><td class='num'><span class='small'>训练中（1 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>46.2 ± 32.5</td></tr>
+<tr><td>二值接触</td><td class='num'><span class='small'>排队中</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>77.6 ± 7.2</td></tr>
+<tr><td>原始信号</td><td class='num'><span class='small'>排队中</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>51.7 ± 40.8</td></tr>
+<tr><td>CNN（和策略一起训练）</td><td class='num'>67.3 %</td><td class='num'>55 / 74 / 73 %</td><td class='num'>1.58</td><td class='num'>85.5 ± 3.6</td></tr>
+<tr><td>LingBot-Touch（冻结）</td><td class='num'><span class='small'>排队中</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>84.6 ± 3.8</td></tr>
+</tbody></table></div>
+<div class='tablewrap'><table><thead><tr><th>分形状的成功率 %</th><th class='num'>CNN</th></tr></thead><tbody>
+<tr><td>圆柱</td><td class='num'>86.8</td></tr>
+<tr><td>三棱柱</td><td class='num'>56.1</td></tr>
+<tr><td>四棱柱</td><td class='num'>65.8</td></tr>
+<tr><td>五棱柱</td><td class='num'>60.5</td></tr>
+<tr><td>六棱柱</td><td class='num'>78.1</td></tr>
+<tr><td>椭圆柱</td><td class='num'>75.4</td></tr>
+<tr><td>圆台</td><td class='num'>25.4</td></tr>
+<tr><td>鼓形</td><td class='num'>79.0</td></tr>
+<tr><td>多面体球</td><td class='num'>79.0</td></tr>
+</tbody></table></div><p class='small'>每个策略评测 1026 个回合（27 个物体变体各 38 个），满重力，判据和单圆柱时相同（掉落之前绕轴净转满一圈）。分形状的数字每种形状只有 114 个回合，误差约 ±4 个百分点。</p>
+<p><b>目前能说的（只有部分结果）。</b>任务确实难了很多：同样的 CNN 配置、同一个种子，单圆柱时成功率 89.6 %，九物体时 67.3 %；重力课程在单圆柱时 1200 万步就走完，这里到 1 亿步快结束时才走完，说明还可以再训练得更久。分形状看差别很大：圆柱最容易（86.8 %），上小下大的圆台最难（25.4 %），棱柱里棱越少越难；小尺度（0.8 倍）比另外两个尺度低约 18 个百分点。其余三种基线正在逐个训练；LingBot 的三个种子等另一台机器的显卡空出来后开始，每次约 11 小时。</p>
+
+
 <h3>这个设置是怎么定下来的</h3>
 <p><b>第一步：确认移植后的环境本身能学起来。</b>完全按 Sharpa 仓库自己的设置（16384 个环境、策略带特权信息和接触力观测、刚性接触）训练，约 2200 万步重力课程就走完了；训练到 1.05 亿步后评测，满重力下成功率 97.7 %，平均净转 3.05 圈（上表第一行）。所以环境移植和评测流程没有问题。</p>
 <div id='c_rl_ref'></div>
@@ -946,11 +971,10 @@ td.num b{color:var(--fg)}
 <h3>结果</h3>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_cap_twist_cnn.jpg?v=1118a" src="../media/lbt_cap_twist_cnn.mp4?v=1118a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>试训练出的策略在 6 个不同的瓶子上，实时播放 20 秒。</b>27 个瓶子里每隔 5 个取一个，没有按结果挑选；左上角是瓶盖已转过的圈数，转满 2 圈变绿。这 6 个瓶子里转了 1.7–4.0 圈，没有松手。</figcaption></figure>
-<div class="tablewrap"><table><thead><tr><th>触觉输入</th><th class="num">训练步数</th><th class="num">转满 1 圈</th><th class="num">转满 2 圈</th><th class="num">转满 3 圈</th><th class="num">平均圈数</th><th class="num">没有松手</th></tr></thead><tbody>
-<tr><td>CNN（和策略一起训练），最初的试训练</td><td class="num">1200 万</td><td class="num">99.5 %</td><td class="num">92.4 %</td><td class="num">57.0 %</td><td class="num">3.10</td><td class="num">99.5 %</td></tr>
-<tr><td>CNN（和策略一起训练）</td><td class="num">3000 万</td><td class="num">99.9 %</td><td class="num">94.7 %</td><td class="num">54.1 %</td><td class="num">3.05</td><td class="num">99.9 %</td></tr>
-<tr><td>LingBot-Touch 官方编码器（冻结）</td><td class="num">3000 万</td><td class="num" colspan="5">训练中，预计 21:45 前后结束。训练到 790 万步时（19:17）瓶盖转速约 1.1 rad/s，相当于 20 秒转 3.6 圈，没有松手</td></tr>
-</tbody></table></div>
+<div class='tablewrap'><table><thead><tr><th>触觉输入</th><th class='num'>训练步数</th><th class='num'>转满 1 圈</th><th class='num'>转满 2 圈</th><th class='num'>转满 3 圈</th><th class='num'>平均圈数</th><th class='num'>没有松手</th></tr></thead><tbody><tr><td>无触觉</td><td class='num'>3000 万</td><td class='num' colspan='5'>训练中（已到 2879 万步）</td></tr>
+<tr><td>CNN（和策略一起训练）</td><td class='num'>3000 万</td><td class='num'>99.9 %</td><td class='num'>94.7 %</td><td class='num'>54.1 %</td><td class='num'>3.05</td><td class='num'>99.9 %</td></tr>
+<tr><td>LingBot-Touch 官方编码器（冻结）</td><td class='num'>3000 万</td><td class='num' colspan='5'>训练中（已到 1484 万步）</td></tr>
+<tr><td>CNN，最初的试训练</td><td class='num'>1200 万</td><td class='num'>99.5 %</td><td class='num'>92.4 %</td><td class='num'>57.0 %</td><td class='num'>3.10</td><td class='num'>99.5 %</td></tr></tbody></table></div>
 <p><b>目前能说的。</b>这个任务在 PhysX 里能学起来，而且很快：CNN 输入训练 1200 万步（约 15 分钟）后，99.5 % 的回合转满 1 圈、92.4 % 转满 2 圈。按阻力矩分三档看，阻力越大转得略少（平均 3.21、3.09、3.00 圈），差别不大。训练过程中踩过一个坑：最初没有“松手即结束”这条规则，策略学成了把手指挪开、什么都不做，因为那样没有任何代价。</p>
 <p><b>还没做的和局限。</b>官方编码器的那次训练在进行中，从训练曲线看它同样学得起来（790 万步时的转速和 CNN 试训练 900 万步时相当）；正式评测出来后和同样步数的 CNN、无触觉、二值接触、原始信号对照放在一起比较，这几个对照正在另一台机器上逐个训练。CNN 多训练到 3000 万步后成绩和 1200 万步时基本一样（转满 2 圈 94.7 % 对 92.4 %），说明这个任务 1200 万步左右就学到头了。任务本身也还简单：没有螺纹（瓶盖不会随着转动升起、脱落），阻力矩取得偏小，瓶身只有外观、没有碰撞。</p>
 
