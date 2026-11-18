@@ -24,7 +24,7 @@
 <a class="card" href="docs/posttrain.html"><div class="t">后训练过程</div><div class="d">事件级持续预训练、固定时长后训练、一致性蒸馏、动作专家预训练、评测专项后训练，每一步解决上一步留下的什么问题。实验：采样时间线、流匹配与蒸馏的 3D 粒子、三阶段参数冻结图。</div></a>
 <a class="card" href="docs/benchmarks.html"><div class="t">评测数据集</div><div class="d">视频预测指令跟随、真实 ALOHA 零样本、LIBERO 的 ID / Pro / OOD 三种考法、RoboDojo 的五个能力维度各在考什么，附论文全部结果图。3D：一张桌子六种考法、双臂桌面五个维度。</div></a>
 <a class="card" href="docs/vla_wam.html"><div class="t">复现实验：OpenWAM-α 与 MolmoAct2</div><div class="d">在 4 张 A800 上复现一个世界动作模型（OpenWAM-α）和一个 VLA（MolmoAct2 / Think）。OpenWAM-α 从基座重新训练后 LIBERO 99.45 %（论文 99.3）；发布权重各跑 2000 次：99.0 / 97.0 / 97.7 %，与论文差 0.2–0.4；四组任务各考什么（40 段示范视频）、三模型并排视频、按原配方重新训练的进度。</div></a>
-<a class="card" href="docs/lingbot_touch.html"><div class="t">复现实验：LingBot-Touch 触觉基础模型</div><div class="d">核对开源权重；把冻结的触觉编码器接到同事的 mortar 仿真器（两指夹爪、五指手）和 Sharpa 手的 Isaac 仿真触觉上做 probe：预训练权重明显好于同结构的随机权重，但不比原始信号上的小网络好；读出头训练充分后两者持平；论文表 3 的 in-hand rotation 强化学习对比已出 7 / 15 次，LingBot 的三个种子训练中；按论文方法从零重新预训练已完成，线性读出质量和官方权重持平，后续测试进行中。</div></a>
+<a class="card" href="docs/lingbot_touch.html"><div class="t">复现实验：LingBot-Touch 触觉基础模型</div><div class="d">核对开源权重；把冻结的触觉编码器接到同事的 mortar 仿真器（两指夹爪、五指手）和 Sharpa 手的 Isaac 仿真触觉上做 probe：预训练权重明显好于同结构的随机权重，但不比原始信号上的小网络好；读出头训练充分后两者持平；论文表 3 的 in-hand rotation 强化学习对比已出 7 / 15 次，LingBot 的三个种子训练中；按论文方法从零重新预训练已完成，probe 上和官方权重相当（在没见过的 mortar 上也是），用它做强化学习进行中。</div></a>
 <a class="card" href="docs/notes.html"><div class="t">原理问答</div><div class="d">14B 为什么赢 64B、1950 个 token 和 0.12 秒怎么算、为什么不直接固定时长、一致性蒸馏在约束什么、8 秒与 2 秒的关系、MoT 与 MoE、LoRA、LIBERO 98% 为什么不算泛化。</div></a>
 </div>
 

@@ -42,7 +42,7 @@ window.Charts = (function () {
     const ticks = cfg.ticks || 4;
     for (let i = 0; i <= ticks; i++) { const v = max * i / ticks, y = mt + ph - ph * i / ticks; el('line', { x1: ml, x2: W - mr, y1: y, y2: y, stroke: lineC, 'stroke-width': 1 }, svg); el('text', { x: ml - 6, y: y + 4, 'text-anchor': 'end', 'font-size': 11, fill: muted }, svg).textContent = fmt(v, cfg.unit, cfg.decimals); }
     const n = cfg.categories.length, k = series.length; const band = pw / n; const bw = Math.min(24, (band * 0.78 - 2 * (k - 1)) / k); const gw = bw * k + 2 * (k - 1);
-    const tip = tooltip(host); const y0 = mt + ph;
+    const tip = tooltip(host); const y0 = mt + ph; const labels = [];
     cfg.categories.forEach((c, ci) => {
       const gx = ml + band * ci + (band - gw) / 2;
       el('text', { x: ml + band * (ci + 0.5), y: H - 12, 'text-anchor': 'middle', 'font-size': 11.5, fill: cfg.boldCat === c ? fg : muted, 'font-weight': cfg.boldCat === c ? 700 : 400 }, svg).textContent = c;
@@ -50,11 +50,13 @@ window.Charts = (function () {
         const v = s.values[ci]; const x = gx + si * (bw + 2); const y1 = v == null ? y0 : y0 - ph * v / max;
         const hit = el('rect', { x: x - 1, y: mt, width: bw + 2, height: ph, fill: 'transparent' }, svg);
         const p = el('path', { d: vbar(x, y1, bw, y0), fill: s.color }, svg);
-        if (v != null && (cfg.label === s.name || cfg.labelAll)) el('text', { x: x + bw / 2, y: y1 - 4, 'text-anchor': 'middle', 'font-size': 11, fill: fg, 'font-family': 'var(--font-mono)' }, svg).textContent = fmt(v, cfg.unit, cfg.decimals);
+        if (v != null && (cfg.label === s.name || cfg.labelAll)) labels.push([x + bw / 2, y1 - 4, fmt(v, cfg.unit, cfg.decimals)]);
         const rows = () => series.map(ss => ({ color: ss.color, value: fmt(ss.values[ci], cfg.unit, cfg.decimals), label: ss.name }));
         [hit, p].forEach(t => { t.addEventListener('pointerenter', e => { p.setAttribute('opacity', 0.8); tip.show(e, [{ value: c, label: '' }, ...rows()]); }); t.addEventListener('pointermove', e => tip.move(e)); t.addEventListener('pointerleave', () => { p.removeAttribute('opacity'); tip.hide(); }); });
       });
     });
+    /* value labels last, with a surface-coloured halo, so a taller neighbouring bar cannot cover them */
+    labels.forEach(([x, y, t]) => { el('text', { x, y, 'text-anchor': 'middle', 'font-size': 11, fill: fg, 'font-family': 'var(--font-mono)', stroke: css('--bg') || surf, 'stroke-width': 3, 'stroke-linejoin': 'round', 'paint-order': 'stroke', 'pointer-events': 'none' }, svg).textContent = t; });
     if (cfg.note) host.appendChild(h('div', 'src', cfg.note));
     tableView(host, cfg.categories, series, cfg.unit, cfg.catLabel, cfg.decimals);
   }
