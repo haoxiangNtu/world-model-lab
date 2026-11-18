@@ -853,26 +853,26 @@ td.num b{color:var(--fg)}
 <figcaption><b>九物体任务：不用触觉（上）和用触觉（下，CNN）的策略，同样的 5 个物体、同样的初始抓取，满重力，实时播放 20 秒。</b>左上角是这一回合已转过的圈数（转满 1 圈变绿），左下角是掉落次数，红框表示刚掉落。不用触觉的策略握不住物体：不断掉落、重新开始，几乎转不起来（1026 个回合的成功率 6.2 %）。用触觉的策略在圆柱、四棱柱、六棱柱、多面体球上能持续转动（成功率 67.3 %），上小下大的圆台是它最差的形状（25 %），画面里也转不动。LingBot 编码器的策略训练完后补在第三行。</figcaption></figure>
 
 <div class='tablewrap'><table><thead><tr><th>进入策略的触觉输入</th><th class='num'>九物体：成功率（各个种子）</th><th class='num'>尺度 0.8 / 1.0 / 1.2</th><th class='num'>平均圈数</th><th class='num'>对照：单圆柱（平均 ± 标准差）</th></tr></thead><tbody>
-<tr><td>无触觉</td><td class='num'>6.2 %；<span class='small'>训练中（58 / 100 百万步）</span></td><td class='num'>4 / 7 / 8 %</td><td class='num'>0.27</td><td class='num'>46.2 ± 32.5</td></tr>
-<tr><td>二值接触</td><td class='num'><span class='small'>训练中（78 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>77.6 ± 7.2</td></tr>
+<tr><td>无触觉</td><td class='num'>6.2 %；<span class='small'>训练中（82 / 100 百万步）</span></td><td class='num'>4 / 7 / 8 %</td><td class='num'>0.27</td><td class='num'>46.2 ± 32.5</td></tr>
+<tr><td>二值接触</td><td class='num'><span class='small'>训练中（99 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>77.6 ± 7.2</td></tr>
 <tr><td>原始信号</td><td class='num'><span class='small'>排队中</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>51.7 ± 40.8</td></tr>
-<tr><td>CNN（和策略一起训练）</td><td class='num'>67.3 %；<span class='small'>训练中（81 / 100 百万步）</span><span class='small'>训练中（68 / 100 百万步）</span></td><td class='num'>55 / 74 / 73 %</td><td class='num'>1.58</td><td class='num'>85.5 ± 3.6</td></tr>
-<tr><td>LingBot-Touch（冻结）</td><td class='num'><span class='small'>训练中（10 / 100 百万步）</span><span class='small'>训练中（9 / 100 百万步）</span><span class='small'>训练中（9 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>84.6 ± 3.8</td></tr>
+<tr><td>CNN（和策略一起训练）</td><td class='num'>67.3 / 52.3 %；<span class='small'>训练中（91 / 100 百万步）</span></td><td class='num'>49 / 66 / 65 %</td><td class='num'>1.58 / 1.13</td><td class='num'>85.5 ± 3.6</td></tr>
+<tr><td>LingBot-Touch（冻结）</td><td class='num'><span class='small'>训练中（14 / 100 百万步）</span><span class='small'>训练中（13 / 100 百万步）</span><span class='small'>训练中（13 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>84.6 ± 3.8</td></tr>
 </tbody></table></div>
 <div class='tablewrap'><table><thead><tr><th>分形状的成功率 %</th><th class='num'>无触觉</th><th class='num'>CNN</th></tr></thead><tbody>
-<tr><td>圆柱</td><td class='num'>15.8</td><td class='num'>86.8</td></tr>
-<tr><td>三棱柱</td><td class='num'>0.0</td><td class='num'>56.1</td></tr>
-<tr><td>四棱柱</td><td class='num'>6.1</td><td class='num'>65.8</td></tr>
-<tr><td>五棱柱</td><td class='num'>7.9</td><td class='num'>60.5</td></tr>
-<tr><td>六棱柱</td><td class='num'>7.9</td><td class='num'>78.1</td></tr>
-<tr><td>椭圆柱</td><td class='num'>0.0</td><td class='num'>75.4</td></tr>
-<tr><td>圆台</td><td class='num'>2.6</td><td class='num'>25.4</td></tr>
-<tr><td>鼓形</td><td class='num'>6.1</td><td class='num'>79.0</td></tr>
-<tr><td>多面体球</td><td class='num'>9.7</td><td class='num'>79.0</td></tr>
+<tr><td>圆柱</td><td class='num'>15.8</td><td class='num'>86.0</td></tr>
+<tr><td>三棱柱</td><td class='num'>0.0</td><td class='num'>28.1</td></tr>
+<tr><td>四棱柱</td><td class='num'>6.1</td><td class='num'>52.6</td></tr>
+<tr><td>五棱柱</td><td class='num'>7.9</td><td class='num'>55.3</td></tr>
+<tr><td>六棱柱</td><td class='num'>7.9</td><td class='num'>71.5</td></tr>
+<tr><td>椭圆柱</td><td class='num'>0.0</td><td class='num'>69.3</td></tr>
+<tr><td>圆台</td><td class='num'>2.6</td><td class='num'>23.2</td></tr>
+<tr><td>鼓形</td><td class='num'>6.1</td><td class='num'>75.9</td></tr>
+<tr><td>多面体球</td><td class='num'>9.7</td><td class='num'>76.8</td></tr>
 </tbody></table></div><p class='small'>每个策略评测 1026 个回合（27 个物体变体各 38 个），满重力，判据和单圆柱时相同（掉落之前绕轴净转满一圈）。分形状的数字每种形状只有 114 个回合，误差约 ±4 个百分点。</p>
 <p><b>目前能说的（只有部分结果）。</b></p>
 <ul>
-<li><b>任务确实难了很多。</b>同样的 CNN 配置、同一个种子，单圆柱时成功率 89.6 %，九物体时 67.3 %；重力课程在单圆柱时 1200 万步就走完，这里到 1 亿步快结束时才走完，说明还可以再训练得更久。</li>
+<li><b>任务确实难了很多。</b>同样的 CNN 配置，单圆柱时三个种子的成功率是 89.6 / 82.6 / 84.4 %，九物体时已完成的两个种子是 67.3 % 和 52.3 %；重力课程在单圆柱时 1200 万步就走完，这里到 1 亿步快结束时才走完，说明还可以再训练得更久。</li>
 <li><b>物体一多，不用触觉就学不起来了。</b>无触觉的策略满重力下成功率只有 6.2 %。它在整个训练过程中掉落率一直降不下来，重力课程根本没有启动（一直停在 0.05 m/s²）；即使在这个几乎没有重力的条件下评测，成功率也只有 21.4 %。单圆柱时无触觉的三个种子是 50.9 / 76.1 / 11.6 %。这和论文的数字（无触觉 11.5 %）是同一个量级，说明多物体的设置才接近论文的难度。</li>
 <li>分形状看差别很大：圆柱最容易（CNN 86.8 %），上小下大的圆台最难（25.4 %），棱柱里棱越少越难；小尺度（0.8 倍）比另外两个尺度低约 18 个百分点。</li>
 </ul>
