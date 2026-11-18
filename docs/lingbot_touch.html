@@ -51,6 +51,8 @@ td.num b{color:var(--fg)}
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_mortar_hand3.jpg?v=1118b" src="../media/lbt_mortar_hand3.mp4?v=1118b" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>mortar 五指手捏起 8 cm 立方块（同事接进 Isaac Lab 3 的捏取任务），实时播放 11 秒。</b>三格回放的是同一段人工示教，各自加了不同的扰动（手的位置、偏转角、捏合幅度）：左边没捏稳，方块掉回桌面；中间捏住并提起约 19 cm；右边提起后方块在手里下滑了约 2 cm。手只画了骨架（连杆的连线），五个指尖的 FEM 软垫和方块按仿真数据画出，软垫按形变量上色；下方是同一时刻五根手指送进编码器的输入。128 次回放里 117 次提起成功，测试结果见<a href="#wuji">第四节</a>。</figcaption></figure>
 <h3 id="video-cap">PhysX：自建的拧瓶盖任务</h3>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_capdiv_lbt.jpg?v=1119a" src="../media/lbt_capdiv_lbt.mp4?v=1119a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>11-19 新增：冻结的官方 LingBot-Touch 编码器训练出的策略，在形状和大小各不相同的瓶盖上拧开并提起（九种形状各取中号），实时播放 20 秒。</b>1026 个回合的评测成功率 81.4 %（种子 0）；和其他触觉输入的对比见<a href="#capdiv">第八节</a>：CNN 三个种子平均 83.0 %，官方编码器没有显出优势。</figcaption></figure>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_capdiv_cnn.jpg?v=1119a" src="../media/lbt_capdiv_cnn.mp4?v=1119a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>11-19 新增：瓶盖的形状和大小各不相同的版本（九种形状 × 三种大小），这里是九种形状各取中号，CNN 输入的策略，实时播放 20 秒。</b>每种形状配一个颜色和瓶身形状都不同的瓶子。9 个里 8 个拧开并提了起来，圆台那个没拧开。任务设置、27 个瓶盖的总览和各种触觉输入的结果见<a href="#capdiv">第八节</a>；官方 LingBot-Touch 编码器在这个版本上的训练正在进行。</figcaption></figure>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_cap_lift_lbt.jpg?v=1119a" src="../media/lbt_cap_lift_lbt.mp4?v=1119a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
@@ -1123,6 +1125,8 @@ td.num b{color:var(--fg)}
 <li>去掉了转圆柱环境留下来的高度限制，回合只会因为松手提前结束。</li>
 <li>提起的奖励一直加到螺纹顶端以上 15 mm，成功线定在它下面：<b>成功 = 拧开，把瓶盖提到高过瓶口（5 mm），并且一直拿到 20 秒结束</b>。螺纹（1.5 圈、每圈 4 mm）、阻力矩（0.02–0.06 N·m）、松手的判定和训练步数都没变。</li>
 </ul>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_capdiv_lbt.jpg?v=1119a" src="../media/lbt_capdiv_lbt.mp4?v=1119a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>冻结的官方 LingBot-Touch 编码器训练出的策略（种子 0）在九种形状的瓶盖上，各取中号，实时播放 20 秒。</b>每格右上角是瓶盖的形状，左上角是已转圈数和“还在螺纹上 / 已拧开，提起多少毫米”。这 9 个都拧开并提了起来（瓶盖被一直提到滑动行程的尽头，约 24 mm）。27 个瓶盖全部算上：23 个拧开，20 个提到高过瓶口并拿到结束，7 个中途松手；1026 个回合的评测成功率是 81.4 %。</figcaption></figure>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_capdiv_cnn.jpg?v=1119a" src="../media/lbt_capdiv_cnn.mp4?v=1119a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>CNN 输入的策略（种子 0）在九种形状的瓶盖上，各取中号，实时播放 20 秒。</b>每格右上角是瓶盖的形状，左上角是已转圈数和“还在螺纹上 / 已拧开，提起多少毫米”。这 9 个里 8 个拧开并提了起来（瓶盖被一直提到滑动行程的尽头，约 24 mm），圆台那个到结束也没拧开。27 个瓶盖全部算上：25 个拧开，23 个提到高过瓶口并拿到结束，2 个中途松手。</figcaption></figure>
 <h4>结果</h4>
