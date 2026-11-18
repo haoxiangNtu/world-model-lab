@@ -840,7 +840,7 @@ td.num b{color:var(--fg)}
 <tr><td><b>原始信号</b></td><td class='num'>0 / 1 / 2</td><td class='num'>10.00 / 10.00 / 10.00</td><td class='num'>60.9 / 7.0 / 87.0</td><td class='num'>1.13 / 0.40 / 2.04</td><td class='num'>15.6 / 17.6 / 17.8</td><td class='num'>73.6 / 0.5 / 83.7</td><td class='num'>33.4 ± 19.5</td></tr>
 <tr><td><b>CNN（一起训练）</b></td><td class='num'>0 / 1 / 2</td><td class='num'>10.00 / 10.00 / 10.00</td><td class='num'>89.6 / 82.6 / 84.4</td><td class='num'>2.11 / 1.70 / 2.01</td><td class='num'>18.0 / 17.4 / 17.4</td><td class='num'>81.7 / 47.6 / 40.8</td><td class='num'>26.6 ± 23.1</td></tr>
 <tr><td><b>LingBot-Touch（冻结）</b></td><td class='num'>0 / 1 / 2</td><td class='num'>10.00 / 10.00 / 10.00</td><td class='num'>80.3 / 87.1 / 86.4</td><td class='num'>1.79 / 2.49 / 1.72</td><td class='num'>17.7 / 17.6 / 18.7</td><td class='num'>68.6 / 59.8 / 83.5</td><td class='num'>56.4 ± 7.5</td></tr>
-<tr><td>重新预训练的编码器（冻结）</td><td class='num'>0 / 1 / 2</td><td class='num'>8.70 / 10.00 / 10.00</td><td class='num'>68.8 / 84.8 / 83.9</td><td class='num'>1.45 / 1.56 / 1.61</td><td class='num'>15.1 / 18.1 / 18.0</td><td class='num'>70.9 / … / …</td><td class='num'>—</td></tr>
+<tr><td>重新预训练的编码器（冻结）</td><td class='num'>0 / 1 / 2</td><td class='num'>8.70 / 10.00 / 10.00</td><td class='num'>68.8 / 84.8 / 83.9</td><td class='num'>1.45 / 1.56 / 1.61</td><td class='num'>15.1 / 18.1 / 18.0</td><td class='num'>70.9 / 60.4 / 46.2</td><td class='num'>—</td></tr>
 <tr><td>最初的设置：无触觉</td><td class='num'>0</td><td class='num'>0.05</td><td class='num'>23.0</td><td class='num'>0.57</td><td class='num'>6.9</td><td class='num'>38.6</td><td class='num'>—</td></tr>
 </tbody></table></div>
 <p class='small'>加粗的五行是正式对比（策略只看本体感觉和各自的触觉输入，价值网络另看特权信息），每次训练 1 亿步。成功率、净转圈数、持续时间在 9.8 m/s² 下评测，持续时间是 20 s 回合里掉落之前的平均时间；低重力指 0.05 m/s²；末期重力是训练结束时课程加到的重力（m/s²）。多个种子的结果用“/”隔开，“…”表示还在训练或评测。论文一列是表 3 里 3 个种子的均值 ± 标准差。“参照”是 Sharpa 原版设置（训练 1.05 亿步）：策略带特权信息和接触力观测、刚性接触、16384 个环境。“最初的设置”是价值网络不看特权信息的那一版。“重新预训练的编码器”一行把冻结的 LingBot 换成<a href='#retrain'>第七节</a>里自己训练的编码器，其余设置相同。</p>
@@ -853,11 +853,11 @@ td.num b{color:var(--fg)}
 <figcaption><b>九物体任务：不用触觉（上）和用触觉（下，CNN）的策略，同样的 5 个物体、同样的初始抓取，满重力，实时播放 20 秒。</b>左上角是这一回合已转过的圈数（转满 1 圈变绿），左下角是掉落次数，红框表示刚掉落。不用触觉的策略握不住物体：不断掉落、重新开始，几乎转不起来（1026 个回合的成功率 6.2 %）。用触觉的策略在圆柱、四棱柱、六棱柱、多面体球上能持续转动（成功率 67.3 %），上小下大的圆台是它最差的形状（25 %），画面里也转不动。LingBot 编码器的策略训练完后补在第三行。</figcaption></figure>
 
 <div class='tablewrap'><table><thead><tr><th>进入策略的触觉输入</th><th class='num'>九物体：成功率（各个种子）</th><th class='num'>尺度 0.8 / 1.0 / 1.2</th><th class='num'>平均圈数</th><th class='num'>对照：单圆柱（平均 ± 标准差）</th></tr></thead><tbody>
-<tr><td>无触觉</td><td class='num'>6.2 %</td><td class='num'>4 / 7 / 8 %</td><td class='num'>0.27</td><td class='num'>46.2 ± 32.5</td></tr>
-<tr><td>二值接触</td><td class='num'><span class='small'>训练中（1 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>77.6 ± 7.2</td></tr>
+<tr><td>无触觉</td><td class='num'>6.2 %；<span class='small'>训练中（58 / 100 百万步）</span></td><td class='num'>4 / 7 / 8 %</td><td class='num'>0.27</td><td class='num'>46.2 ± 32.5</td></tr>
+<tr><td>二值接触</td><td class='num'><span class='small'>训练中（78 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>77.6 ± 7.2</td></tr>
 <tr><td>原始信号</td><td class='num'><span class='small'>排队中</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>51.7 ± 40.8</td></tr>
-<tr><td>CNN（和策略一起训练）</td><td class='num'>67.3 %</td><td class='num'>55 / 74 / 73 %</td><td class='num'>1.58</td><td class='num'>85.5 ± 3.6</td></tr>
-<tr><td>LingBot-Touch（冻结）</td><td class='num'><span class='small'>排队中</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>84.6 ± 3.8</td></tr>
+<tr><td>CNN（和策略一起训练）</td><td class='num'>67.3 %；<span class='small'>训练中（81 / 100 百万步）</span><span class='small'>训练中（68 / 100 百万步）</span></td><td class='num'>55 / 74 / 73 %</td><td class='num'>1.58</td><td class='num'>85.5 ± 3.6</td></tr>
+<tr><td>LingBot-Touch（冻结）</td><td class='num'><span class='small'>训练中（10 / 100 百万步）</span><span class='small'>训练中（9 / 100 百万步）</span><span class='small'>训练中（9 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>84.6 ± 3.8</td></tr>
 </tbody></table></div>
 <div class='tablewrap'><table><thead><tr><th>分形状的成功率 %</th><th class='num'>无触觉</th><th class='num'>CNN</th></tr></thead><tbody>
 <tr><td>圆柱</td><td class='num'>15.8</td><td class='num'>86.8</td></tr>
@@ -967,9 +967,10 @@ td.num b{color:var(--fg)}
 <p>论文表 1 逐项比较了预训练的设置。这里用同样的思路在我们自己的数据上做一遍：每次把上面配方里的一项改掉，其余不变，各训练 1 万步（正式训练的三分之一），然后用第五节 Sharpa 仿真触觉上的 probe 打分（同样的 1 万个训练窗口、三个划分）。论文的消融是在另一个较弱的默认配置上做的，数据和 probe 也不同，所以数字不能直接比，看的是每一项的方向是否一致。</p>
 
 <div class='tablewrap'><table><thead><tr><th style='min-width:7em'>改动的一项</th><th style='min-width:9em'>设置</th><th class='num'>受力相对误差 % ↓</th><th class='num'>接触中心 mm ↓</th><th class='num'>接触图 Dice ↑</th><th class='num'>未来力变化 MAE N ↓</th><th style='min-width:11em'>论文表 1 的结论</th></tr></thead><tbody>
-<tr><td rowspan='3'>空间遮挡比例</td><td>40 %</td><td class='num'>18.5</td><td class='num'>1.04</td><td class='num'>0.867</td><td class='num'>0.353</td><td rowspan='3' class='small'>80 % 五项指标都最好，90 % 明显变差</td></tr>
-<tr><td>80 %（本页配方）</td><td class='num'><b>17.8</b></td><td class='num'>1.08</td><td class='num'><b>0.877</b></td><td class='num'><b>0.336</b></td></tr>
-<tr><td>90 %</td><td class='num'>18.1</td><td class='num'><b>0.93</b></td><td class='num'>0.877</td><td class='num'>0.340</td></tr>
+<tr><td rowspan='4'>空间遮挡比例</td><td>40 %</td><td class='num'>18.5</td><td class='num'>1.04</td><td class='num'>0.867</td><td class='num'>0.353</td><td rowspan='4' class='small'>80 % 五项指标都最好，90 % 明显变差</td></tr>
+<tr><td>60 %</td><td class='num'>18.4</td><td class='num'><b>0.91</b></td><td class='num'><b>0.878</b></td><td class='num'>0.345</td></tr>
+<tr><td>80 %（本页配方）</td><td class='num'><b>17.8</b></td><td class='num'>1.08</td><td class='num'>0.877</td><td class='num'><b>0.336</b></td></tr>
+<tr><td>90 %</td><td class='num'>18.1</td><td class='num'>0.93</td><td class='num'>0.877</td><td class='num'>0.340</td></tr>
 <tr><td rowspan='3'>滑动平均系数</td><td>0.998 → 1.0</td><td class='num'>17.0</td><td class='num'>1.10</td><td class='num'>0.894</td><td class='num'>0.338</td><td rowspan='3' class='small'>0.999 → 1.0 最好；0.998 → 1.0 训练塌缩</td></tr>
 <tr><td>0.999 → 1.0（本页配方）</td><td class='num'>17.8</td><td class='num'>1.08</td><td class='num'>0.877</td><td class='num'>0.336</td></tr>
 <tr><td>固定 0.99925</td><td class='num'><b>15.6</b></td><td class='num'><b>0.81</b></td><td class='num'><b>0.900</b></td><td class='num'><b>0.335</b></td></tr>
@@ -977,10 +978,10 @@ td.num b{color:var(--fg)}
 <tr><td>只有遮住位置</td><td class='num'><b>16.0</b></td><td class='num'><b>1.06</b></td><td class='num'><b>0.880</b></td><td class='num'><b>0.332</b></td></tr>
 <tr><td rowspan='2'>采样点位置扰动</td><td>有（本页配方）</td><td class='num'>17.8</td><td class='num'>1.08</td><td class='num'><b>0.877</b></td><td class='num'><b>0.336</b></td><td rowspan='2' class='small'>加位置增强后各项都变好</td></tr>
 <tr><td>无</td><td class='num'><b>17.5</b></td><td class='num'><b>0.97</b></td><td class='num'>0.870</td><td class='num'>0.345</td></tr>
-<tr><td rowspan='2'>片段长度</td><td>只用 8 帧</td><td class='num'>20.3</td><td class='num'><b>1.02</b></td><td class='num'>0.853</td><td class='num'>0.343</td><td rowspan='2' class='small'>32 帧最好，8 帧及以下明显差</td></tr>
+<tr><td rowspan='2'>片段长度</td><td>只用 8 帧</td><td class='num'>20.1</td><td class='num'><b>1.04</b></td><td class='num'>0.852</td><td class='num'>0.352</td><td rowspan='2' class='small'>32 帧最好，8 帧及以下明显差</td></tr>
 <tr><td>16 帧为主，四分之一 8 帧（本页配方）</td><td class='num'><b>17.8</b></td><td class='num'>1.08</td><td class='num'><b>0.877</b></td><td class='num'><b>0.336</b></td></tr>
 </tbody></table></div>
-<p class='small'>每格是三个数据划分的平均，每组内最好的加粗；“本页配方”一行在各组里是同一次训练。目前完成 8 / 10 组。</p>
+<p class='small'>每格是三个数据划分的平均，每组内最好的加粗；“本页配方”一行在各组里是同一次训练。目前完成 9 / 10 组。</p>
 
 
 
@@ -1029,7 +1030,7 @@ td.num b{color:var(--fg)}
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_cap_lift_trial.jpg?v=1118a" src="../media/lbt_cap_lift_trial.mp4?v=1118a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>预览：试训练的策略（CNN 输入，1500 万步）拧开并提起瓶盖，6 个不同的瓶子，实时播放 20 秒。</b>每格第二行文字先是“还在螺纹上”，拧够圈数后变成“已拧开，提起多少毫米”（从螺纹顶端算起）。瓶盖提起后能看到瓶口露出来。这 27 个瓶子全部在 5–12 秒内拧开，之后提起 8–13 mm 并保持到结束，其中 3 个中途松过手。</figcaption></figure>
 <p class="small">实现上的说明：螺纹是一个沿瓶轴方向的弹簧-阻尼力，每个物理步施加一次；瓶盖只能绕瓶轴转动和沿瓶轴移动，不会倾斜或横移，所以“提起”是沿瓶轴提起。手掌的位置是固定的，提起完全靠手指，行程只有一两厘米。这段预览用的是试训练的策略，它训练时的参数是 2 圈、每圈 3 mm，正式训练用上面写的 1.5 圈、每圈 4 mm。</p>
-<p><b>进度。</b>五种触觉输入各训练 3000 万步：CNN、无触觉、二值接触、原始信号在一台机器上逐个进行（11-18 22:33 开始），冻结的官方 LingBot-Touch 编码器排在另一台机器下一块空出来的显卡上（约 3.3 小时）。结果和正式的视频出来后补在这里。</p>
+<p><b>进度。</b>五种触觉输入各训练 3000 万步：CNN、无触觉、二值接触、原始信号在一台机器上逐个进行，冻结的官方 LingBot-Touch 编码器在另一台机器上（约 3.3 小时）。这组训练在 11-18 23:21 重新开始过一次：第一次我把转速奖励的上限从 0.5 rad/s 提到了 1.5 rad/s，想让它拧得更快，结果 CNN 那次学成了只顾快转，99 % 的回合拧开了瓶盖，但没有一次把它提起来（提起需要手指边转边往上带，转得越快越带不住）。现在改回 0.5 rad/s，和上面预览用的试训练一致。结果和正式的视频预计 11-19 凌晨到上午出来，补在这里。</p>
 
 
 
