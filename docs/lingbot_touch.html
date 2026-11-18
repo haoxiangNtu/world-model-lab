@@ -865,7 +865,7 @@ td.num b{color:var(--fg)}
 <tr><td>二值接触</td><td class='num'>47.3 / 26.7 / 32.5 %</td><td class='num'>28 / 38 / 40 %</td><td class='num'>1.04 / 0.61 / 0.75</td><td class='num'>77.6 ± 7.2</td></tr>
 <tr><td>原始信号</td><td class='num'>52.5 / 38.9 / 38.7 %</td><td class='num'>32 / 46 / 52 %</td><td class='num'>1.15 / 0.80 / 0.88</td><td class='num'>51.7 ± 40.8</td></tr>
 <tr><td>CNN（和策略一起训练）</td><td class='num'>67.3 / 52.3 / 57.2 %</td><td class='num'>47 / 64 / 66 %</td><td class='num'>1.58 / 1.13 / 1.36</td><td class='num'>85.5 ± 3.6</td></tr>
-<tr><td>LingBot-Touch（冻结）</td><td class='num'><span class='small'>训练中（75 / 100 百万步）</span><span class='small'>训练中（74 / 100 百万步）</span><span class='small'>训练中（74 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>84.6 ± 3.8</td></tr>
+<tr><td>LingBot-Touch（冻结）</td><td class='num'><span class='small'>训练中（82 / 100 百万步）</span><span class='small'>训练中（81 / 100 百万步）</span><span class='small'>训练中（81 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>84.6 ± 3.8</td></tr>
 </tbody></table></div>
 <div class='tablewrap'><table><thead><tr><th>分形状的成功率 %</th><th class='num'>无触觉</th><th class='num'>二值接触</th><th class='num'>原始信号</th><th class='num'>CNN</th></tr></thead><tbody>
 <tr><td>圆柱</td><td class='num'>12.0</td><td class='num'>65.2</td><td class='num'>70.5</td><td class='num'>83.9</td></tr>
@@ -1130,23 +1130,23 @@ td.num b{color:var(--fg)}
 <tr><td>二值接触</td><td class='num'>78.2 / 87.8 / 92.6 %</td><td class='num'><b>61.7 / 58.6 / 85.4 %</b></td><td class='num'><b>68.6 ± 14.7</b></td><td class='num'>28.4 / 36.0 / 8.9 %</td><td class='num'>16.0 / 28.0 / 6.0 %</td><td class='num'>10.6 s</td></tr>
 <tr><td>原始信号</td><td class='num'>75.6 / 93.4 / 85.2 %</td><td class='num'><b>68.3 / 84.8 / 76.9 %</b></td><td class='num'><b>76.7 ± 8.2</b></td><td class='num'>17.9 / 11.3 / 9.1 %</td><td class='num'>5.4 / 7.6 / 6.5 %</td><td class='num'>10.9 s</td></tr>
 <tr><td>CNN（和策略一起训练）</td><td class='num'>91.6 / 82.4 / 92.2 %</td><td class='num'><b>86.1 / 76.1 / 86.7 %</b></td><td class='num'><b>83.0 ± 5.9</b></td><td class='num'>9.8 / 13.6 / 6.2 %</td><td class='num'>4.7 / 5.4 / 4.2 %</td><td class='num'>11.0 s</td></tr>
-<tr><td>LingBot-Touch 官方编码器（冻结）</td><td class='num' colspan='6'>训练中（2423 / 3000 万步）；训练中（2426 / 3000 万步）；训练中（36 / 3000 万步）</td></tr></tbody></table></div><p class='small'>一格里用 / 隔开的依次是随机种子 0、1、2，“…”表示这个种子还没有跑完；每个种子评测 1026 个回合（27 个瓶盖各 38 个），每回合 20 秒。这个版本没有高度限制，回合只会因为松手提前结束。</p><div class='tablewrap'><table><thead><tr><th>拧开并提到高过瓶口、拿到结束 %（三种大小平均）</th><th class='num'>无触觉<br><span class='small'>3 个种子</span></th><th class='num'>二值接触<br><span class='small'>3 个种子</span></th><th class='num'>原始信号<br><span class='small'>3 个种子</span></th><th class='num'>CNN<br><span class='small'>3 个种子</span></th></tr></thead><tbody><tr><td>圆柱</td><td class='num'>53</td><td class='num'>84</td><td class='num'>94</td><td class='num'>94</td></tr>
-<tr><td>三棱柱</td><td class='num'>10</td><td class='num'>44</td><td class='num'>59</td><td class='num'>60</td></tr>
-<tr><td>四棱柱</td><td class='num'>31</td><td class='num'>66</td><td class='num'>67</td><td class='num'>84</td></tr>
-<tr><td>五棱柱</td><td class='num'>39</td><td class='num'>84</td><td class='num'>88</td><td class='num'>95</td></tr>
-<tr><td>六棱柱</td><td class='num'>45</td><td class='num'>82</td><td class='num'>86</td><td class='num'>91</td></tr>
-<tr><td>椭圆柱</td><td class='num'>29</td><td class='num'>59</td><td class='num'>66</td><td class='num'>80</td></tr>
-<tr><td>圆台</td><td class='num'>28</td><td class='num'>49</td><td class='num'>68</td><td class='num'>70</td></tr>
-<tr><td>鼓形</td><td class='num'>46</td><td class='num'>77</td><td class='num'>83</td><td class='num'>87</td></tr>
-<tr><td>球形</td><td class='num'>34</td><td class='num'>71</td><td class='num'>80</td><td class='num'>86</td></tr><tr><td><i>小号（九种形状平均）</i></td><td class='num'>25</td><td class='num'>65</td><td class='num'>77</td><td class='num'>82</td></tr>
-<tr><td><i>中号（九种形状平均）</i></td><td class='num'>40</td><td class='num'>73</td><td class='num'>80</td><td class='num'>87</td></tr>
-<tr><td><i>大号（九种形状平均）</i></td><td class='num'>39</td><td class='num'>68</td><td class='num'>73</td><td class='num'>80</td></tr></tbody></table></div><p><b>目前能说的（只完成了 12 / 15 次训练，其余在进行，下面的数字会自动更新）。</b></p>
+<tr><td>LingBot-Touch 官方编码器（冻结）<br><span class='small'>训练中（749 / 3000 万步）</span></td><td class='num'>87.7 / 81.9 / … %</td><td class='num'><b>81.4 / 74.6 / … %</b></td><td class='num'><b>—</b></td><td class='num'>14.2 / 12.5 / … %</td><td class='num'>5.8 / 6.3 / … %</td><td class='num'>10.3 s</td></tr></tbody></table></div><p class='small'>一格里用 / 隔开的依次是随机种子 0、1、2，“…”表示这个种子还没有跑完；每个种子评测 1026 个回合（27 个瓶盖各 38 个），每回合 20 秒。这个版本没有高度限制，回合只会因为松手提前结束。</p><div class='tablewrap'><table><thead><tr><th>拧开并提到高过瓶口、拿到结束 %（三种大小平均）</th><th class='num'>无触觉<br><span class='small'>3 个种子</span></th><th class='num'>二值接触<br><span class='small'>3 个种子</span></th><th class='num'>原始信号<br><span class='small'>3 个种子</span></th><th class='num'>CNN<br><span class='small'>3 个种子</span></th><th class='num'>LingBot-Touch<br><span class='small'>2 个种子</span></th></tr></thead><tbody><tr><td>圆柱</td><td class='num'>53</td><td class='num'>84</td><td class='num'>94</td><td class='num'>94</td><td class='num'>90</td></tr>
+<tr><td>三棱柱</td><td class='num'>10</td><td class='num'>44</td><td class='num'>59</td><td class='num'>60</td><td class='num'>43</td></tr>
+<tr><td>四棱柱</td><td class='num'>31</td><td class='num'>66</td><td class='num'>67</td><td class='num'>84</td><td class='num'>85</td></tr>
+<tr><td>五棱柱</td><td class='num'>39</td><td class='num'>84</td><td class='num'>88</td><td class='num'>95</td><td class='num'>90</td></tr>
+<tr><td>六棱柱</td><td class='num'>45</td><td class='num'>82</td><td class='num'>86</td><td class='num'>91</td><td class='num'>93</td></tr>
+<tr><td>椭圆柱</td><td class='num'>29</td><td class='num'>59</td><td class='num'>66</td><td class='num'>80</td><td class='num'>75</td></tr>
+<tr><td>圆台</td><td class='num'>28</td><td class='num'>49</td><td class='num'>68</td><td class='num'>70</td><td class='num'>71</td></tr>
+<tr><td>鼓形</td><td class='num'>46</td><td class='num'>77</td><td class='num'>83</td><td class='num'>87</td><td class='num'>81</td></tr>
+<tr><td>球形</td><td class='num'>34</td><td class='num'>71</td><td class='num'>80</td><td class='num'>86</td><td class='num'>74</td></tr><tr><td><i>小号（九种形状平均）</i></td><td class='num'>25</td><td class='num'>65</td><td class='num'>77</td><td class='num'>82</td><td class='num'>74</td></tr>
+<tr><td><i>中号（九种形状平均）</i></td><td class='num'>40</td><td class='num'>73</td><td class='num'>80</td><td class='num'>87</td><td class='num'>84</td></tr>
+<tr><td><i>大号（九种形状平均）</i></td><td class='num'>39</td><td class='num'>68</td><td class='num'>73</td><td class='num'>80</td><td class='num'>76</td></tr></tbody></table></div><p><b>目前能说的（只完成了 14 / 15 次训练，其余在进行，下面的数字会自动更新）。</b></p>
 <ul>
-<li><b>这个版本确实更难，几种输入之间拉开了差距。</b>拧开、把瓶盖提到高过瓶口并拿到结束的比例：不给触觉 39.8 / 43.7 / 21.1 %（平均 34.8 ± 12.1）；二值接触 61.7 / 58.6 / 85.4 %（平均 68.6 ± 14.7）；原始信号 68.3 / 84.8 / 76.9 %（平均 76.7 ± 8.2）；CNN 86.1 / 76.1 / 86.7 %（平均 83.0 ± 5.9）；LingBot-Touch 还在训练。上一个版本里带触觉的几种都在 94 % 以上，分不出高下。</li>
-<li><b>差别还是主要来自松手。</b>松手的比例：不给触觉 50.7 / 35.4 / 53.3 %（平均 46.5 ± 9.7）；二值接触 28.4 / 36.0 / 8.9 %（平均 24.4 ± 14.0）；原始信号 17.9 / 11.3 / 9.1 %（平均 12.8 ± 4.6）；CNN 9.8 / 13.6 / 6.2 %（平均 9.9 ± 3.7）；LingBot-Touch 还在训练。</li>
+<li><b>这个版本确实更难，几种输入之间拉开了差距。</b>拧开、把瓶盖提到高过瓶口并拿到结束的比例：不给触觉 39.8 / 43.7 / 21.1 %（平均 34.8 ± 12.1）；二值接触 61.7 / 58.6 / 85.4 %（平均 68.6 ± 14.7）；原始信号 68.3 / 84.8 / 76.9 %（平均 76.7 ± 8.2）；CNN 86.1 / 76.1 / 86.7 %（平均 83.0 ± 5.9）；LingBot-Touch 81.4 / 74.6 %（已完成 2 个种子）。上一个版本里带触觉的几种都在 94 % 以上，分不出高下。</li>
+<li><b>差别还是主要来自松手。</b>松手的比例：不给触觉 50.7 / 35.4 / 53.3 %（平均 46.5 ± 9.7）；二值接触 28.4 / 36.0 / 8.9 %（平均 24.4 ± 14.0）；原始信号 17.9 / 11.3 / 9.1 %（平均 12.8 ± 4.6）；CNN 9.8 / 13.6 / 6.2 %（平均 9.9 ± 3.7）；LingBot-Touch 14.2 / 12.5 %（已完成 2 个种子）。</li>
 <li><b>不同形状之间差别很大。</b>三棱柱对哪种输入都最难，圆台和椭圆柱其次，圆柱、五棱柱、六棱柱、鼓形最容易（见下表）。</li>
 <li><b>四种基线各三个种子都跑完了，顺序和九物体转动任务上一致。</b>不给触觉 &lt; 二值接触 &lt; 原始信号 &lt; CNN：给策略的触觉信息越多，成功率越高。但相邻两种之间的差距和它们各自换种子的波动差不多大（二值接触最好的种子 85.4 % 已经超过 CNN 最差的种子 76.1 %），能确定的只有“不给触觉明显最差”。</li>
-<li><b>还差冻结的官方 LingBot-Touch 编码器。</b>三个种子每次约 3.3 小时：前两个预计 11-19 早上 7 点一刻左右出来，第三个 10 点前。到时候才能回答：在这个更难的任务上，冻结的预训练编码器是不是比和策略一起训练的 CNN 更好。</li>
+<li><b>冻结的官方 LingBot-Touch 编码器没有比 CNN 好。</b>已完成的种子：81.4 / 74.6 %（已完成 2 个种子）（第三个种子预计 11-19 上午 10 点前）。它和原始信号差不多，略低于 CNN，差距都在换种子的波动范围内。也就是说，在这个更难、几种输入能拉开差距的任务上，冻结的预训练编码器仍然没有显出优势，这和转圆柱时的结论一致（和 CNN 打平），和论文“好于 CNN”的说法不一致。</li>
 </ul>
 
 <h3 id="cap-mortar">在 mortar 里做拧瓶盖：可行性（11-19 早上的初步结论）</h3>
