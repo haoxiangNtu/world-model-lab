@@ -51,8 +51,10 @@ td.num b{color:var(--fg)}
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_mortar_hand3.jpg?v=1118b" src="../media/lbt_mortar_hand3.mp4?v=1118b" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>mortar 五指手捏起 8 cm 立方块（同事接进 Isaac Lab 3 的捏取任务），实时播放 11 秒。</b>三格回放的是同一段人工示教，各自加了不同的扰动（手的位置、偏转角、捏合幅度）：左边没捏稳，方块掉回桌面；中间捏住并提起约 19 cm；右边提起后方块在手里下滑了约 2 cm。手只画了骨架（连杆的连线），五个指尖的 FEM 软垫和方块按仿真数据画出，软垫按形变量上色；下方是同一时刻五根手指送进编码器的输入。128 次回放里 117 次提起成功，测试结果见<a href="#wuji">第四节</a>。</figcaption></figure>
 <h3 id="video-cap">PhysX：自建的拧瓶盖任务</h3>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_cap_lift_trial.jpg?v=1118a" src="../media/lbt_cap_lift_trial.mp4?v=1118a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>Sharpa 手拧开瓶盖并提起（自建的仿真任务，PhysX），6 个不同的瓶子，实时播放 20 秒。</b>瓶盖沿螺纹上升，拧够圈数后脱开，再被手指提离瓶口并保持住；每格左上角标出已转圈数和“还在螺纹上 / 已拧开，提起多少毫米”。这是试训练的策略（CNN 输入）；用冻结的官方 LingBot-Touch 编码器的训练在进行中。任务设置见<a href="#caplift">第八节</a>。</figcaption></figure>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_cap_twist_lbt.jpg?v=1118a" src="../media/lbt_cap_twist_lbt.mp4?v=1118a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
-<figcaption><b>Sharpa 手拧瓶盖（自建的仿真任务，PhysX），6 个不同的瓶子，实时播放 20 秒。</b>这是用冻结的官方 LingBot-Touch 编码器训练 3000 万步得到的策略：瓶盖装在带阻力矩的转动关节上，左上角是已转过的圈数。1026 个回合的评测里 99.7 % 转满 2 圈。任务设置、和其他触觉输入的对比见<a href="#cap">第八节</a>。</figcaption></figure>
+<figcaption><b>较早的版本（没有螺纹，瓶盖只在原地转）：冻结的官方 LingBot-Touch 编码器训练 3000 万步得到的策略。</b>1026 个回合的评测里 99.7 % 转满 2 圈。和其他触觉输入的对比见<a href="#cap">第八节</a>。</figcaption></figure>
 
 
 <h2 id="summary">目前的结论（逐条对照论文）</h2>
@@ -1015,7 +1017,20 @@ td.num b{color:var(--fg)}
 <li>这个任务在 PhysX 里学得很快：CNN 输入训练 1200 万步（约 15 分钟）就已经和训练 3000 万步时差不多。</li>
 <li>训练过程中踩过一个坑：最初没有“松手即结束”这条规则，策略学成了把手指挪开、什么都不做，因为那样没有任何代价。</li>
 </ul>
-<p><b>还没做的和局限。</b>每种输入目前只有一个种子。任务本身还简单：没有螺纹（瓶盖不会随着转动升起、脱落），阻力矩取得偏小，瓶身只有外观、没有碰撞。要让各种触觉输入之间真正拉开差距，需要一个离不开触觉的版本，例如瓶子的位置和瓶盖的大小在每个回合里随机偏移、阻力矩加大并随机变化，这是下一步。</p>
+<p><b>还没做的和局限。</b>上面这个不带螺纹的版本每种输入只有一个种子；瓶身只有外观、没有碰撞，阻力矩取得偏小。要让各种触觉输入之间真正拉开差距，还需要瓶子的位置和瓶盖的大小在每个回合里随机偏移、阻力矩加大并随机变化。</p>
+<h3 id="caplift">加上螺纹：拧开之后把瓶盖提起来</h3>
+<p>上面的版本里瓶盖只是在原地转，转多少圈都不会升起，也拿不下来，看不出“拧开了”。所以又做了一个带螺纹的版本：</p>
+<ul>
+<li>瓶盖每转一圈沿螺纹上升 4 mm；转满 1.5 圈（上升 6 mm）后和瓶口脱开。</li>
+<li>脱开以后瓶盖可以沿瓶轴自由移动，重力会把它拉回瓶口，除非手指把它提住。</li>
+<li><b>成功 = 拧开，并把瓶盖提到离螺纹顶端 10 mm 以上，一直保持到回合结束。</b></li>
+<li>奖励：拧开之前奖励转速，拧开的那一刻有一次性奖励，拧开之后奖励提起的高度；“松手即结束”的规则不变。</li>
+</ul>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_cap_lift_trial.jpg?v=1118a" src="../media/lbt_cap_lift_trial.mp4?v=1118a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>预览：试训练的策略（CNN 输入，1500 万步）拧开并提起瓶盖，6 个不同的瓶子，实时播放 20 秒。</b>每格第二行文字先是“还在螺纹上”，拧够圈数后变成“已拧开，提起多少毫米”（从螺纹顶端算起）。瓶盖提起后能看到瓶口露出来。这 27 个瓶子全部在 5–12 秒内拧开，之后提起 8–13 mm 并保持到结束，其中 3 个中途松过手。</figcaption></figure>
+<p class="small">实现上的说明：螺纹是一个沿瓶轴方向的弹簧-阻尼力，每个物理步施加一次；瓶盖只能绕瓶轴转动和沿瓶轴移动，不会倾斜或横移，所以“提起”是沿瓶轴提起。手掌的位置是固定的，提起完全靠手指，行程只有一两厘米。这段预览用的是试训练的策略，它训练时的参数是 2 圈、每圈 3 mm，正式训练用上面写的 1.5 圈、每圈 4 mm。</p>
+<p><b>进度。</b>五种触觉输入各训练 3000 万步：CNN、无触觉、二值接触、原始信号在一台机器上逐个进行（11-18 22:33 开始），冻结的官方 LingBot-Touch 编码器排在另一台机器下一块空出来的显卡上（约 3.3 小时）。结果和正式的视频出来后补在这里。</p>
+
 
 
 <h2 id="setup">九、测试条件</h2>
