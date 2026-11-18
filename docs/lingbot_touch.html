@@ -29,7 +29,7 @@ td.num b{color:var(--fg)}
 <div class="eyebrow">Tactile foundation model · LingBot-Touch · 2026-11</div>
 <h1>复现 LingBot-Touch：开源权重、接入 mortar 仿真器、仿真强化学习</h1>
 <p class="lead"><b>现状（11-18 晚）：开源权重核对、mortar 两种手和 Sharpa 仿真触觉上的 probe 已经做完；论文表 3 的强化学习对比 15 次训练全部完成；按论文方法从零重新预训练已完成，用它重复强化学习正在进行。</b>
-另外按要求自建了一个 PhysX 里的<a href="#cap">拧瓶盖任务</a>，试训练已经能稳定拧 2 圈以上，用官方编码器的训练在进行中；更接近论文的多物体版本（九种形状 × 三种尺度）也在验证。画面见下面的<a href="#video">效果视频</a>：转圆柱的策略（Isaac Sim 的 PhysX 引擎）和 mortar 上两指夹爪、五指手的抓取回放；编码器怎么接进强化学习见<a href="#arch">结构示意图</a>；逐条结论见<a href="#summary">总表</a>。一句话版本：权重可以直接用，接到同事的 mortar 仿真器上不用改仿真器，特征里确实带着接触信息（远好于同结构的随机权重）；但在 probe 任务上它并不比直接用原始信号训练的小网络好，训练充分后只是持平。它值不值得用，要看强化学习里的对比：冻结的 LingBot 编码器三个种子的成功率是 80.3 / 87.1 / 86.4 %，稳定，明显好于无触觉（平均 46 %）和原始信号（52 %），但和与策略一起训练的 CNN（85.5 %）打平，没有复现论文“好于 CNN”的结论。我们的任务只有一个圆柱，比论文简单，这个结论还要看多物体版本。</p>
+另外按要求自建了一个 PhysX 里的<a href="#cap">拧瓶盖任务</a>，用冻结的官方编码器训练 3000 万步后 99.7 % 的回合能拧满 2 圈，是五种输入里最好的一次（每种只有一个种子，差距不大；不给触觉的策略也能拧到 96.8 %）；更接近论文的多物体版本（九种形状 × 三种尺度）也在验证。画面见下面的<a href="#video">效果视频</a>：转圆柱的策略（Isaac Sim 的 PhysX 引擎）和 mortar 上两指夹爪、五指手的抓取回放；编码器怎么接进强化学习见<a href="#arch">结构示意图</a>；逐条结论见<a href="#summary">总表</a>。一句话版本：权重可以直接用，接到同事的 mortar 仿真器上不用改仿真器，特征里确实带着接触信息（远好于同结构的随机权重）；但在 probe 任务上它并不比直接用原始信号训练的小网络好，训练充分后只是持平。它值不值得用，要看强化学习里的对比：冻结的 LingBot 编码器三个种子的成功率是 80.3 / 87.1 / 86.4 %，稳定，明显好于无触觉（平均 46 %）和原始信号（52 %），但和与策略一起训练的 CNN（85.5 %）打平，没有复现论文“好于 CNN”的结论。我们的任务只有一个圆柱，比论文简单，这个结论还要看多物体版本。</p>
 
 
 <div class="toc"><b>目录</b>
@@ -847,22 +847,22 @@ td.num b{color:var(--fg)}
 <figure class="fig"><img src="../media/lbt_nine_shapes.jpg" alt="九种形状"><figcaption><b>九种形状（图中是 1.0 倍尺度）。</b>每个物体的网格都是不超过 64 个顶点的凸多面体，这样物理引擎用的碰撞外形和触觉计算用的网格是同一个。4104 个并行环境里每个物体占 152 个；每个物体用仓库自带的脚本各生成了 600 组稳定的初始抓取。价值网络额外能看到物体是哪种形状、多大（只在训练时用），策略本身看不到。其余设置和单圆柱时完全相同。</figcaption></figure>
 
 <div class='tablewrap'><table><thead><tr><th>进入策略的触觉输入</th><th class='num'>九物体：成功率（各个种子）</th><th class='num'>尺度 0.8 / 1.0 / 1.2</th><th class='num'>平均圈数</th><th class='num'>对照：单圆柱（平均 ± 标准差）</th></tr></thead><tbody>
-<tr><td>无触觉</td><td class='num'><span class='small'>训练中（76 / 100 百万步）</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>46.2 ± 32.5</td></tr>
+<tr><td>无触觉</td><td class='num'>6.2 %</td><td class='num'>4 / 7 / 8 %</td><td class='num'>0.27</td><td class='num'>46.2 ± 32.5</td></tr>
 <tr><td>二值接触</td><td class='num'><span class='small'>排队中</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>77.6 ± 7.2</td></tr>
 <tr><td>原始信号</td><td class='num'><span class='small'>排队中</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>51.7 ± 40.8</td></tr>
 <tr><td>CNN（和策略一起训练）</td><td class='num'>67.3 %</td><td class='num'>55 / 74 / 73 %</td><td class='num'>1.58</td><td class='num'>85.5 ± 3.6</td></tr>
 <tr><td>LingBot-Touch（冻结）</td><td class='num'><span class='small'>排队中</span></td><td class='num'>—</td><td class='num'>—</td><td class='num'>84.6 ± 3.8</td></tr>
 </tbody></table></div>
-<div class='tablewrap'><table><thead><tr><th>分形状的成功率 %</th><th class='num'>CNN</th></tr></thead><tbody>
-<tr><td>圆柱</td><td class='num'>86.8</td></tr>
-<tr><td>三棱柱</td><td class='num'>56.1</td></tr>
-<tr><td>四棱柱</td><td class='num'>65.8</td></tr>
-<tr><td>五棱柱</td><td class='num'>60.5</td></tr>
-<tr><td>六棱柱</td><td class='num'>78.1</td></tr>
-<tr><td>椭圆柱</td><td class='num'>75.4</td></tr>
-<tr><td>圆台</td><td class='num'>25.4</td></tr>
-<tr><td>鼓形</td><td class='num'>79.0</td></tr>
-<tr><td>多面体球</td><td class='num'>79.0</td></tr>
+<div class='tablewrap'><table><thead><tr><th>分形状的成功率 %</th><th class='num'>无触觉</th><th class='num'>CNN</th></tr></thead><tbody>
+<tr><td>圆柱</td><td class='num'>15.8</td><td class='num'>86.8</td></tr>
+<tr><td>三棱柱</td><td class='num'>0.0</td><td class='num'>56.1</td></tr>
+<tr><td>四棱柱</td><td class='num'>6.1</td><td class='num'>65.8</td></tr>
+<tr><td>五棱柱</td><td class='num'>7.9</td><td class='num'>60.5</td></tr>
+<tr><td>六棱柱</td><td class='num'>7.9</td><td class='num'>78.1</td></tr>
+<tr><td>椭圆柱</td><td class='num'>0.0</td><td class='num'>75.4</td></tr>
+<tr><td>圆台</td><td class='num'>2.6</td><td class='num'>25.4</td></tr>
+<tr><td>鼓形</td><td class='num'>6.1</td><td class='num'>79.0</td></tr>
+<tr><td>多面体球</td><td class='num'>9.7</td><td class='num'>79.0</td></tr>
 </tbody></table></div><p class='small'>每个策略评测 1026 个回合（27 个物体变体各 38 个），满重力，判据和单圆柱时相同（掉落之前绕轴净转满一圈）。分形状的数字每种形状只有 114 个回合，误差约 ±4 个百分点。</p>
 <p><b>目前能说的（只有部分结果）。</b>任务确实难了很多：同样的 CNN 配置、同一个种子，单圆柱时成功率 89.6 %，九物体时 67.3 %；重力课程在单圆柱时 1200 万步就走完，这里到 1 亿步快结束时才走完，说明还可以再训练得更久。分形状看差别很大：圆柱最容易（86.8 %），上小下大的圆台最难（25.4 %），棱柱里棱越少越难；小尺度（0.8 倍）比另外两个尺度低约 18 个百分点。其余三种基线正在逐个训练；LingBot 的三个种子等另一台机器的显卡空出来后开始，每次约 11 小时。</p>
 
@@ -975,15 +975,17 @@ td.num b{color:var(--fg)}
 <tr><td>二值接触</td><td class='num'>3000 万</td><td class='num'>99.4 %</td><td class='num'>97.1 %</td><td class='num'>61.7 %</td><td class='num'>3.18</td><td class='num'>99.4 %</td></tr>
 <tr><td>原始信号</td><td class='num'>3000 万</td><td class='num'>99.2 %</td><td class='num'>93.8 %</td><td class='num'>60.7 %</td><td class='num'>3.17</td><td class='num'>99.2 %</td></tr>
 <tr><td>CNN（和策略一起训练）</td><td class='num'>3000 万</td><td class='num'>99.9 %</td><td class='num'>94.7 %</td><td class='num'>54.1 %</td><td class='num'>3.05</td><td class='num'>99.9 %</td></tr>
-<tr><td>LingBot-Touch 官方编码器（冻结）</td><td class='num'>3000 万</td><td class='num' colspan='5'>训练中（已到 2876 万步）</td></tr>
+<tr><td>LingBot-Touch 官方编码器（冻结）</td><td class='num'>3000 万</td><td class='num'>99.8 %</td><td class='num'>99.7 %</td><td class='num'>81.2 %</td><td class='num'>3.64</td><td class='num'>99.8 %</td></tr>
 <tr><td>CNN，最初的试训练</td><td class='num'>1200 万</td><td class='num'>99.5 %</td><td class='num'>92.4 %</td><td class='num'>57.0 %</td><td class='num'>3.10</td><td class='num'>99.5 %</td></tr></tbody></table></div>
 <p><b>目前能说的。</b></p>
 <ul>
-<li><b>这个任务在 PhysX 里能学起来，而且很快。</b>CNN 输入训练 1200 万步（约 15 分钟）后，99.5 % 的回合转满 1 圈、92.4 % 转满 2 圈；训练到 3000 万步成绩基本不变。</li>
-<li><b>但目前这个版本不需要触觉。</b>完全不给触觉输入的策略同样学会了，而且转得更多：96.8 % 的回合转满 2 圈、平均 3.37 圈（CNN 是 94.7 %、3.05 圈，二值接触 97.1 %、3.18 圈，原始信号 93.8 %、3.17 圈），四种对照之间没有实质差别。原因大概是瓶盖的位置固定、阻力矩小，手指按固定的节奏拨就能转起来；手指有没有碰到瓶盖，从关节“目标角度和实际角度的差”里也能间接看出来。所以这个版本只能回答“用官方编码器能不能训练出拧瓶盖”，不能回答“触觉有没有帮助”。</li>
+<li><b>用冻结的官方 LingBot-Touch 编码器能训练出拧瓶盖，而且这一次是五种输入里最好的。</b>训练 3000 万步后，99.7 % 的回合转满 2 圈、81.2 % 转满 3 圈，平均 3.64 圈；其余四种转满 2 圈的比例在 93.8–97.1 %，转满 3 圈在 54–72 %，平均 3.05–3.37 圈。</li>
+<li><b>但差距不大，而且每种输入只有一个种子，还不能下“触觉编码器更好”的结论。</b>转圆柱的结果已经说明同一设置换个种子差别可以很大；这里五种输入的另外两个种子已经排上，跑完再比较。</li>
+<li><b>当前这个版本的任务不依赖触觉。</b>完全不给触觉输入的策略同样学会了：96.8 % 的回合转满 2 圈、平均 3.37 圈，比二值接触、原始信号、CNN 还多一点。原因大概是瓶盖的位置固定、阻力矩小，手指按固定的节奏拨就能转起来；手指有没有碰到瓶盖，从关节“目标角度和实际角度的差”里也能间接看出来。</li>
+<li>这个任务在 PhysX 里学得很快：CNN 输入训练 1200 万步（约 15 分钟）就已经和训练 3000 万步时差不多。</li>
 <li>训练过程中踩过一个坑：最初没有“松手即结束”这条规则，策略学成了把手指挪开、什么都不做，因为那样没有任何代价。</li>
 </ul>
-<p><b>还没做的和局限。</b>官方编码器的那次训练在进行中，从训练曲线看它同样学得起来（790 万步时的转速和 CNN 试训练 900 万步时相当），正式评测约 21:50 出；四种对照（各 3000 万步）已全部完成。任务本身还简单：没有螺纹（瓶盖不会随着转动升起、脱落），阻力矩取得偏小，瓶身只有外观、没有碰撞。要让触觉输入之间拉开差距，需要一个离不开触觉的版本，例如瓶子的位置和瓶盖的大小在每个回合里随机偏移、阻力矩加大并随机变化，这是下一步。</p>
+<p><b>还没做的和局限。</b>每种输入目前只有一个种子。任务本身还简单：没有螺纹（瓶盖不会随着转动升起、脱落），阻力矩取得偏小，瓶身只有外观、没有碰撞。要让各种触觉输入之间真正拉开差距，需要一个离不开触觉的版本，例如瓶子的位置和瓶盖的大小在每个回合里随机偏移、阻力矩加大并随机变化，这是下一步。</p>
 
 
 <h2 id="setup">九、测试条件</h2>
