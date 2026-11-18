@@ -5,8 +5,9 @@
 window.Charts = (function () {
   const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
   const dark = () => matchMedia('(prefers-color-scheme: dark)').matches;
-  /* validated 3-slot categorical palette (blue / orange / aqua) + a neutral for "other methods" */
-  const pal = () => dark() ? { s: ['#3987e5', '#d95926', '#199e70'], neutral: '#6b7794', ties: '#4a5570' } : { s: ['#2a78d6', '#eb6834', '#1baf7a'], neutral: '#9aa3b8', ties: '#c9d0de' };
+  /* validated categorical palette (blue / orange / aqua / yellow, fixed order) + a neutral for "other methods".
+     Slot 3 (yellow) passes only next to blue or aqua: never place it adjacent to orange (slot 1). */
+  const pal = () => dark() ? { s: ['#3987e5', '#d95926', '#199e70', '#c98500'], neutral: '#6b7794', ties: '#4a5570' } : { s: ['#2a78d6', '#eb6834', '#1baf7a', '#eda100'], neutral: '#9aa3b8', ties: '#c9d0de' };
   const NS = 'http://www.w3.org/2000/svg';
   function el(tag, attrs = {}, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
   function h(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
