@@ -28,14 +28,16 @@ td.num b{color:var(--fg)}
 
 <div class="eyebrow">Humanoid whole-body tracking · SuperMimic · 2026-11</div>
 <h1>复现 SuperMimic：用可微世界模型训练 G1 的全身动作跟踪</h1>
-<p class="lead"><b>结论（训练在 11-10 至 11-11 完成，11-21 整理成这一页）：SuperMimic 的官方训练代码没有公开，这里用社区的独立复现代码，在 MuJoCo 里按固定的协议重新训练和评测。严格按论文写的观测，G1 跟踪 LAFAN1 的 40 段动作，训练 3 小时后的归一化回报是 0.57（三个种子 0.568 / 0.567 / 0.578），没有达到论文的 0.82。给目标另加 9 维“相对参考动作的位姿”后是 0.84（0.845 / 0.831 / 0.850），40 段里只失败 1–2 段。</b>论文没有写清目标的具体编码，所以后一种设置不能算论文原样。论文精读见 <a href="https://haoxiangntu.github.io/paper-reading-lab/papers/supermimic.html">SuperMimic 精读页</a>。</p>
+<p class="lead"><b>结论（训练在 11-10 至 11-11 完成，11-21 整理成这一页）：SuperMimic 的官方训练代码没有公开，这里用社区的独立复现代码，在 MuJoCo 里按固定的协议重新训练和评测。严格按论文写的观测，G1 跟踪 LAFAN1 的 40 段动作，训练 3 小时后的归一化回报是 0.57（三个种子 0.568 / 0.567 / 0.578），没有达到论文的 0.82。给目标另加 9 维“相对参考动作的位姿”后是 0.84（0.845 / 0.831 / 0.850），40 段里只失败 1–2 段。把这个策略不再训练、原样放进另一个仿真器 mortar，40 段里摔倒 19 段（MuJoCo 里 2 段）：关节跟踪得一样好，但身体在地面上漂移得更多。</b>论文没有写清目标的具体编码，所以 0.84 那一组不能算论文原样。论文精读见 <a href="https://haoxiangntu.github.io/paper-reading-lab/papers/supermimic.html">SuperMimic 精读页</a>。</p>
 <div class="toc"><b>目录</b>
-<a href="#video">效果视频</a><a href="#what">一、做了什么</a><a href="#result">二、结果</a><a href="#gap">三、和论文差在哪</a><a href="#setup">四、测试条件</a>
+<a href="#video">效果视频</a><a href="#what">一、做了什么</a><a href="#result">二、结果</a><a href="#gap">三、和论文差在哪</a><a href="#mortar">四、原样放进 mortar</a><a href="#setup">五、测试条件</a>
 </div>
 
 <h2 id="video">效果视频</h2>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/sm_mujoco_8.jpg?v=1121a" src="../media/sm_mujoco_8.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>一个策略跟踪 LAFAN1 的全身动作（Unitree G1，MuJoCo），这里是 40 段里的 8 段，各取开头 20 秒。</b>实体是仿真里的机器人，半透明的蓝色是参考动作；每格左下角是这 20 秒的跟踪得分（1.0 为完全跟上）。策略是“另加相对位姿观测”那一组的种子 0、训练 3 小时的检查点，整套评测的归一化回报是 0.845。</figcaption></figure>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/sm_xfer_mortar.jpg?v=1121a" src="../media/sm_xfer_mortar.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>同一个策略不再训练，直接放进 mortar 仿真器：四段动作各 20 秒，上排 MuJoCo（策略在这里训练），下排 mortar。</b>两排的策略、起始姿态和参考动作完全相同，只换了物理仿真器。mortar 里前三段还跟得上，得分低一些；第四段（格斗与运动）在 9.7 秒摔倒。40 段完整动作的统计见<a href="#mortar">第四节</a>。</figcaption></figure>
 
 <h2 id="what">一、做了什么</h2>
 <p><b>这一节说明用了什么代码、什么数据，怎么训练、怎么评测。</b></p>
@@ -90,7 +92,38 @@ td.num b{color:var(--fg)}
 <li><b>没有做的：</b>论文的大规模实验（BONES-SEED 全集约 13 万段动作）、真机实验。</li>
 </ul>
 
-<h2 id="setup">四、测试条件</h2>
+<h2 id="mortar">四、把 MuJoCo 里训好的策略原样放进 mortar</h2>
+<p><b>这一节回答：在 MuJoCo 里训练出来的策略，不再训练，换一个物理仿真器还能不能用。</b>mortar 是同事开发的 GPU 仿真器。测试用的就是视频里的那个策略（另加相对位姿、种子 0、训练 3 小时）。两边用同一个脚本、同样的 40 段完整动作、同样的起始姿态，不加噪声，只换物理仿真器；mortar 里的 G1 模型和电机参数按 MuJoCo 的设置对齐。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>40 段完整动作（合计 147 分钟）</th><th class="num">MuJoCo（策略在这里训练）</th><th class="num">mortar（同一个策略，没有再训练）</th></tr></thead>
+<tbody>
+<tr><td>走完整段的段数</td><td class="num">38 / 40</td><td class="num">21 / 40</td></tr>
+<tr><td>摔倒的段数</td><td class="num">2</td><td class="num">19</td></tr>
+<tr><td>跟踪得分（40 段平均，摔倒后记 0）</td><td class="num">0.828</td><td class="num">0.521</td></tr>
+<tr><td>没有摔倒的时间占总时长</td><td class="num">98 %</td><td class="num">74 %</td></tr>
+<tr><td>关节角的平均误差</td><td class="num">0.14 rad</td><td class="num">0.15 rad</td></tr>
+<tr><td>第 20 秒时身体离参考动作的水平距离（中位数）</td><td class="num">0.17 m</td><td class="num">0.59 m</td></tr>
+</tbody></table></div>
+<div class="tablewrap"><table>
+<thead><tr><th>动作类别</th><th class="num">段数</th><th class="num">摔倒：MuJoCo</th><th class="num">摔倒：mortar</th><th class="num">得分：MuJoCo</th><th class="num">得分：mortar</th></tr></thead>
+<tbody>
+<tr><td>走</td><td class="num">12</td><td class="num">0</td><td class="num">7</td><td class="num">0.910</td><td class="num">0.532</td></tr>
+<tr><td>跳舞</td><td class="num">8</td><td class="num">0</td><td class="num">1</td><td class="num">0.851</td><td class="num">0.711</td></tr>
+<tr><td>倒地后起身</td><td class="num">6</td><td class="num">1</td><td class="num">5</td><td class="num">0.724</td><td class="num">0.216</td></tr>
+<tr><td>跑</td><td class="num">4</td><td class="num">0</td><td class="num">0</td><td class="num">0.835</td><td class="num">0.697</td></tr>
+<tr><td>格斗</td><td class="num">3</td><td class="num">0</td><td class="num">2</td><td class="num">0.838</td><td class="num">0.565</td></tr>
+<tr><td>跳</td><td class="num">3</td><td class="num">0</td><td class="num">2</td><td class="num">0.835</td><td class="num">0.407</td></tr>
+<tr><td>冲刺</td><td class="num">2</td><td class="num">0</td><td class="num">1</td><td class="num">0.840</td><td class="num">0.526</td></tr>
+<tr><td>格斗与运动</td><td class="num">2</td><td class="num">1</td><td class="num">1</td><td class="num">0.502</td><td class="num">0.358</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>关节跟得一样好，差在整个身体的位置。</b>关节角的平均误差两边几乎相同（0.14 和 0.15 rad），但第 20 秒时身体离参考动作的水平距离，mortar 里是 0.59 m，MuJoCo 里是 0.17 m。我们的判断是差距来自脚和地面的接触：同样的腿部动作，在两个仿真器里把身体带到了不同的地方。</li>
+<li><b>不是一上来就摔。</b>mortar 里的 19 次摔倒只有 3 次发生在前 20 秒，中位数在第 75 秒，是偏差累积之后失去平衡。四段“跑”全部走完。</li>
+<li><b>结论：这个策略不能直接换仿真器用。</b>要在 mortar 里也能用，需要在 mortar 里接着训练，或者训练时就把接触参数随机化；这一步还没有做。</li>
+</ul>
+<p class="small">这里的跟踪得分是迁移测试脚本自己算的，同一个策略在 MuJoCo 里是 0.828，和第二节正式评测的 0.845 略有出入，两边比较时用的是同一个脚本的数。</p>
+
+<h2 id="setup">五、测试条件</h2>
 <ul>
 <li>机器人和仿真：Unitree G1（29 个自由度），MuJoCo Warp（通过 mjlab），物理步长 0.005 秒，控制周期 0.02 秒。</li>
 <li>硬件：每次训练一张 A800（80 GB），4096 个并行环境，3 小时；两组设置各三个种子，共 6 次训练。</li>
