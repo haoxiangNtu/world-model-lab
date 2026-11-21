@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>复现 SuperMimic（社区代码版） · World Model Lab</title>
+<meta name="description" content="用社区的独立复现代码在 MuJoCo 里重新训练和评测 SuperMimic：G1 跟踪 LAFAN1 的 40 段全身动作，按论文观测 0.57，另加相对位姿观测 0.84，论文 0.82；含策略视频、分时间点和分动作类别的结果。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="site.css">
+<style>
+.fig{border:1px solid var(--line);background:var(--bg2);border-radius:10px;margin:14px 0 20px;padding:8px}
+.fig img{width:100%;height:auto;display:block;border-radius:6px;background:#fff}
+.fig img.narrow{max-width:560px;margin:0 auto}
+.fig figcaption{color:var(--muted);font-size:13.5px;line-height:1.6;padding:8px 6px 2px}
+figure{margin:0}
+.tag{display:inline-block;border-radius:999px;padding:0 8px;font-size:12px;font-weight:600;border:1px solid var(--line);white-space:nowrap}
+.tag.ok{color:var(--token)} .tag.run{color:var(--compute)} .tag.todo{color:var(--muted)} .tag.no{color:var(--warn)}
+h4{margin:18px 0 6px;font-size:15px}
+.small{font-size:13px;color:var(--muted)}
+details.tasks summary{cursor:pointer;color:var(--compute);margin:6px 0}
+td.num b{color:var(--fg)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top"><a class="brand" href="../index.html">World Model Lab</a>
+<nav><a href="vpp2.html">论文导读</a><a href="wan.html">Wan2.1 架构</a><a href="mot.html">MoT 原理</a><a href="posttrain.html">后训练过程</a><a href="benchmarks.html">评测数据集</a><a href="notes.html">原理问答</a><a href="vla_wam.html">复现实验</a><a href="lingbot_touch.html">触觉复现</a><a href="loco_repro.html">行走复现</a><a class="on" href="supermimic_repro.html">SuperMimic 复现</a><a href="https://github.com/haoxiangNtu/world-model-lab">GitHub</a></nav></header>
+
+<div class="eyebrow">Humanoid whole-body tracking · SuperMimic · 2026-11</div>
+<h1>复现 SuperMimic（第一版）：用社区的复现代码，11-10 至 11-11</h1>
+<p class="lead"><b>这一页是官方代码公开之前做的第一版复现，保留作记录。</b>最新的结果（用官方代码重跑、放进 mortar、用 mortar 训练）在<a href="supermimic_repro.html">总览页</a>。</p>
+<p class="lead"><b>结论（训练在 11-10 至 11-11 完成，11-21 整理成这一页）：做这组实验时 SuperMimic 的官方训练代码还没有公开（官方代码 11-10 才放出），这里用的是社区的独立复现代码，在 MuJoCo 里按固定的协议重新训练和评测。严格按论文写的观测，G1 跟踪 LAFAN1 的 40 段动作，训练 3 小时后的归一化回报是 0.57（三个种子 0.568 / 0.567 / 0.578），没有达到论文的 0.82。给目标另加 9 维“相对参考动作的位姿”后是 0.84（0.845 / 0.831 / 0.850），40 段里只失败 1–2 段。把这个策略不再训练、原样放进另一个仿真器 mortar，40 段里摔倒 19 段（MuJoCo 里 2 段）：关节跟踪得一样好，但身体在地面上漂移得更多。</b>官方代码公开后对照发现，官方给策略的目标里本来就带“参考动作相对机器人的朝向”，社区代码“按论文的观测”那一组少了这一项，所以 0.57 偏低是这个原因（见<a href="#gap">第三节</a>）；用官方代码重跑还没有做。论文精读见 <a href="https://haoxiangntu.github.io/paper-reading-lab/papers/supermimic.html">SuperMimic 精读页</a>。</p>
+<div class="toc"><b>目录</b>
+<a href="#video">效果视频</a><a href="#what">一、做了什么</a><a href="#result">二、结果</a><a href="#gap">三、和论文差在哪</a><a href="#mortar">四、原样放进 mortar</a><a href="#setup">五、测试条件</a>
+</div>
+
+<h2 id="video">效果视频</h2>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/sm_mujoco_8.jpg?v=1121a" src="../media/sm_mujoco_8.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>一个策略跟踪 LAFAN1 的全身动作（Unitree G1，MuJoCo），这里是 40 段里的 8 段，各取开头 20 秒。</b>实体是仿真里的机器人，半透明的蓝色是参考动作；每格左下角是这 20 秒的跟踪得分（1.0 为完全跟上）。策略是“另加相对位姿观测”那一组的种子 0、训练 3 小时的检查点，整套评测的归一化回报是 0.845。</figcaption></figure>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/sm_xfer_mortar.jpg?v=1121a" src="../media/sm_xfer_mortar.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>同一个策略不再训练，直接放进 mortar 仿真器：四段动作各 20 秒，上排 MuJoCo（策略在这里训练），下排 mortar。</b>两排的策略、起始姿态和参考动作完全相同，只换了物理仿真器。mortar 里前三段还跟得上，得分低一些；第四段（格斗与运动）在 9.7 秒摔倒。40 段完整动作的统计见<a href="#mortar">第四节</a>。</figcaption></figure>
+
+<h2 id="what">一、做了什么</h2>
+<p><b>这一节说明用了什么代码、什么数据，怎么训练、怎么评测。</b></p>
+<ul>
+<li><b>方法。</b>SuperMimic 先用仿真数据学一个可微的世界模型（预测机器人下一步状态的神经网络），再让策略穿过这个世界模型向前想象 32 步、把回报的梯度反传回来更新策略，不用常规的强化学习采样估计梯度。</li>
+<li><b>代码。</b>做实验时论文作者还没有公开训练代码（<a href="https://github.com/HybridRobotics/supermimic">官方代码</a>在 11-10 公开，同样建在 mjlab / MuJoCo Warp 上）。这里用的是社区的独立复现 <a href="https://github.com/CuboiLeo/SuperMimic-Reproduced">SuperMimic-Reproduced</a>，建在 mjlab / MuJoCo Warp 上；我们没有改算法，只是在自己的显卡上按下面的协议重新训练和评测。</li>
+<li><b>数据。</b>LAFAN1 重定向到 G1 的 40 段完整动作（走、跑、冲刺、跳、跳舞、格斗、倒地起身），每段 100–300 秒，合计 147 分钟。</li>
+<li><b>训练。</b>MuJoCo 里 4096 个并行环境，每次训练用一张显卡跑 3 小时，随机种子 0 / 1 / 2 各一次，在 0.25、0.5、1、2、3 小时各存一个检查点。</li>
+<li><b>评测（按论文附录 F）。</b>每段动作从第一帧开始完整播放一遍，策略取确定性输出，不加噪声和随机化。归一化回报 = 每一步奖励之和 ÷（0.1 × 步数），1.0 表示完全跟上；训练时的终止条件一旦触发，这一段记为失败，之后的步数按 0 分计。</li>
+</ul>
+<p>做了两组设置，每组三个种子：一组严格按论文写的观测（策略只看本体感觉和未来 10 帧参考动作）；另一组是社区代码里自带的一个选项，给目标另加 9 维“机器人相对参考动作当前的位置和朝向”。论文附录写了观测的维数，但没有写清目标用什么坐标系、有多少维，所以当时把第二组单独标出，不和第一组混在一起算。</p>
+
+<h2 id="result">二、结果</h2>
+<p><b>这一节给出两组设置的回报和失败数，以及随训练时间的变化。</b></p>
+<div class="tablewrap"><table>
+<thead><tr><th>设置</th><th class="num">训练 3 小时后的归一化回报（三个种子）</th><th class="num">40 段里失败的段数</th><th class="num">论文</th></tr></thead>
+<tbody>
+<tr><td>按论文的观测</td><td class="num">0.568 / 0.567 / 0.578（平均 <b>0.571</b>）</td><td class="num">3 / 2 / 1</td><td class="num">0.82</td></tr>
+<tr><td>另加 9 维相对位姿</td><td class="num">0.845 / 0.831 / 0.850（平均 <b>0.842</b>）</td><td class="num">1 / 2 / 1</td><td class="num">不能直接比（多了观测）</td></tr>
+</tbody></table></div>
+<div id="c_sm_curve"></div>
+<div class="tablewrap"><table>
+<thead><tr><th>训练时间</th><th class="num">0.25 小时</th><th class="num">0.5 小时</th><th class="num">1 小时</th><th class="num">2 小时</th><th class="num">3 小时</th></tr></thead>
+<tbody>
+<tr><td>按论文的观测：回报（三个种子平均）</td><td class="num">0.192</td><td class="num">0.361</td><td class="num">0.444</td><td class="num">0.521</td><td class="num">0.571</td></tr>
+<tr><td>按论文的观测：失败段数（三个种子）</td><td class="num">40 / 17 / 18</td><td class="num">11 / 12 / 13</td><td class="num">14 / 6 / 5</td><td class="num">5 / 4 / 3</td><td class="num">3 / 2 / 1</td></tr>
+<tr><td>另加相对位姿：回报（三个种子平均）</td><td class="num">0.098</td><td class="num">0.369</td><td class="num">0.516</td><td class="num">0.756</td><td class="num">0.842</td></tr>
+<tr><td>另加相对位姿：失败段数（三个种子）</td><td class="num">40 / 21 / 38</td><td class="num">12 / 31 / 18</td><td class="num">15 / 17 / 17</td><td class="num">6 / 9 / 7</td><td class="num">1 / 2 / 1</td></tr>
+</tbody></table></div>
+<p>三个种子之间很一致（3 小时时相差不到 0.02）。两组在前半小时差不多，之后拉开：按论文观测的一组到 3 小时还在慢慢涨，但只到 0.57；加了相对位姿的一组 2 小时到 0.76，3 小时到 0.84。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>动作类别（另加相对位姿，种子 0，3 小时）</th><th class="num">段数</th><th class="num">平均回报</th><th class="num">失败</th></tr></thead>
+<tbody>
+<tr><td>走</td><td class="num">12</td><td class="num">0.910</td><td class="num">0</td></tr>
+<tr><td>跳舞</td><td class="num">8</td><td class="num">0.852</td><td class="num">0</td></tr>
+<tr><td>冲刺</td><td class="num">2</td><td class="num">0.840</td><td class="num">0</td></tr>
+<tr><td>格斗</td><td class="num">3</td><td class="num">0.840</td><td class="num">0</td></tr>
+<tr><td>跑</td><td class="num">4</td><td class="num">0.835</td><td class="num">0</td></tr>
+<tr><td>格斗与运动</td><td class="num">2</td><td class="num">0.835</td><td class="num">0</td></tr>
+<tr><td>跳</td><td class="num">3</td><td class="num">0.833</td><td class="num">0</td></tr>
+<tr><td>倒地后起身</td><td class="num">6</td><td class="num">0.725</td><td class="num">1</td></tr>
+</tbody></table></div>
+<p class="small">最难的是“倒地后起身”，唯一的失败也在这一类；走最容易。</p>
+
+<h2 id="gap">三、和论文差在哪</h2>
+<p><b>这一节解释为什么按论文的观测只到 0.57，以及哪些地方不能和论文直接比。</b></p>
+<ul>
+<li><b>官方代码公开后的核对（11-21）：0.57 偏低，是因为社区代码“按论文的观测”那一组少了一项。</b>官方代码里，策略看到的目标是未来 10 帧的关节角和关节速度，再加上这 10 帧里“参考动作的根部相对机器人当前根部的朝向”（每帧 6 维）。社区代码“按论文的观测”那一组的目标只有参考动作自己的量，没有任何相对机器人的项。我们另加相对位姿的那一组更接近官方的做法，区别是官方只给相对朝向，社区那个选项还给了相对位置。11-21 已经用官方代码重跑（见<a href="supermimic_repro.html#official">总览页第 1 节</a>）：按论文的观测是 0.87。</li>
+<li><b>按论文观测的 0.57 不是这一次运行的偶然。</b>社区代码的作者自己在另一种显卡上独立训练了三次，也是 0.56–0.59；我们的三个种子是 0.57–0.58。</li>
+<li><b>社区作者给出的原因，我们的数据和它一致：</b>论文的策略观测只有本体感觉，没有自己在世界里的位置和朝向。在 100–300 秒的长动作里，朝向误差大约 9 秒后就超过 15°，此后按世界坐标算的位置和速度奖励拿不到，整段回报停在 0.58 左右。加上 9 维相对位姿后策略能纠正这个漂移，回报到 0.84。</li>
+<li><b>加了相对位姿的 0.84 高于论文的 0.82，但它和官方的目标不完全一样</b>（多了相对位置），所以还不能说“复现了论文的数字”，只能说“在和官方接近的目标编码下达到了论文的水平”。用官方代码重跑的结果见<a href="supermimic_repro.html#official">总览页第 1 节</a>。</li>
+<li><b>训练时间不能直接比。</b>论文是一张 H100 上 1.2 小时到 0.82；我们用的显卡不同，3 小时这个预算是事先定的，不是按论文的时间折算的。</li>
+<li><b>3 小时不是训练到收敛，检查点还在明显变好。</b>加了相对位姿的一组，最后一小时整体回报从 0.76 涨到 0.84；最难的“倒地后起身”从 0.45 涨到 0.71。社区作者用同样的设置在更快的显卡上训练 3.3 小时到 0.90，停下时也还在涨；按回报对齐，我们的 3 小时大约相当于他的 1.9 小时。所以视频里得分偏低的片段（比如“格斗与运动”，开头 20 秒 0.74）主要是训练量不够。这一段本身也是 40 段里第二难的：245 秒的踢腿和大幅度动作，三个种子里两个走完（0.82 和 0.83），一个在第 59 秒摔倒。</li>
+<li><b>没有做的：</b>论文的大规模实验（BONES-SEED 全集约 13 万段动作）、真机实验。</li>
+</ul>
+
+<h2 id="mortar">四、把 MuJoCo 里训好的策略原样放进 mortar</h2>
+<p><b>这一节回答：在 MuJoCo 里训练出来的策略，不再训练，换一个物理仿真器还能不能用。</b>mortar 是同事开发的 GPU 仿真器。测试用的就是视频里的那个策略（另加相对位姿、种子 0、训练 3 小时）。两边用同一个脚本、同样的 40 段完整动作、同样的起始姿态，不加噪声，只换物理仿真器；mortar 里的 G1 模型和电机参数按 MuJoCo 的设置对齐。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>40 段完整动作（合计 147 分钟）</th><th class="num">MuJoCo（策略在这里训练）</th><th class="num">mortar（同一个策略，没有再训练）</th></tr></thead>
+<tbody>
+<tr><td>走完整段的段数</td><td class="num">38 / 40</td><td class="num">21 / 40</td></tr>
+<tr><td>摔倒的段数</td><td class="num">2</td><td class="num">19</td></tr>
+<tr><td>跟踪得分（40 段平均，摔倒后记 0）</td><td class="num">0.828</td><td class="num">0.521</td></tr>
+<tr><td>没有摔倒的时间占总时长</td><td class="num">98 %</td><td class="num">74 %</td></tr>
+<tr><td>关节角的平均误差</td><td class="num">0.14 rad</td><td class="num">0.15 rad</td></tr>
+<tr><td>第 20 秒时身体离参考动作的水平距离（中位数）</td><td class="num">0.17 m</td><td class="num">0.59 m</td></tr>
+</tbody></table></div>
+<div class="tablewrap"><table>
+<thead><tr><th>动作类别</th><th class="num">段数</th><th class="num">摔倒：MuJoCo</th><th class="num">摔倒：mortar</th><th class="num">得分：MuJoCo</th><th class="num">得分：mortar</th></tr></thead>
+<tbody>
+<tr><td>走</td><td class="num">12</td><td class="num">0</td><td class="num">7</td><td class="num">0.910</td><td class="num">0.532</td></tr>
+<tr><td>跳舞</td><td class="num">8</td><td class="num">0</td><td class="num">1</td><td class="num">0.851</td><td class="num">0.711</td></tr>
+<tr><td>倒地后起身</td><td class="num">6</td><td class="num">1</td><td class="num">5</td><td class="num">0.724</td><td class="num">0.216</td></tr>
+<tr><td>跑</td><td class="num">4</td><td class="num">0</td><td class="num">0</td><td class="num">0.835</td><td class="num">0.697</td></tr>
+<tr><td>格斗</td><td class="num">3</td><td class="num">0</td><td class="num">2</td><td class="num">0.838</td><td class="num">0.565</td></tr>
+<tr><td>跳</td><td class="num">3</td><td class="num">0</td><td class="num">2</td><td class="num">0.835</td><td class="num">0.407</td></tr>
+<tr><td>冲刺</td><td class="num">2</td><td class="num">0</td><td class="num">1</td><td class="num">0.840</td><td class="num">0.526</td></tr>
+<tr><td>格斗与运动</td><td class="num">2</td><td class="num">1</td><td class="num">1</td><td class="num">0.502</td><td class="num">0.358</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>关节跟得一样好，差在整个身体的位置。</b>关节角的平均误差两边几乎相同（0.14 和 0.15 rad），但第 20 秒时身体离参考动作的水平距离，mortar 里是 0.59 m，MuJoCo 里是 0.17 m。我们的判断是差距来自脚和地面的接触：同样的腿部动作，在两个仿真器里把身体带到了不同的地方。</li>
+<li><b>不是一上来就摔。</b>mortar 里的 19 次摔倒只有 3 次发生在前 20 秒，中位数在第 75 秒，是偏差累积之后失去平衡。四段“跑”全部走完。</li>
+<li><b>结论：这个策略不能直接换仿真器用。</b>要在 mortar 里也能用，需要在 mortar 里接着训练，或者训练时就把接触参数随机化；这一步还没有做。</li>
+</ul>
+<p class="small">这里的跟踪得分是迁移测试脚本自己算的，同一个策略在 MuJoCo 里是 0.828，和第二节正式评测的 0.845 略有出入，两边比较时用的是同一个脚本的数。</p>
+
+<h2 id="setup">五、测试条件</h2>
+<ul>
+<li>机器人和仿真：Unitree G1（29 个自由度），MuJoCo Warp（通过 mjlab），物理步长 0.005 秒，控制周期 0.02 秒。</li>
+<li>硬件：每次训练一张 A800（80 GB），4096 个并行环境，3 小时；两组设置各三个种子，共 6 次训练。</li>
+<li>评测协议在训练前写定：每段从第 0 帧起、播放到该段结束，40 段同时评测，不事后挑选或丢弃片段。</li>
+<li>代码版本：社区复现代码和 mjlab 都固定在当时的提交上，训练配置用它的默认值；第二组只多开了“相对位姿观测”这一个选项。</li>
+</ul>
+<footer>World Model Lab · 世界模型的学习与测试记录 · <a href="https://github.com/haoxiangNtu/world-model-lab">源码</a></footer>
+</div>
+<script src="charts.js"></script>
+<script>
+const CH = {"c_sm_curve": {"kind": "lines", "cfg": {"title": "归一化回报随训练时间的变化", "sub": "G1，LAFAN1 的 40 段动作，每个点是三个种子的平均；1.0 为完全跟上", "x": ["0.25", "0.5", "1", "2", "3"], "series": [{"name": "另加 9 维相对位姿", "values": [0.098, 0.369, 0.516, 0.756, 0.842], "slot": 0}, {"name": "按论文的观测", "values": [0.192, 0.361, 0.444, 0.521, 0.571], "slot": 2}, {"name": "论文报告的 0.82", "values": [0.82, 0.82, 0.82, 0.82, 0.82], "neutral": true, "dash": "5 4"}], "unit": "", "decimals": 3, "xTitle": "训练时间（小时）", "catLabel": "训练时间（小时）", "endLabels": false, "min": 0.0, "max": 1.0}}};
+Charts.register(() => { for (const id in CH) { const host = document.getElementById(id); if (host) Charts[CH[id].kind](host, CH[id].cfg); } });
+</script>
+</body>
+</html>
