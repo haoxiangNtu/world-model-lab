@@ -28,7 +28,7 @@ td.num b{color:var(--fg)}
 
 <div class="eyebrow">Humanoid whole-body tracking · SuperMimic · 2026-11</div>
 <h1>复现 SuperMimic：用可微世界模型训练 G1 的全身动作跟踪</h1>
-<p class="lead"><b>结论（11-22 06:31 更新）：用论文作者公开的官方代码在 MuJoCo 里重跑，G1 跟踪 LAFAN1 的 40 段动作，训练 3 小时后的归一化回报是 0.87（按论文的观测，失败 0 段）和 0.88（代码默认设置，失败 0 段），论文报告的是 0.82：论文的数字复现了。把这两个策略不再训练、原样放进另一个仿真器 mortar：代码默认设置的策略是 0.80（40 段里摔 3 段），按论文观测的策略是 0.61（摔 16 段）。更正（11-22）：这两个数是在我们接入 mortar 时沿用的默认接触刚度下测的，它对 G1 的脚底偏软；把接触刚度提高 3 倍重测，是 0.82（摔 2 段）和 0.75（摔 11 段），见<a href="#xfer">第 2 节</a>。把官方代码里的仿真器换成 mortar 来训练的实验还在进行（第一批 11-21 18:57 开始，20:40 因为训练机磁盘写满在第 1000 轮左右中断，21:08 重新开始）：按相同的迭代轮数比，学习曲线和 MuJoCo 版接近（第 6000 轮训练中的回合回报 44.4 对 44.6，满分 50）；第 6000 轮的存档，mortar 训练的策略在 mortar 里评测是 0.87，MuJoCo 训练的策略在 MuJoCo 里是 0.87。mortar 仿真慢 17 倍，整个训练慢约 3 倍，最终结果在 11-22 上午给出。</b>11-10 用社区代码做的第一版复现（0.57 和 0.84）移到了<a href="supermimic_repro_community.html">单独一页</a>。</p>
+<p class="lead"><b>结论（11-22 07:39 更新）：用论文作者公开的官方代码在 MuJoCo 里重跑，G1 跟踪 LAFAN1 的 40 段动作，训练 3 小时后的归一化回报是 0.87（按论文的观测，失败 0 段）和 0.88（代码默认设置，失败 0 段），论文报告的是 0.82：论文的数字复现了。把这两个策略不再训练、原样放进另一个仿真器 mortar：代码默认设置的策略是 0.80（40 段里摔 3 段），按论文观测的策略是 0.61（摔 16 段）。更正（11-22）：这两个数是在我们接入 mortar 时沿用的默认接触刚度下测的，它对 G1 的脚底偏软；把接触刚度提高 3 倍重测，是 0.82（摔 2 段）和 0.75（摔 11 段），见<a href="#xfer">第 2 节</a>。把官方代码里的仿真器换成 mortar 来训练，结果和 MuJoCo 版持平：训练到和 MuJoCo 版 3 小时相同的数据量（第 6400 轮）时，mortar 训练的策略在 mortar 里评测，代码默认设置的两个种子是 0.87 / 0.87，按论文的观测是 0.86；MuJoCo 版在 MuJoCo 里是 0.88 和 0.87。把 mortar 训练的策略原样放进 MuJoCo 会低一些：0.80 / 0.85 和 0.78。mortar 仿真慢 17 倍，整个训练慢约 3 倍（9.6 小时对 3 小时）。</b>11-10 用社区代码做的第一版复现（0.57 和 0.84）移到了<a href="supermimic_repro_community.html">单独一页</a>。</p>
 <div class="toc"><b>目录</b>
 <a href="#parts">各节做了什么</a><a href="#video">效果视频</a><a href="#official">一、官方代码重跑</a><a href="#xfer">二、原样放进 mortar</a><a href="#mortar-train">三、用 mortar 训练</a><a href="supermimic_repro_community.html">四、社区代码版</a><a href="#setup">测试条件</a>
 </div>
@@ -38,7 +38,7 @@ td.num b{color:var(--fg)}
 <tbody>
 <tr><td style="white-space:nowrap"><a href="#official"><b>第 1 节</b><br>官方代码在 MuJoCo 里重跑</a></td><td>用作者公开的训练代码，不改算法和超参数，在 MuJoCo 里训练 3 小时，按论文的协议评测 40 段完整动作。两种设置各训练一次。</td><td>3 小时 0.87 和 0.88（论文 0.82）；训练 30 分钟就到 0.76 和 0.83。</td></tr>
 <tr><td style="white-space:nowrap"><a href="#xfer"><b>第 2 节</b><br>官方策略原样放进 mortar</a></td><td>把第 1 节训练好的两个策略不再训练，换一个物理仿真器（mortar）做同样的 40 段评测。</td><td>代码默认设置的策略 0.80，摔 3 段；按论文观测的策略 0.61，摔 16 段。把我们给 mortar 设的接触刚度提高 3 倍后：0.82（摔 2 段）和 0.75（摔 11 段）。</td></tr>
-<tr><td style="white-space:nowrap"><a href="#mortar-train"><b>第 3 节</b><br>把仿真器换成 mortar 来训练</a></td><td>官方代码不动，只把“往前仿真一步”换成 mortar，从头训练；每个存档点在 mortar 和 MuJoCo 里各评测一遍。</td><td>进行中，11-22 上午结束。第 6000 轮的存档：mortar 训练的策略在 mortar 里 0.87，放进 MuJoCo 是 0.85；同样轮数 MuJoCo 训练的策略在 MuJoCo 里 0.87。</td></tr>
+<tr><td style="white-space:nowrap"><a href="#mortar-train"><b>第 3 节</b><br>把仿真器换成 mortar 来训练</a></td><td>官方代码不动，只把“往前仿真一步”换成 mortar，从头训练；每个存档点在 mortar 和 MuJoCo 里各评测一遍。</td><td>已完成。第 6400 轮（和 MuJoCo 版 3 小时的数据量相同）：mortar 训练的策略在 mortar 里 0.87 / 0.87（代码默认设置）和 0.86（按论文的观测），放进 MuJoCo 是 0.80 / 0.85 和 0.78；MuJoCo 版在 MuJoCo 里 0.88 和 0.87。</td></tr>
 <tr><td style="white-space:nowrap"><a href="supermimic_repro_community.html"><b>第 4 节</b><br>此前用社区代码的复现（单独一页）</a></td><td>官方代码公开之前，用社区的独立复现代码做的第一版：三个种子、两组观测，以及把那个策略放进 mortar 的测试。</td><td>按论文的观测 0.57，另加相对位姿 0.84；放进 mortar 后 40 段里摔 19 段。</td></tr>
 </tbody></table></div>
 <h2 id="video">效果视频</h2>
@@ -109,8 +109,8 @@ td.num b{color:var(--fg)}
 <li><b>我们的解释（没有单独验证）：</b>只用机载传感器的策略看不到自己的线速度和位置，要靠最近 10 帧的传感器读数去推断，这种推断依赖训练时那个仿真器的动力学，换了仿真器就不准；直接看状态的策略没有这个问题。11-22 补充：上面的更正说明，其中一部分落差其实来自我们给 mortar 设的脚底接触偏软，这个解释只能说明剩下的部分。</li>
 <li><b>和第一版的对比。</b>第一版社区代码训练的策略放进 mortar 后 40 段摔了 19 段（见<a href="supermimic_repro_community.html#mortar">社区代码版</a>）。那次和这次的训练代码、训练时长都不同，不能确定差别来自哪一项。</li>
 </ul>
-<h2 id="mortar-train">三、把仿真器换成 mortar 来训练（进行中）</h2>
-<p><b>这一节做什么：</b>官方代码一行不改，只在环境建好之后把“往前仿真一个物理步”交给 mortar，观测、奖励、终止条件、随机化和学习算法都还是官方的，然后从头训练。<b>现状（11-22 06:31）：</b>第一批训练（11-21 18:57 开始）在 20:40 因为训练机的系统盘写满而中断，当时到第 1000 轮左右；21:08 重新开始，现在到第 6193 轮。两批的存档点都列在下面的表里。按相同的迭代轮数比，学习曲线和 MuJoCo 版接近；重新开始的这一批训练到和 MuJoCo 版 3 小时相同的数据量，要到 11-22 上午 7–8 点。</p>
+<h2 id="mortar-train">三、把仿真器换成 mortar 来训练（已完成）</h2>
+<p><b>这一节做什么：</b>官方代码一行不改，只在环境建好之后把“往前仿真一个物理步”交给 mortar，观测、奖励、终止条件、随机化和学习算法都还是官方的，然后从头训练。<b>结果（11-22）：用 mortar 训练出来的策略和 MuJoCo 版一样好。</b>训练到第 6400 轮（和 MuJoCo 版训练 3 小时用的数据量相同，mortar 用了 9.6 小时）时，mortar 训练的策略在 mortar 里的回报是 0.87（摔 0 段） / 0.87（摔 1 段）（代码默认设置，两个种子）和 0.86（摔 0 段）（按论文的观测），MuJoCo 版在 MuJoCo 里是 0.88 和 0.87，都高于论文报告的 0.82。换到另一个仿真器会掉一些：mortar 训练的策略放进 MuJoCo 是 0.80（摔 3 段） / 0.85（摔 1 段） 和 0.78（摔 5 段）。第一批训练（11-21 18:57 开始）在 20:40 因为训练机的系统盘写满而中断，当时到第 1000 轮左右；上面的结果来自 21:08 重新开始的这一批。两批的存档点都列在下面的表里。这些训练里 mortar 的接触刚度是我们接入时的默认值（第 2 节的更正说明它对脚底偏软）；用提高 3 倍的刚度重新训练还没有做。</p>
 <ul>
 <li><b>怎么接的。</b>机器人的状态由 mortar 积分，每个物理步之后把关节角和速度写回官方环境，官方环境照常用它们计算观测、奖励和终止。mortar 里的 G1 模型、电机的增益、转子惯量、力矩上限、脚和地面的摩擦规则都按 MuJoCo 里编译出来的模型对齐；摩擦系数、躯干质心偏移、编码器偏置的随机化也照官方配置做。</li>
 <li><b>已知的一处模型差别。</b>官方的 G1 模型给脚踝的两个关节加了联动的角度限制，mortar 里没有这一项，只有每个关节各自的限位。</li>
@@ -135,7 +135,7 @@ td.num b{color:var(--fg)}
 <p class="small">曲线是训练日志里的回合回报（每个回合最长 10 秒，满分 50），带探索噪声和随机化，只用来看学习的快慢；正式的评测在下面的表里。每个点是训练到这一轮的各次训练的平均（mortar 版 1–4 次，MuJoCo 版 1–3 次，轮数越靠后次数越少）。一轮 = 4096 个环境各走 10 个控制步。</p>
 <h3 id="mortar-eval">各存档点的评测</h3>
 <p>每格是“归一化回报（40 段里失败的段数）”，同一格里有几个数就是有几次训练到了这一轮并且评测完。前两列是在训练用的仿真器里评测，后两列是换到另一个仿真器里评测。</p>
-<h4>代码默认设置（重新开始的 mortar 训练现在到第 6193 轮，已训练 9.3 小时）</h4>
+<h4>代码默认设置（重新开始的 mortar 训练现在到第 6940 轮，已训练 10.4 小时）</h4>
 <div class="tablewrap"><table>
 <thead><tr><th>迭代轮数</th><th class="num">训练到这一轮的时间：MuJoCo / mortar</th><th class="num">MuJoCo 训练，MuJoCo 里评测</th><th class="num">mortar 训练，mortar 里评测</th><th class="num">MuJoCo 训练，放进 mortar</th><th class="num">mortar 训练，放进 MuJoCo</th></tr></thead>
 <tbody>
@@ -147,9 +147,10 @@ td.num b{color:var(--fg)}
 <tr><td>3000</td><td class="num">85 分钟 / 4.5 小时</td><td class="num">0.86（0）</td><td class="num">0.85（0），0.87（0）</td><td class="num">0.72（11）</td><td class="num">0.78（7），0.80（4）</td></tr>
 <tr><td>4000</td><td class="num">1.9 小时 / 6.0 小时</td><td class="num">0.85（1）</td><td class="num">0.87（0），0.87（0）</td><td class="num">0.77（5）</td><td class="num">0.81（2），0.82（2）</td></tr>
 <tr><td>5000</td><td class="num">2.4 小时 / 7.5 小时</td><td class="num">0.87（0）</td><td class="num">0.87（0），0.87（0）</td><td class="num">0.79（3）</td><td class="num">0.83（2），0.81（5）</td></tr>
-<tr><td>6000</td><td class="num">2.8 小时 / 9.0 小时</td><td class="num">0.87（0）</td><td class="num">0.87（0）</td><td class="num">0.76（6）</td><td class="num">0.85（0），0.85（0）</td></tr>
+<tr><td>6000</td><td class="num">2.8 小时 / 9.0 小时</td><td class="num">0.87（0）</td><td class="num">0.87（0），0.87（0）</td><td class="num">0.76（6）</td><td class="num">0.85（0），0.85（0）</td></tr>
+<tr><td>6400</td><td class="num">— / 9.6 小时</td><td class="num">—</td><td class="num">0.87（0），0.87（1）</td><td class="num">—</td><td class="num">0.80（3），0.85（1）</td></tr>
 </tbody></table></div>
-<h4>按论文的观测（重新开始的 mortar 训练现在到第 6124 轮，已训练 9.3 小时）</h4>
+<h4>按论文的观测（重新开始的 mortar 训练现在到第 6865 轮，已训练 10.4 小时）</h4>
 <div class="tablewrap"><table>
 <thead><tr><th>迭代轮数</th><th class="num">训练到这一轮的时间：MuJoCo / mortar</th><th class="num">MuJoCo 训练，MuJoCo 里评测</th><th class="num">mortar 训练，mortar 里评测</th><th class="num">MuJoCo 训练，放进 mortar</th><th class="num">mortar 训练，放进 MuJoCo</th></tr></thead>
 <tbody>
@@ -161,7 +162,8 @@ td.num b{color:var(--fg)}
 <tr><td>3000</td><td class="num">89 分钟 / 4.6 小时</td><td class="num">0.85（1）</td><td class="num">0.84（1）</td><td class="num">0.57（16）</td><td class="num">0.76（4）</td></tr>
 <tr><td>4000</td><td class="num">2.0 小时 / 6.1 小时</td><td class="num">0.86（1）</td><td class="num">0.86（0）</td><td class="num">0.61（15）</td><td class="num">0.81（2）</td></tr>
 <tr><td>5000</td><td class="num">2.5 小时 / 7.6 小时</td><td class="num">0.86（0）</td><td class="num">0.86（1）</td><td class="num">0.55（19）</td><td class="num">0.83（4）</td></tr>
-<tr><td>6000</td><td class="num">3.0 小时 / 9.1 小时</td><td class="num">0.87（0）</td><td class="num">—</td><td class="num">0.67（8）</td><td class="num">0.77（5）</td></tr>
+<tr><td>6000</td><td class="num">3.0 小时 / 9.1 小时</td><td class="num">0.87（0）</td><td class="num">0.86（0）</td><td class="num">0.67（8）</td><td class="num">0.77（5）</td></tr>
+<tr><td>6400</td><td class="num">— / 9.7 小时</td><td class="num">—</td><td class="num">0.86（0）</td><td class="num">—</td><td class="num">0.78（5）</td></tr>
 </tbody></table></div>
 <h4>代码默认设置，但每份数据多更新 4 倍（只有 mortar 版）（重新开始的 mortar 训练现在到第 3017 轮，已训练 7.9 小时）</h4>
 <div class="tablewrap"><table>
