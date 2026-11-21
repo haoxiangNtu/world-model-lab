@@ -28,9 +28,9 @@ td.num b{color:var(--fg)}
 
 <div class="eyebrow">Humanoid locomotion · FastSAC / RPL / PHP · 2026-11</div>
 <h1>复现三篇人形行走工作：15 分钟训出行走（FastSAC）、RPL 感知行走、PHP 跑酷</h1>
-<p class="lead"><b>现状（11-21 下午）：FastSAC 的行走部分已经复现完成，结论和论文一致；同一篇里的搬箱子（全身动作跟踪）11-21 13:29 开始训练，约 16:35 结束，结果和视频随后补到这一页。RPL 的学生蒸馏做到第 4100 轮（共 20000 轮）后暂停，第 4000 轮的学生在 MuJoCo 赛道上已经接近作者发布的学生。PHP 的五个教师已经训完（动作片段完成率 97.0–99.5 %），学生还没有开始训练。</b>RPL 和 PHP 暂停是为了把机器腾给别的实验，检查点都留着，可以接着训练。三篇来自同一个团队，代码都建在 holosoma 框架上；论文精读见 <a href="https://haoxiangntu.github.io/paper-reading-lab/papers/holosoma-15min.html">FastSAC</a>、<a href="https://haoxiangntu.github.io/paper-reading-lab/papers/rpl.html">RPL</a>、<a href="https://haoxiangntu.github.io/paper-reading-lab/papers/php-parkour.html">PHP</a>。</p>
+<p class="lead"><b>现状（11-21 下午）：FastSAC 的行走部分已经复现完成，结论和论文一致；同一篇里的搬箱子（全身动作跟踪）也已训练完：训练曲线上 FastSAC 明显快于 PPO，但把训练约 180 分钟的策略拿出来各评测 1024 次，两者都能把箱子搬起再放下，完整做完的比例是 FastSAC 61 %、PPO 72 %。RPL 的学生蒸馏做到第 4100 轮（共 20000 轮）后暂停，第 4000 轮的学生在 MuJoCo 赛道上已经接近作者发布的学生。PHP 的五个教师已经训完（动作片段完成率 97.0–99.5 %），学生还没有开始训练。</b>RPL 和 PHP 暂停是为了把机器腾给别的实验，检查点都留着，可以接着训练。三篇来自同一个团队，代码都建在 holosoma 框架上；论文精读见 <a href="https://haoxiangntu.github.io/paper-reading-lab/papers/holosoma-15min.html">FastSAC</a>、<a href="https://haoxiangntu.github.io/paper-reading-lab/papers/rpl.html">RPL</a>、<a href="https://haoxiangntu.github.io/paper-reading-lab/papers/php-parkour.html">PHP</a>。</p>
 <div class="toc"><b>目录</b>
-<a href="#video">效果视频</a><a href="#fastsac">一、FastSAC：15 分钟训出行走</a><a href="#box">搬箱子（训练中）</a><a href="#rpl">二、RPL 感知行走</a><a href="#php">三、PHP 跑酷</a><a href="#setup">四、测试条件</a>
+<a href="#video">效果视频</a><a href="#fastsac">一、FastSAC：15 分钟训出行走</a><a href="#box">搬箱子</a><a href="#rpl">二、RPL 感知行走</a><a href="#php">三、PHP 跑酷</a><a href="#setup">四、测试条件</a>
 </div>
 
 <h2 id="video">效果视频</h2>
@@ -43,7 +43,8 @@ td.num b{color:var(--fg)}
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/loco_t1_15min_fastsac_vs_ppo.jpg?v=1121a" src="../media/loco_t1_15min_fastsac_vs_ppo.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>Booster T1：左边 FastSAC 训练 15 分钟（7000 轮），右边 PPO 训练 14 分钟（500 轮）。</b>T1 上两种算法在这个时间都已经能走，没有摔倒；“前进 0.8 m/s”的 5 秒里 FastSAC 平均 0.58–0.62 m/s，PPO 0.45–0.50 m/s。</figcaption></figure>
 <h3 id="video-box">搬箱子（FastSAC 论文的全身动作跟踪）</h3>
-<p>训练中，约 16:35 结束。结束后在这里放上 FastSAC 和 PPO 两个策略搬箱子的画面，数字见<a href="#box">下面的小节</a>。</p>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/loco_box_fastsac_vs_ppo.jpg?v=1121b" src="../media/loco_box_fastsac_vs_ppo.mp4?v=1121b" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>Unitree G1 搬箱子：左边 FastSAC（训练 180 分钟），右边 PPO（训练 175 分钟），各用 4 张显卡、16384 个并行环境。</b>参考动作是一段 6.5 秒的人体动作捕捉：弯腰抱起一个大箱子（约 47 × 46 × 41 厘米），举到胸前停一会儿，再放回地面。橙色是仿真里的箱子，半透明的绿色是参考动作里箱子应该在的位置。两段都是完整做完一遍的例子，完成率见<a href="#box">下面的小节</a>。状态记录自 Isaac Sim。</figcaption></figure>
 <h3 id="video-rpl">RPL：我们蒸馏到第 4000 轮的学生，走代码自带的 MuJoCo 赛道</h3>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/loco_rpl_it4000_stairs_back.jpg?v=1121a" src="../media/loco_rpl_it4000_stairs_back.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>楼梯线，倒着走回（这一格 20 次全部完成）。</b>学生是我们蒸馏到第 4000 轮的检查点，计划训练量的 20 %。上 5 级 15 cm 的台阶，过梅花桩到终点平台，再倒着原路退回地面；速度指令 0.5 m/s，倒着走时由后面的相机看路。右上角是策略实际看到的前、后两路深度图。状态记录自 MuJoCo，画面里的这一次和评测里的同一次逐项核对一致。</figcaption></figure>
@@ -78,9 +79,36 @@ td.num b{color:var(--fg)}
 <tr><td>PPO（一个种子）</td><td class="num">3 小时 16 分（7700 轮）</td><td class="num">0.4 %</td><td class="num">0.56 m/s</td></tr>
 </tbody></table></div>
 <p>T1 上的差别小得多：两种算法在 14–15 分钟时都已经能走、基本不摔，FastSAC 的速度跟踪好一些。</p>
-<h3 id="box">搬箱子（全身动作跟踪，训练中）</h3>
+<h3 id="box">搬箱子（全身动作跟踪）</h3>
 <p>FastSAC 论文除了行走，还用同一套配方做了全身动作跟踪：让 G1 跟踪一段人的动作，论文给了跳舞、搬箱子和“推”三个任务，用 4 张显卡、16384 个并行环境训练，搬箱子训练 180 分钟。作者公开了搬箱子的动作数据（一段人搬起大箱子的动作捕捉，箱子是仿真里的真实物体，奖励里包含箱子位置和朝向的跟踪），跳舞和“推”的动作文件没有公开，所以只能复现搬箱子这一项。</p>
-<p>我们 11-21 13:29 开始按论文的设置训练：FastSAC 和 PPO 各用 4 张显卡、16384 个环境、各训练 180 分钟，约 16:35 结束。训练曲线、评测和视频出来后补在这里。</p>
+<p>我们按论文的设置训练：FastSAC 和 PPO 各用 4 张显卡、16384 个并行环境，各训练 180 分钟，各一个随机种子。下面先是和论文图 5 同一口径的训练曲线，再是我们另做的评测。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>训练中的统计</th><th class="num">30 分钟</th><th class="num">60 分钟</th><th class="num">120 分钟</th><th class="num">180 分钟</th></tr></thead>
+<tbody>
+<tr><td>FastSAC：回合回报</td><td class="num">18.3</td><td class="num">27.0</td><td class="num">29.5</td><td class="num">32.1</td></tr>
+<tr><td>PPO：回合回报</td><td class="num">4.1</td><td class="num">9.2</td><td class="num">11.1</td><td class="num">14.3</td></tr>
+<tr><td>FastSAC：平均回合长度（步，上限 500）</td><td class="num">249</td><td class="num">334</td><td class="num">343</td><td class="num">358</td></tr>
+<tr><td>PPO：平均回合长度（步，上限 500）</td><td class="num">59</td><td class="num">154</td><td class="num">192</td><td class="num">247</td></tr>
+<tr><td>论文图 5：FastSAC / PPO 的跟踪奖励</td><td class="num">70.5 / 21.8</td><td class="num">86.5 / 39.8</td><td class="num">—</td><td class="num">117.8 / 106.1</td></tr>
+</tbody></table></div>
+<p class="small">论文的数是从图上读的，纵轴的算法和我们日志里的回合回报不是同一个量，绝对值不能对；能对的是两种算法的相对关系。</p>
+<p><b>训练曲线上 FastSAC 明显快于 PPO，方向和论文一致：</b>30 分钟时回报是 PPO 的 4.5 倍（论文 3.2 倍）。不同的是，论文里 PPO 到 180 分钟已接近 FastSAC（106 对 118），我们这里 180 分钟时仍差 2.2 倍。</p>
+<p>训练曲线是带着探索噪声量出来的，所以我们另做了一次评测：取训练结束时的策略，去掉噪声，1024 个机器人各从动作的第一帧开始完整做一遍。身体或箱子偏离参考动作太多（箱子超过 0.25 米）就按训练时的终止条件记为失败。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>1024 个机器人各做一遍</th><th class="num">FastSAC（训练 180 分钟）</th><th class="num">PPO（训练 175 分钟）</th></tr></thead>
+<tbody>
+<tr><td>完整做完 6.5 秒的动作</td><td class="num"><b>61.0 %</b></td><td class="num"><b>71.6 %</b></td></tr>
+<tr><td>开头 1 秒内失败</td><td class="num">22.8 %</td><td class="num">18.6 %</td></tr>
+<tr><td>1 秒之后失败</td><td class="num">16.2 %</td><td class="num">9.9 %</td></tr>
+<tr><td>做完的机器人里，箱子举过 0.6 米的比例</td><td class="num">100 %</td><td class="num">100 %</td></tr>
+<tr><td>做完的机器人里，箱子位置的平均误差</td><td class="num">0.114 米</td><td class="num">0.100 米</td></tr>
+</tbody></table></div>
+<ul>
+<li><b>两种算法训练出的策略都能把箱子抱起、举到胸前再放回去。</b>做完整段动作的机器人，箱子全部举过了 0.6 米（参考动作的最高点是 0.84 米）。</li>
+<li><b>去掉噪声后，PPO 的完成率反而高一些（72 % 对 61 %）。</b>训练曲线对 PPO 不利：它训练时动作上一直带着标准差约 0.5 的探索噪声，FastSAC 只有约 0.1，所以 PPO 训练中的回合更容易提前结束，回报偏低。只看训练曲线会高估 FastSAC 最终策略的优势。</li>
+<li><b>大约五分之一的机器人在开头 0.1–0.25 秒就失败，两种算法都一样。</b>失败时箱子已经离参考位置 0.22–0.25 米，看起来是从第一帧起步时箱子就被碰开了；训练时起始时刻是随机的，很少正好从第一帧开始。这一点我们没有进一步查。</li>
+<li>每种算法只有一个随机种子；论文没有做这种评测，只有训练曲线和真机演示。PPO 的训练中途被我们另一个任务占用同一张显卡约 10 分钟，相当于少训练 3–4 分钟。</li>
+</ul>
 
 <h2 id="rpl">二、RPL 感知行走</h2>
 <p>RPL 让 G1 只靠身上前后两个深度相机走坡、上下楼梯和梅花桩，而且前进后退都要会。训练分两段：先用特权信息（高度图）按地形训练几个专家，再把它们蒸馏成一个看深度图的学生。我们没有重新训练专家，用的是作者发布的 3 个专家，只复现了蒸馏这一段：8 张显卡、每张 1024 个环境，按代码的默认设置（计划 20000 轮）。<b>蒸馏做到第 4100 轮（约 5 小时）后暂停。</b></p>
