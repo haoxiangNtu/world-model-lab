@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>复现人形行走三篇 · World Model Lab</title>
+<meta name="description" content="复现三篇人形行走工作：FastSAC 15 分钟训出 G1 和 T1 的行走策略并与 PPO 对比、搬箱子的全身动作跟踪、RPL 感知行走的学生蒸馏、PHP 跑酷的教师训练；含策略视频和评测数字。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="site.css">
+<style>
+.fig{border:1px solid var(--line);background:var(--bg2);border-radius:10px;margin:14px 0 20px;padding:8px}
+.fig img{width:100%;height:auto;display:block;border-radius:6px;background:#fff}
+.fig img.narrow{max-width:560px;margin:0 auto}
+.fig figcaption{color:var(--muted);font-size:13.5px;line-height:1.6;padding:8px 6px 2px}
+figure{margin:0}
+.tag{display:inline-block;border-radius:999px;padding:0 8px;font-size:12px;font-weight:600;border:1px solid var(--line);white-space:nowrap}
+.tag.ok{color:var(--token)} .tag.run{color:var(--compute)} .tag.todo{color:var(--muted)} .tag.no{color:var(--warn)}
+h4{margin:18px 0 6px;font-size:15px}
+.small{font-size:13px;color:var(--muted)}
+details.tasks summary{cursor:pointer;color:var(--compute);margin:6px 0}
+td.num b{color:var(--fg)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top"><a class="brand" href="../index.html">World Model Lab</a>
+<nav><a href="vpp2.html">论文导读</a><a href="wan.html">Wan2.1 架构</a><a href="mot.html">MoT 原理</a><a href="posttrain.html">后训练过程</a><a href="benchmarks.html">评测数据集</a><a href="notes.html">原理问答</a><a href="vla_wam.html">复现实验</a><a href="lingbot_touch.html">触觉复现</a><a class="on" href="loco_repro.html">行走复现</a><a href="https://github.com/haoxiangNtu/world-model-lab">GitHub</a></nav></header>
+
+<div class="eyebrow">Humanoid locomotion · FastSAC / RPL / PHP · 2026-11</div>
+<h1>复现三篇人形行走工作：15 分钟训出行走（FastSAC）、RPL 感知行走、PHP 跑酷</h1>
+<p class="lead"><b>现状（11-21 下午）：FastSAC 的行走部分已经复现完成，结论和论文一致；同一篇里的搬箱子（全身动作跟踪）11-21 13:29 开始训练，约 16:35 结束，结果和视频随后补到这一页。RPL 的学生蒸馏做到第 4100 轮（共 20000 轮）后暂停，第 4000 轮的学生在 MuJoCo 赛道上已经接近作者发布的学生。PHP 的五个教师已经训完（动作片段完成率 97.0–99.5 %），学生还没有开始训练。</b>RPL 和 PHP 暂停是为了把机器腾给别的实验，检查点都留着，可以接着训练。三篇来自同一个团队，代码都建在 holosoma 框架上；论文精读见 <a href="https://haoxiangntu.github.io/paper-reading-lab/papers/holosoma-15min.html">FastSAC</a>、<a href="https://haoxiangntu.github.io/paper-reading-lab/papers/rpl.html">RPL</a>、<a href="https://haoxiangntu.github.io/paper-reading-lab/papers/php-parkour.html">PHP</a>。</p>
+<div class="toc"><b>目录</b>
+<a href="#video">效果视频</a><a href="#fastsac">一、FastSAC：15 分钟训出行走</a><a href="#box">搬箱子（训练中）</a><a href="#rpl">二、RPL 感知行走</a><a href="#php">三、PHP 跑酷</a><a href="#setup">四、测试条件</a>
+</div>
+
+<h2 id="video">效果视频</h2>
+<p>这一页的画面都不是仿真器直接渲染的：训练用的机器没有图形环境，所以先把策略在仿真里运行时机器人的状态（位置、姿态、关节角）记录下来，再用同一个机器人的 MuJoCo 模型在 CPU 上重新画出来。每段视频下面写了状态是在哪个仿真器里记录的。</p>
+<h3 id="video-fastsac">FastSAC：训练 15 分钟左右的行走策略，和 PPO 对比</h3>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/loco_g1_15min_fastsac_vs_ppo.jpg?v=1121a" src="../media/loco_g1_15min_fastsac_vs_ppo.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>Unitree G1，各用一张显卡训练：左边 FastSAC 训练 14 分钟（6000 轮），右边 PPO 训练 13 分钟（400 轮）。</b>两边收到同一串速度指令：站立 1.5 秒 → 前进 0.8 m/s → 前进 0.5 m/s 同时以 0.8 rad/s 转向 → 向左横移 0.5 m/s → 后退 0.6 m/s → 站立，画面左上角是当前指令和实际速度。状态记录自 Isaac Sim（训练用的仿真器），地面是训练时的起伏地形。各记录了 4 个机器人：在“前进 0.8 m/s”的 5 秒里，FastSAC 平均走出 0.40–0.51 m/s，没有摔倒；PPO 只有 0.14–0.16 m/s，其中 1 个在开头站立时就摔倒了（画面里放的是没有摔的一个）。</figcaption></figure>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/loco_g1_end_fastsac_vs_ppo.jpg?v=1121a" src="../media/loco_g1_end_fastsac_vs_ppo.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>同样两次训练继续到约 2 小时：左边 FastSAC 1 小时 57 分（50000 轮，默认设置跑完），右边 PPO 1 小时 55 分（3500 轮）。</b>同一串指令。“前进 0.8 m/s”的 5 秒里 FastSAC 平均 0.59–0.69 m/s，PPO 0.29–0.38 m/s，8 个机器人都没有摔倒。</figcaption></figure>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/loco_t1_15min_fastsac_vs_ppo.jpg?v=1121a" src="../media/loco_t1_15min_fastsac_vs_ppo.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>Booster T1：左边 FastSAC 训练 15 分钟（7000 轮），右边 PPO 训练 14 分钟（500 轮）。</b>T1 上两种算法在这个时间都已经能走，没有摔倒；“前进 0.8 m/s”的 5 秒里 FastSAC 平均 0.58–0.62 m/s，PPO 0.45–0.50 m/s。</figcaption></figure>
+<h3 id="video-box">搬箱子（FastSAC 论文的全身动作跟踪）</h3>
+<p>训练中，约 16:35 结束。结束后在这里放上 FastSAC 和 PPO 两个策略搬箱子的画面，数字见<a href="#box">下面的小节</a>。</p>
+<h3 id="video-rpl">RPL：我们蒸馏到第 4000 轮的学生，走代码自带的 MuJoCo 赛道</h3>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/loco_rpl_it4000_stairs_back.jpg?v=1121a" src="../media/loco_rpl_it4000_stairs_back.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>楼梯线，倒着走回（这一格 20 次全部完成）。</b>学生是我们蒸馏到第 4000 轮的检查点，计划训练量的 20 %。上 5 级 15 cm 的台阶，过梅花桩到终点平台，再倒着原路退回地面；速度指令 0.5 m/s，倒着走时由后面的相机看路。右上角是策略实际看到的前、后两路深度图。状态记录自 MuJoCo，画面里的这一次和评测里的同一次逐项核对一致。</figcaption></figure>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/loco_rpl_it4000_slope_back.jpg?v=1121a" src="../media/loco_rpl_it4000_slope_back.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>坡道线，倒着走回，成功的一次（这一格 20 次完成 10 次）。</b>上 20° 的坡到 0.75 m 高的平台，跨过平台中间 25 cm 的间隙，再倒着走回。</figcaption></figure>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/loco_rpl_it4000_slope_back_fall.jpg?v=1121a" src="../media/loco_rpl_it4000_slope_back_fall.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>同一格里失败的一次。</b>倒着走回、跨间隙时摔倒。这一格的 10 次失败都发生在这道间隙处，其中 9 次是倒着走回时；作者发布的学生在这一格是 20 次完成 13 次。</figcaption></figure>
+<h3 id="video-php">PHP：作者发布的学生，在论文协议的场景里</h3>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/loco_php_released_climb76_run.jpg?v=1121a" src="../media/loco_php_released_climb76_run.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>作者发布的学生权重，76 cm 高台，指令是跑（2 m/s）：手撑上台，跳下后继续前进，判定通过。</b>我们自己的 PHP 学生还没有训练，这里放的是作者发布的权重，用来验证我们按论文协议写的 MuJoCo 评测。右上角是策略看到的深度图。这一项 500 次全部通过。</figcaption></figure>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/loco_php_released_climb76_walk_fall.jpg?v=1121a" src="../media/loco_php_released_climb76_walk_fall.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>同一个学生，76 cm 高台，指令是走（1 m/s）：这一项 500 次里唯一的一次摔倒。</b></figcaption></figure>
+
+<h2 id="fastsac">一、FastSAC：15 分钟训出行走</h2>
+<p>论文的主张是：用离策略算法 FastSAC，单张 RTX 4090 上 15 分钟就能训出 G1 和 T1 两种人形的行走策略（带随机动力学、起伏地形和推搡），比常用的 PPO 快得多。我们用作者的代码和默认设置，在 Isaac Sim 里各用一张显卡分别训练 FastSAC 和 PPO，G1 上各 3 个随机种子，然后在相同的训练时间点比较。任务是按速度指令行走：前后、左右各 ±1 m/s，转向 ±1 rad/s，每 10 秒换一次指令，五分之一的时间指令为零（站立）。</p>
+<p>评测是我们另写的：每个检查点用 1024 个机器人各走 20 秒，统计两项。一是指令随机时摔倒过的机器人占比；二是指令固定为前进 1.0 m/s 时实际走出的平均速度。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>G1</th><th class="num">训练时间</th><th class="num">摔倒过的机器人占比（三个种子）</th><th class="num">1.0 m/s 指令下的实际速度（三个种子）</th></tr></thead>
+<tbody>
+<tr><td>FastSAC</td><td class="num">14 分钟（6000 轮）</td><td class="num">0.1 / 0.3 / 0.3 %</td><td class="num">0.46 / 0.55 / 0.47 m/s</td></tr>
+<tr><td>PPO</td><td class="num">13 分钟（400 轮）</td><td class="num">17.9 / 29.4 / 14.3 %</td><td class="num">0.17 / 0.20 / 0.20 m/s</td></tr>
+<tr><td>FastSAC</td><td class="num">1 小时 57 分（50000 轮）</td><td class="num">0 / 0 / 0 %</td><td class="num">0.73 / 0.77 / 0.75 m/s</td></tr>
+<tr><td>PPO</td><td class="num">1 小时 55 分（3500 轮）</td><td class="num">1.5 / 0.1 / 0.7 %</td><td class="num">0.37 / 0.37 / 0.36 m/s</td></tr>
+</tbody></table></div>
+<p><b>结论和论文一致。</b>G1 上 FastSAC 训练 14 分钟就基本不摔（0.1–0.3 %），PPO 同样时间还有 14–29 % 的机器人摔倒，而且几乎走不动；PPO 训练到约 2 小时才不怎么摔，速度仍只有 FastSAC 的一半。我们的显卡 15 分钟能跑约 6300 轮，所以取的是第 6000 轮的检查点（约 14 分钟）。要注意的是，1.0 m/s 的指令下实际速度都不到 1.0：14 分钟时约 0.5 m/s，跑完默认的 50000 轮是 0.75 m/s。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>T1</th><th class="num">训练时间</th><th class="num">摔倒过的机器人占比</th><th class="num">1.0 m/s 指令下的实际速度</th></tr></thead>
+<tbody>
+<tr><td>FastSAC（三个种子）</td><td class="num">15 分钟（7000 轮）</td><td class="num">0.2 / 0.3 / 0.0 %</td><td class="num">0.67 / 0.59 / 0.67 m/s</td></tr>
+<tr><td>PPO（三个种子）</td><td class="num">14 分钟（500 轮）</td><td class="num">0.5 / 0.3 / 0.1 %</td><td class="num">0.57 / 0.53 / 0.47 m/s</td></tr>
+<tr><td>FastSAC（一个种子）</td><td class="num">3 小时 18 分（100000 轮）</td><td class="num">0 %</td><td class="num">0.74 m/s</td></tr>
+<tr><td>PPO（一个种子）</td><td class="num">3 小时 16 分（7700 轮）</td><td class="num">0.4 %</td><td class="num">0.56 m/s</td></tr>
+</tbody></table></div>
+<p>T1 上的差别小得多：两种算法在 14–15 分钟时都已经能走、基本不摔，FastSAC 的速度跟踪好一些。</p>
+<h3 id="box">搬箱子（全身动作跟踪，训练中）</h3>
+<p>FastSAC 论文除了行走，还用同一套配方做了全身动作跟踪：让 G1 跟踪一段人的动作，论文给了跳舞、搬箱子和“推”三个任务，用 4 张显卡、16384 个并行环境训练，搬箱子训练 180 分钟。作者公开了搬箱子的动作数据（一段人搬起大箱子的动作捕捉，箱子是仿真里的真实物体，奖励里包含箱子位置和朝向的跟踪），跳舞和“推”的动作文件没有公开，所以只能复现搬箱子这一项。</p>
+<p>我们 11-21 13:29 开始按论文的设置训练：FastSAC 和 PPO 各用 4 张显卡、16384 个环境、各训练 180 分钟，约 16:35 结束。训练曲线、评测和视频出来后补在这里。</p>
+
+<h2 id="rpl">二、RPL 感知行走</h2>
+<p>RPL 让 G1 只靠身上前后两个深度相机走坡、上下楼梯和梅花桩，而且前进后退都要会。训练分两段：先用特权信息（高度图）按地形训练几个专家，再把它们蒸馏成一个看深度图的学生。我们没有重新训练专家，用的是作者发布的 3 个专家，只复现了蒸馏这一段：8 张显卡、每张 1024 个环境，按代码的默认设置（计划 20000 轮）。<b>蒸馏做到第 4100 轮（约 5 小时）后暂停。</b></p>
+<p>第一个指标是训练时的地形等级，论文表 3 报告的就是它。地形按难度分 10 行，机器人走完一行升一行，升过最后一行后被放回随机的一行；按这个规则，一个每次都能走完的策略，平均等级正好是 6.0（这是我们从代码推出来的，论文只给了数字）。所以 6.0 是这个指标的满分，不是“第 6 级”。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>训练时的地形等级</th><th class="num">上楼梯</th><th class="num">下楼梯</th><th class="num">坡</th><th class="num">梅花桩</th></tr></thead>
+<tbody>
+<tr><td>我们的学生，第 1000 轮</td><td class="num">5.97</td><td class="num">5.87</td><td class="num">6.12</td><td class="num">5.34</td></tr>
+<tr><td>我们的学生，第 2000 轮</td><td class="num">5.83</td><td class="num">5.98</td><td class="num">6.22</td><td class="num">5.87</td></tr>
+<tr><td>我们的学生，第 3000 轮</td><td class="num">5.91</td><td class="num">5.95</td><td class="num">6.19</td><td class="num">5.88</td></tr>
+<tr><td>我们的学生，第 4000 轮</td><td class="num">5.69</td><td class="num">5.97</td><td class="num">5.83</td><td class="num">5.84</td></tr>
+<tr><td>论文表 3（双向行走，前后两个相机）</td><td class="num">6.0</td><td class="num">6.0</td><td class="num">6.0</td><td class="num">6.0</td></tr>
+</tbody></table></div>
+<p class="small">表里是训练日志里的瞬时值，会在 6 上下波动（高于 6 是统计窗口造成的）。第 1000 轮起四种地形就都在 5.3–6.2 之间。</p>
+<p>第二个指标是我们另做的：把学生导出后放到代码自带的 MuJoCo 赛道上走。赛道有两条线，楼梯线是上台阶（每级 15 cm）→ 梅花桩 → 0.75 m 高的平台，坡道线是 20° 的坡 → 中间有 25 cm 间隙的平台；每次试验要走到终点平台再回到地面，回程有“转身走回”和“倒着走回”两种。速度指令 0.5 m/s，每格 20 次，表里是完成的次数。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>MuJoCo 赛道，20 次里完成的次数</th><th class="num">楼梯线，转身返回</th><th class="num">楼梯线，倒着返回</th><th class="num">坡道线，转身返回</th><th class="num">坡道线，倒着返回</th></tr></thead>
+<tbody>
+<tr><td>我们的学生，第 1000 轮</td><td class="num">20</td><td class="num">17</td><td class="num">19</td><td class="num">4</td></tr>
+<tr><td>我们的学生，第 2000 轮</td><td class="num">13</td><td class="num">6</td><td class="num">20</td><td class="num">8</td></tr>
+<tr><td>我们的学生，第 4000 轮</td><td class="num">20</td><td class="num">20</td><td class="num">19</td><td class="num">10</td></tr>
+<tr><td>作者发布的学生</td><td class="num">20</td><td class="num">18</td><td class="num">19</td><td class="num">13</td></tr>
+</tbody></table></div>
+<p>第 4000 轮（计划训练量的 20 %）的学生在四格里有三格和作者发布的学生持平或更好，最难的一格（坡道线倒着走回，要倒着跨过 25 cm 的间隙）是 10 次对 13 次。第 2000 轮在楼梯线上有过一次明显的回落，失败都发生在梅花桩一段，到第 4000 轮恢复；每格只有 20 次，早期检查点之间有这样的起伏，最终结论要等训练完再看。这个赛道评测是我们自己定的，论文没有对应的数字；论文的真机结果是往返 10 次成功 6 次。</p>
+
+<h2 id="php">三、PHP 跑酷</h2>
+<p>PHP 让 G1 看着深度图做跑酷动作。做法是先把人的动作片段（走、跑、上台阶、手撑爬高台）拼成带障碍的长轨迹，每类动作训练一个跟踪动作的教师（能看到特权信息），再把多个教师蒸馏成一个看深度图的学生。论文里还有猫跳、爬 1.25 m 的墙等更难的动作，但作者公开的训练数据只有下面五组，我们按这五组复现。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>教师（每个训练 20000 轮）</th><th class="num">动作片段数</th><th class="num">片段完成率</th></tr></thead>
+<tbody>
+<tr><td>平地走跑</td><td class="num">100</td><td class="num">99.5 %</td></tr>
+<tr><td>上 36 cm 台阶，慢速</td><td class="num">56</td><td class="num">99.5 %</td></tr>
+<tr><td>上 36 cm 台阶，快速</td><td class="num">60</td><td class="num">99.1 %</td></tr>
+<tr><td>爬 76 cm 高台，慢速</td><td class="num">40</td><td class="num">98.9 %</td></tr>
+<tr><td>爬 76 cm 高台，快速</td><td class="num">40</td><td class="num">97.0 %</td></tr>
+</tbody></table></div>
+<p class="small">片段完成率是我们另写的评测：1024 个机器人连续跟踪 60 秒，每个片段从头开始，中途没有因为偏离太多或摔倒而被终止就算完成。论文没有报告教师在这五组数据上的数字。</p>
+<p><b>学生还没有开始训练</b>（按代码默认设置是 30000 轮，我们估计 8 张显卡要 53–60 小时）。评测已经准备好：我们按论文的协议在 MuJoCo 里写了单障碍任务（每项 100 个障碍实例 × 5 次，障碍带 ±20° 偏航，起始距离随机，越过障碍后再走 1.5 m 不摔算成功），先用作者发布的学生权重验证：</p>
+<div class="tablewrap"><table>
+<thead><tr><th>单障碍任务的成功率</th><th class="num">36 cm，1 m/s</th><th class="num">36 cm，2 m/s</th><th class="num">76 cm，1 m/s</th><th class="num">76 cm，2 m/s</th></tr></thead>
+<tbody>
+<tr><td>作者发布的学生，我们的 MuJoCo 评测</td><td class="num">496 / 500</td><td class="num">500 / 500</td><td class="num">499 / 500</td><td class="num">500 / 500</td></tr>
+<tr><td>论文表 I</td><td class="num">1.00</td><td class="num">1.00</td><td class="num">0.95</td><td class="num">0.95</td></tr>
+</tbody></table></div>
+<p class="small">36 cm、1 m/s 的 4 次失败里 3 次是从障碍旁边绕了过去，1 次摔倒。论文的评测是在它自己的仿真环境里做的，和我们的 MuJoCo 评测不是同一个环境，数字只能大致对照；论文里的 58 cm 一档，公开的数据里没有。</p>
+
+<h2 id="setup">四、测试条件</h2>
+<ul>
+<li>代码：holosoma（2026-11-17 的主分支）、RPL 和 PHP 各自的公开仓库，都用默认设置；唯一的例外是 RPL 的专家没有重训，用的是作者发布的权重。</li>
+<li>仿真器：FastSAC 行走和搬箱子、PHP 教师用 Isaac Sim；RPL 蒸馏用 Isaac Gym（代码的要求）；学生的赛道评测和论文协议评测用 MuJoCo，在 CPU 上跑。</li>
+<li>硬件：一台 8 张显卡的服务器，每张 96 GB 显存。FastSAC 行走每次训练用 1 张，搬箱子每次 4 张，PHP 教师每个 1–2 张，RPL 蒸馏用 8 张。</li>
+<li>没有做的：真机实验；RPL 专家的重新训练；PHP 学生（已排期，暂停）；FastSAC 论文里的跳舞和“推”（动作数据未公开）。</li>
+</ul>
+<footer>World Model Lab · 世界模型的学习与测试记录 · <a href="https://github.com/haoxiangNtu/world-model-lab">源码</a></footer>
+</div>
+</body>
+</html>
