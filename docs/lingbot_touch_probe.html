@@ -29,11 +29,11 @@ td.num b{color:var(--fg)}
 <header class="top"><a class="brand" href="../index.html">World Model Lab</a>
 <nav><a href="vpp2.html">论文导读</a><a href="wan.html">Wan2.1 架构</a><a href="mot.html">MoT 原理</a><a href="posttrain.html">后训练过程</a><a href="benchmarks.html">评测数据集</a><a href="notes.html">原理问答</a><a href="vla_wam.html">复现实验</a><a class="on" href="lingbot_touch.html">触觉复现</a><a href="loco_repro.html">行走复现</a><a href="supermimic_repro.html">SuperMimic 复现</a><a href="https://github.com/haoxiangNtu/world-model-lab">GitHub</a></nav></header>
 
-<div class="eyebrow">复现 LingBot-Touch · 第 2 节，共 6 节</div>
+<div class="eyebrow">复现 LingBot-Touch · 第 2 节，共 7 节</div>
 <h1>第 2 节：把冻结的编码器接到三种仿真触觉上（probe）</h1>
 <p class="lead"><b>这一节做什么：</b>把冻结的编码器接到三种仿真触觉信号上（mortar 两指夹爪、mortar 五指手、Isaac Sim 里的 Sharpa 手），用小的读出头测它的特征里有多少接触力和接触位置的信息。<br><b>结果：</b>预训练权重明显好于同结构的随机权重，但不比直接在原始信号上训练的小网络好。</p>
 <div class="toc partnav"><b>分节</b>
-<a href="lingbot_touch.html">总览</a><a href="lingbot_touch_weights.html">1 开源权重</a><a class="on" href="lingbot_touch_probe.html">2 probe</a><a href="lingbot_touch_rl.html">3 强化学习</a><a href="lingbot_touch_retrain.html">4 重新预训练</a><a href="lingbot_touch_cap.html">5 PhysX 拧瓶盖</a><a href="lingbot_touch_mortar.html">6 mortar 拧瓶盖</a>
+<a href="lingbot_touch.html">总览</a><a href="lingbot_touch_weights.html">1 开源权重</a><a class="on" href="lingbot_touch_probe.html">2 probe</a><a href="lingbot_touch_rl.html">3 强化学习</a><a href="lingbot_touch_retrain.html">4 重新预训练</a><a href="lingbot_touch_cap.html">5 PhysX 拧瓶盖</a><a href="lingbot_touch_mortar.html">6 mortar 拧瓶盖</a><a href="lingbot_touch_sharpa.html">7 Isaac 对 mortar</a>
 </div>
 <div class="toc"><b>本节目录</b>
 <a href="#video-mortar">效果视频：mortar：两指夹爪和五指手的抓取</a><a href="#mortar">E1：接到同事的 mortar 仿真器上（两指夹爪，软指尖）</a><a href="#cubeq">结果：专门录的一批抓取，触觉能不能判断提不提得住</a><a href="#wuji">E1b：mortar 五指手（Isaac Lab 3 里的捏取任务）</a><a href="#tacmap">E2：Isaac Sim 里的仿真触觉（论文附录 C.1、C.3）</a>

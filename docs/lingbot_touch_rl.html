@@ -29,11 +29,11 @@ td.num b{color:var(--fg)}
 <header class="top"><a class="brand" href="../index.html">World Model Lab</a>
 <nav><a href="vpp2.html">论文导读</a><a href="wan.html">Wan2.1 架构</a><a href="mot.html">MoT 原理</a><a href="posttrain.html">后训练过程</a><a href="benchmarks.html">评测数据集</a><a href="notes.html">原理问答</a><a href="vla_wam.html">复现实验</a><a class="on" href="lingbot_touch.html">触觉复现</a><a href="loco_repro.html">行走复现</a><a href="supermimic_repro.html">SuperMimic 复现</a><a href="https://github.com/haoxiangNtu/world-model-lab">GitHub</a></nav></header>
 
-<div class="eyebrow">复现 LingBot-Touch · 第 3 节，共 6 节</div>
+<div class="eyebrow">复现 LingBot-Touch · 第 3 节，共 7 节</div>
 <h1>第 3 节：论文表 3 的强化学习：Sharpa 手在手里转物体</h1>
 <p class="lead"><b>这一节做什么：</b>按论文表 3，在 Isaac Sim 里训练 Sharpa 手在手里转物体，比较五种触觉输入（无触觉、二值接触、原始信号、CNN、冻结的 LingBot-Touch），做了单圆柱和九种物体两个版本，每种输入 3 个种子。<br><b>结果：</b>触觉有用；LingBot-Touch 自己的成功率接近论文，但没有超过 CNN：单圆柱 84.6 % 对 85.5 %，九种物体 49.8 % 对 59.0 %。</p>
 <div class="toc partnav"><b>分节</b>
-<a href="lingbot_touch.html">总览</a><a href="lingbot_touch_weights.html">1 开源权重</a><a href="lingbot_touch_probe.html">2 probe</a><a class="on" href="lingbot_touch_rl.html">3 强化学习</a><a href="lingbot_touch_retrain.html">4 重新预训练</a><a href="lingbot_touch_cap.html">5 PhysX 拧瓶盖</a><a href="lingbot_touch_mortar.html">6 mortar 拧瓶盖</a>
+<a href="lingbot_touch.html">总览</a><a href="lingbot_touch_weights.html">1 开源权重</a><a href="lingbot_touch_probe.html">2 probe</a><a class="on" href="lingbot_touch_rl.html">3 强化学习</a><a href="lingbot_touch_retrain.html">4 重新预训练</a><a href="lingbot_touch_cap.html">5 PhysX 拧瓶盖</a><a href="lingbot_touch_mortar.html">6 mortar 拧瓶盖</a><a href="lingbot_touch_sharpa.html">7 Isaac 对 mortar</a>
 </div>
 <div class="toc"><b>本节目录</b>
 <a href="#video-rl">效果视频：Isaac Sim（PhysX）：强化学习训练出的策略转圆柱</a><a href="#rl">E3：Sharpa 手 in-hand rotation 强化学习（论文表 3）</a><a href="#inputs">五种触觉输入分别给策略看什么</a><a href="#cnn">CNN 这一种：和策略一起训练是什么意思</a><a href="#arch">LingBot 这一种：冻结的编码器是怎么接进强化学习的</a><a href="#rlvideo">策略“摸到”的是什么</a><a href="#multi">更接近论文的版本：九种形状 × 三种尺度</a>

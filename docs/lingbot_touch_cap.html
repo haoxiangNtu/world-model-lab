@@ -29,11 +29,11 @@ td.num b{color:var(--fg)}
 <header class="top"><a class="brand" href="../index.html">World Model Lab</a>
 <nav><a href="vpp2.html">论文导读</a><a href="wan.html">Wan2.1 架构</a><a href="mot.html">MoT 原理</a><a href="posttrain.html">后训练过程</a><a href="benchmarks.html">评测数据集</a><a href="notes.html">原理问答</a><a href="vla_wam.html">复现实验</a><a class="on" href="lingbot_touch.html">触觉复现</a><a href="loco_repro.html">行走复现</a><a href="supermimic_repro.html">SuperMimic 复现</a><a href="https://github.com/haoxiangNtu/world-model-lab">GitHub</a></nav></header>
 
-<div class="eyebrow">复现 LingBot-Touch · 第 5 节，共 6 节</div>
+<div class="eyebrow">复现 LingBot-Touch · 第 5 节，共 7 节</div>
 <h1>第 5 节：自建任务：PhysX 里拧瓶盖（Sharpa 手）</h1>
 <p class="lead"><b>这一节做什么：</b>论文里的拧瓶盖是真机演示，没有仿真版。这里在 Isaac Sim（PhysX）里自建了一个，让 Sharpa 手拧开瓶盖并提起，做了三版：瓶盖近似相同、加上螺纹要提起、27 种形状大小不同的瓶盖。<br><b>结果：</b>瓶盖各不相同的版本里差距最大：无触觉 34.8 %，CNN 83.0 %，LingBot-Touch 76.6 %。</p>
 <div class="toc partnav"><b>分节</b>
-<a href="lingbot_touch.html">总览</a><a href="lingbot_touch_weights.html">1 开源权重</a><a href="lingbot_touch_probe.html">2 probe</a><a href="lingbot_touch_rl.html">3 强化学习</a><a href="lingbot_touch_retrain.html">4 重新预训练</a><a class="on" href="lingbot_touch_cap.html">5 PhysX 拧瓶盖</a><a href="lingbot_touch_mortar.html">6 mortar 拧瓶盖</a>
+<a href="lingbot_touch.html">总览</a><a href="lingbot_touch_weights.html">1 开源权重</a><a href="lingbot_touch_probe.html">2 probe</a><a href="lingbot_touch_rl.html">3 强化学习</a><a href="lingbot_touch_retrain.html">4 重新预训练</a><a class="on" href="lingbot_touch_cap.html">5 PhysX 拧瓶盖</a><a href="lingbot_touch_mortar.html">6 mortar 拧瓶盖</a><a href="lingbot_touch_sharpa.html">7 Isaac 对 mortar</a>
 </div>
 <div class="toc"><b>本节目录</b>
 <a href="#video-cap">效果视频：PhysX：自建的拧瓶盖任务</a><a href="#cap">自建任务：触觉拧瓶盖（PhysX）</a><a href="#cap-how">这个动作是怎么来的：人定了什么，PPO 学了什么，触觉怎么进去</a><a href="#caplift">加上螺纹：拧开之后把瓶盖提起来</a><a href="#capdiv">瓶盖的形状和大小各不相同的版本</a>
