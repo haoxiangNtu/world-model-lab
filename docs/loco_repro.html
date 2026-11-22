@@ -30,6 +30,7 @@ td.num b{color:var(--fg)}
 <h1>复现三篇人形行走工作：15 分钟训出行走（FastSAC）、RPL 感知行走、PHP 跑酷</h1>
 <p class="lead"><b>现状（11-21 下午）：FastSAC 的行走部分已经复现完成，结论和论文一致；同一篇里的搬箱子（全身动作跟踪）也已训练完：训练曲线上 FastSAC 明显快于 PPO，但把训练约 180 分钟的策略拿出来各评测 1024 次，两者都能把箱子搬起再放下，完整做完的比例是 FastSAC 61 %、PPO 72 %。RPL 的学生蒸馏做到第 4100 轮（共 20000 轮）后暂停，第 4000 轮的学生在 MuJoCo 赛道上已经接近作者发布的学生。PHP 的五个教师已经训完（动作片段完成率 97.0–99.5 %），学生还没有开始训练。</b>RPL 和 PHP 暂停是为了把机器腾给别的实验，检查点都留着，可以接着训练。三篇来自同一个团队，代码都建在 holosoma 框架上；论文精读见 <a href="https://haoxiangntu.github.io/paper-reading-lab/papers/holosoma-15min.html">FastSAC</a>、<a href="https://haoxiangntu.github.io/paper-reading-lab/papers/rpl.html">RPL</a>、<a href="https://haoxiangntu.github.io/paper-reading-lab/papers/php-parkour.html">PHP</a>。</p>
 <p class="note" id="mortar-note"><b>新（11-22）：</b>同一套 FastSAC 代码把仿真器换成 mortar 来训练的结果（平地行走、搬箱子，和 MuJoCo 的对照）在单独一页：<a href="loco_mortar.html">用 mortar 训练 FastSAC</a>。</p>
+<p class="note" id="php-mortar-note"><b>新（11-22）：</b>PHP 的教师换用 mortar 训练的结果（进行中）在单独一页：<a href="php_mortar.html">用 mortar 训练 PHP 跑酷教师</a>。</p>
 <div class="toc"><b>目录</b>
 <a href="#video">效果视频</a><a href="#fastsac">一、FastSAC：15 分钟训出行走</a><a href="#box">搬箱子</a><a href="#rpl">二、RPL 感知行走</a><a href="#php">三、PHP 跑酷</a><a href="#setup">四、测试条件</a>
 </div>
