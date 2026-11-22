@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>接触和摩擦的对照测试 · World Model Lab</title>
+<meta name="description" content="G1 的一只脚（七根细胶囊）放在平地上，五项有标准答案的接触测试：推力低于摩擦极限、滑动、刹车、下陷、倾斜和翻倒，mortar 和 MuJoCo 的结果对照。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="site.css">
+<style>
+.fig{border:1px solid var(--line);background:var(--bg2);border-radius:10px;margin:14px 0 20px;padding:8px}
+.fig img{width:100%;height:auto;display:block;border-radius:6px;background:#fff}
+.fig img.narrow{max-width:560px;margin:0 auto}
+.fig figcaption{color:var(--muted);font-size:13.5px;line-height:1.6;padding:8px 6px 2px}
+figure{margin:0}
+.tag{display:inline-block;border-radius:999px;padding:0 8px;font-size:12px;font-weight:600;border:1px solid var(--line);white-space:nowrap}
+.tag.ok{color:var(--token)} .tag.run{color:var(--compute)} .tag.todo{color:var(--muted)} .tag.no{color:var(--warn)}
+h4{margin:18px 0 6px;font-size:15px}
+.small{font-size:13px;color:var(--muted)}
+details.tasks summary{cursor:pointer;color:var(--compute);margin:6px 0}
+td.num b{color:var(--fg)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top"><a class="brand" href="../index.html">World Model Lab</a>
+<nav><a href="vpp2.html">论文导读</a><a href="wan.html">Wan2.1 架构</a><a href="mot.html">MoT 原理</a><a href="posttrain.html">后训练过程</a><a href="benchmarks.html">评测数据集</a><a href="notes.html">原理问答</a><a href="vla_wam.html">复现实验</a><a href="lingbot_touch.html">触觉复现</a><a class="on" href="loco_repro.html">行走复现</a><a href="supermimic_repro.html">SuperMimic 复现</a><a href="https://github.com/haoxiangNtu/world-model-lab">GitHub</a></nav></header>
+
+<div class="eyebrow">Contact tests · mortar × MuJoCo · 2026-11</div>
+<h1>接触和摩擦的对照测试：mortar 与 MuJoCo</h1>
+<p class="lead"><b>结论（11-22）：在单个脚底的接触上，mortar 的摩擦更准，支撑的转动刚度更软；滑动和刹车距离两边都在几个百分点以内。</b>测试对象是 G1 行走任务里的那只脚（七根半径 1 厘米的细胶囊），压上半个机器人的重量，放在平地上，摩擦系数 0.6，做五项有标准答案的测试。<b>摩擦：</b>推力低于摩擦极限时脚应当不动。mortar 里它确实不动（只有 0.04–0.83 毫米的弹性位移，不随时间增长）；MuJoCo 用行走任务默认的设置时会一直慢慢滑（每秒 0.18–1.17 毫米），而且斜 45° 方向推到极限的 90 % 就滑走了；MuJoCo 换成椭圆摩擦锥后每秒只滑 0.013–0.068 毫米，各方向一致，接近 mortar。<b>支撑：</b>MuJoCo 里这只脚几乎是刚性地踩在地上（下陷 0.008 毫米，受俯仰力矩时倾斜不到 0.05°，力矩到理论值的 100 % 才翻倒）；mortar 在我们任务用的接触刚度下，下陷 0.5 毫米，力矩到理论翻倒值的一半时已经倾斜 1.24°，到 95 % 就翻倒了。<b>这组测试只说明单个接触算得准不准，不能直接推出“用 mortar 训练出来的行走策略更好”：</b>行走的训练结果两边都不摔（见<a href="loco_mortar.html">用 mortar 训练 FastSAC</a>）。这一页只有仿真里的测试，没有和真机数据对比。</p>
+<div class="toc"><b>目录</b>
+<a href="#summary">一、结果总表</a><a href="#setup">二、测的是什么</a><a href="#push">三、推力低于摩擦极限</a><a href="#slide">四、滑动和刹车</a><a href="#tilt">五、下陷和倾斜</a><a href="#settings">六、mortar 的摩擦刚度设置</a><a href="#dt">七、时间步长</a><a href="#check">八、测试条件和没测的</a>
+</div>
+<h2 id="summary">一、结果总表</h2>
+<p><b>做了什么：</b>五项测试各取一个代表性的数，和标准答案放在一起。<b>结果：</b>前两行（摩擦）mortar 最接近标准答案，最后四行（下陷和倾斜）MuJoCo 最接近，中间三行差别不大。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>测试</th><th class="num">标准答案</th><th class="num">MuJoCo，行走任务的设置</th><th class="num">MuJoCo，椭圆摩擦锥</th><th class="num">mortar，我们任务里的设置</th></tr></thead>
+<tbody>
+<tr><td>推力为摩擦极限的 90 %，沿脚长方向：滑动速度（毫米/秒）</td><td class="num">0</td><td class="num">1.03</td><td class="num">0.040</td><td class="num">0</td></tr>
+<tr><td>同上，斜 45° 方向</td><td class="num">0</td><td class="num">滑走（5 秒移动 9.2 米）</td><td class="num">0.053</td><td class="num">0</td></tr>
+<tr><td>推力为极限的 1.2 倍：1 秒内滑动距离的误差，沿脚长方向</td><td class="num">0 %</td><td class="num">-0.7 %</td><td class="num">-0.5 %</td><td class="num">+1.9 %</td></tr>
+<tr><td>同上，斜 45° 方向</td><td class="num">0 %</td><td class="num">+140.7 %</td><td class="num">0.0 %</td><td class="num">+2.0 %</td></tr>
+<tr><td>以 1 米/秒松手：刹车距离的误差</td><td class="num">0 %</td><td class="num">-2.1 %</td><td class="num">-2.7 %</td><td class="num">+3.1 %</td></tr>
+<tr><td>静止时脚底陷入地面（毫米）</td><td class="num">0（刚性）</td><td class="num">0.008</td><td class="num">0.032</td><td class="num">0.50</td></tr>
+<tr><td>俯仰力矩为理论翻倒值的 50 %：倾角</td><td class="num">0°（刚性）</td><td class="num">0.003°</td><td class="num">0.011°</td><td class="num">1.24°</td></tr>
+<tr><td>俯仰力矩为理论翻倒值的 90 %：倾角</td><td class="num">0°（刚性）</td><td class="num">0.016°</td><td class="num">0.064°</td><td class="num">4.19°</td></tr>
+<tr><td>开始翻倒的力矩（占理论值）</td><td class="num">100 %</td><td class="num">95–100 %</td><td class="num">95–100 %</td><td class="num">90–95 %</td></tr>
+</tbody></table></div>
+<p class="small">物理步长都是 5 毫秒。“开始翻倒的力矩”一行：恒定力矩保持 3 秒，前一个数是还能稳住的最大档，后一个数是翻倒的最小档（只测了 30、50、80、90、95、100、105、110 % 这几档）。</p>
+<h2 id="setup">二、测的是什么</h2>
+<p><b>对象：</b>G1 的左脚，按行走任务里的碰撞模型：七根半径 1 厘米的胶囊排成脚掌的形状（长约 19 厘米，宽约 6 厘米）。脚作为一个单独的刚体，质量 17.5 公斤（半个机器人），质心在脚掌中部上方 2 厘米，放在平地上，摩擦系数 0.6。只有这一个刚体，没有腿和关节。每项测试的标准答案都能用库仑摩擦和刚体静力学直接算出来。</p>
+<ul>
+<li><b>推力低于摩擦极限：</b>水平推力取摩擦极限（摩擦系数 × 重量）的 30 %、60 %、90 %、98 %，持续 5 秒，方向取沿脚长和斜 45° 两种。脚应当不动。记录 5 秒的位移和最后 1 秒的平均速度。</li>
+<li><b>滑动：</b>推力取极限的 1.2 倍，持续 1 秒。加速度应当是 0.2 × 摩擦系数 × 重力加速度，对应 1 秒滑 0.59 米。</li>
+<li><b>刹车：</b>以 1 米/秒的水平速度松手。应当滑 0.085 米停下。</li>
+<li><b>下陷：</b>静置 1 秒后脚底比“刚好贴地”低多少。</li>
+<li><b>倾斜和翻倒：</b>加一个恒定的俯仰力矩（抬脚跟、压脚尖），保持 3 秒。力矩小于“重量 × 质心到脚尖接触线的距离”时脚应当稳住，大于时应当翻倒。</li>
+</ul>
+<p><b>三种设置：</b>“MuJoCo，行走任务的设置”是 FastSAC 行走任务在 MuJoCo 里用的：牛顿求解器、50 次迭代、金字塔摩擦锥、默认的接触软度。“MuJoCo，椭圆摩擦锥”只改两项：摩擦锥换成椭圆的，摩擦相对法向的权重（impratio）调到 10。“mortar，我们任务里的设置”是我们训练行走、搬箱子、PHP 时用的：接触刚度和摩擦的切向刚度都是引擎默认值调高后的值（来历见<a href="loco_mortar.html#walk-asym">FastSAC 页</a>）。</p>
+<h2 id="push">三、推力低于摩擦极限：脚该不动</h2>
+<p><b>结果：</b>mortar 里脚不动，位移是弹性的，推多久都一样。MuJoCo 用金字塔摩擦锥时，推力越大滑得越快，斜向在 90 % 时直接滑走：按滑动测试里的加速度反推，金字塔摩擦锥在斜 45° 方向实际提供的摩擦力只有名义值的约 72 %。换成椭圆摩擦锥后，滑动速度降到原来的十几分之一到二十几分之一，两个方向基本一样。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>最后 1 秒的平均滑动速度（毫米/秒）</th><th class="num">推力 30 %</th><th class="num">推力 60 %</th><th class="num">推力 90 %</th><th class="num">推力 98 %</th></tr></thead>
+<tbody>
+<tr><td>MuJoCo，行走任务的设置，沿脚长方向</td><td class="num">0.18</td><td class="num">0.48</td><td class="num">1.03</td><td class="num">1.17</td></tr>
+<tr><td>MuJoCo，椭圆摩擦锥，沿脚长方向</td><td class="num">0.013</td><td class="num">0.027</td><td class="num">0.040</td><td class="num">0.043</td></tr>
+<tr><td>mortar，我们任务里的设置，沿脚长方向</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr>
+<tr><td>MuJoCo，行走任务的设置，斜 45° 方向</td><td class="num">0.18</td><td class="num">0.41</td><td class="num">滑走（5 秒移动 9.2 米）</td><td class="num">滑走（5 秒移动 12.1 米）</td></tr>
+<tr><td>MuJoCo，椭圆摩擦锥，斜 45° 方向</td><td class="num">0.013</td><td class="num">0.027</td><td class="num">0.053</td><td class="num">0.068</td></tr>
+<tr><td>mortar，我们任务里的设置，斜 45° 方向</td><td class="num">0</td><td class="num">0</td><td class="num">0</td><td class="num">0</td></tr>
+</tbody></table></div>
+<p class="small">标准答案是 0。小于 0.0005 毫米/秒的记为 0。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>5 秒内的位移（毫米）</th><th class="num">推力 30 %</th><th class="num">推力 60 %</th><th class="num">推力 90 %</th><th class="num">推力 98 %</th></tr></thead>
+<tbody>
+<tr><td>MuJoCo，行走任务的设置，沿脚长方向</td><td class="num">0.90</td><td class="num">2.4</td><td class="num">5.1</td><td class="num">5.8</td></tr>
+<tr><td>MuJoCo，椭圆摩擦锥，沿脚长方向</td><td class="num">0.07</td><td class="num">0.13</td><td class="num">0.20</td><td class="num">0.22</td></tr>
+<tr><td>mortar，我们任务里的设置，沿脚长方向</td><td class="num">0.04</td><td class="num">0.07</td><td class="num">0.16</td><td class="num">0.57</td></tr>
+<tr><td>MuJoCo，行走任务的设置，斜 45° 方向</td><td class="num">0.91</td><td class="num">2.0</td><td class="num">滑走</td><td class="num">滑走</td></tr>
+<tr><td>MuJoCo，椭圆摩擦锥，斜 45° 方向</td><td class="num">0.07</td><td class="num">0.14</td><td class="num">0.28</td><td class="num">0.35</td></tr>
+<tr><td>mortar，我们任务里的设置，斜 45° 方向</td><td class="num">0.06</td><td class="num">0.13</td><td class="num">0.31</td><td class="num">0.83</td></tr>
+</tbody></table></div>
+<p class="small">MuJoCo 的位移是一直在增长的滑动，时间加倍位移也加倍；mortar 的位移在加上推力后很快到位，之后不再变。</p>
+<p>MuJoCo 另有一个专门消除这种滑动的后处理（noslip），MuJoCo Warp 里没有，我们用 CPU 版试了 5 次迭代：推力 30 % 时滑动消失，60 % 以上和不开时一样（每秒 0.48、1.02、1.17 毫米），斜向 90 % 照样滑走。</p>
+<h2 id="slide">四、滑动和刹车</h2>
+<p><b>结果：</b>脚真的滑起来以后，两个引擎都在标准答案的几个百分点以内，mortar 略偏多（滑得稍远），MuJoCo 略偏少。例外是 MuJoCo 的金字塔摩擦锥在斜 45° 方向：摩擦力不足，1 秒滑出的距离是标准答案的 2.4 倍。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>误差（相对标准答案）</th><th class="num">推力 1.2 倍，沿脚长方向</th><th class="num">推力 1.2 倍，斜 45°</th><th class="num">1 米/秒刹车距离</th></tr></thead>
+<tbody>
+<tr><td>MuJoCo，行走任务的设置</td><td class="num">-0.7 %</td><td class="num">+140.7 %</td><td class="num">-2.1 %</td></tr>
+<tr><td>MuJoCo，椭圆摩擦锥</td><td class="num">-0.5 %</td><td class="num">0.0 %</td><td class="num">-2.7 %</td></tr>
+<tr><td>mortar，我们任务里的设置</td><td class="num">+1.9 %</td><td class="num">+2.0 %</td><td class="num">+3.1 %</td></tr>
+</tbody></table></div>
+<p class="small">正数表示滑得比标准答案远。</p>
+<h2 id="tilt">五、下陷和倾斜</h2>
+<p><b>结果：这是 mortar 这边明显更软的一项。</b>静止时脚底陷入地面 0.50 毫米（MuJoCo 0.008 毫米）。加俯仰力矩后，MuJoCo 里的脚在翻倒之前几乎不动；mortar 里的脚随力矩增大而明显倾斜，力矩到理论翻倒值的 90 % 时倾斜 4.19°，95 % 时就翻倒了，比理论值早约 5–10 %。把摩擦的切向刚度再调高 10 倍，这一项不变（90 % 时 4.13°），说明它和摩擦设置无关。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>恒定俯仰力矩保持 3 秒后的倾角</th><th class="num">30 %</th><th class="num">50 %</th><th class="num">80 %</th><th class="num">90 %</th><th class="num">95 %</th><th class="num">100 %</th><th class="num">105 %</th></tr></thead>
+<tbody>
+<tr><td>MuJoCo，行走任务的设置</td><td class="num">0.001°</td><td class="num">0.003°</td><td class="num">0.006°</td><td class="num">0.016°</td><td class="num">0.040°</td><td class="num">翻倒</td><td class="num">翻倒</td></tr>
+<tr><td>MuJoCo，椭圆摩擦锥</td><td class="num">0.005°</td><td class="num">0.011°</td><td class="num">0.026°</td><td class="num">0.064°</td><td class="num">0.16°</td><td class="num">翻倒</td><td class="num">翻倒</td></tr>
+<tr><td>mortar，我们任务里的设置</td><td class="num">0.15°</td><td class="num">1.24°</td><td class="num">2.47°</td><td class="num">4.19°</td><td class="num">翻倒</td><td class="num">翻倒</td><td class="num">翻倒</td></tr>
+</tbody></table></div>
+<p class="small">力矩按理论翻倒值（重量 × 质心到脚尖接触线的距离，约 16 牛·米）的百分比给出。标准答案：100 % 以下不倾斜，以上翻倒。</p>
+<p>这些数是在我们任务里用的接触刚度（引擎默认值的 3 倍）下测的。接触刚度再调高，下陷和倾斜都会变小：<a href="loco_mortar.html#walk-asym">FastSAC 那一页</a>量过整机站立时的情况，刚度从 3 倍提到 10 倍，脚的倾斜从 0.19° 降到 0.08°。这里没有换别的接触刚度重复这组测试。对行走的影响我们只有间接的观察：用 MuJoCo 训练的行走策略放进 mortar，在接触偏软时会摔，调高接触刚度后不摔（同见 FastSAC 页）。</p>
+<h2 id="settings">六、mortar 的摩擦刚度设置</h2>
+<p><b>做了什么：</b>mortar 的摩擦有一个切向刚度的设置，决定“粘住”时有多硬。我们最早接入时没有设它，用的是引擎的默认值，后来才调高（FastSAC 页有这次更正）。这里把三档放在一起。<b>结果：</b>用默认值时脚不会一直滑，但推到极限的 90 % 要弹性地移动约 1 厘米才稳住，滑动距离也偏多 16 %；调到我们任务用的值之后是零点几毫米和 +2 %；再调高 10 倍，位移和滑动误差继续变小，刹车距离的误差不变。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>mortar，摩擦的切向刚度</th><th class="num">推力 90 % 时的位移（毫米），沿脚长 / 斜 45°</th><th class="num">推力 98 % 时的位移（毫米）</th><th class="num">滑动距离误差</th><th class="num">刹车距离误差</th></tr></thead>
+<tbody>
+<tr><td>引擎默认值</td><td class="num">10.0 / 12.0</td><td class="num">49.5 / 58.5</td><td class="num">+16.2 %</td><td class="num">+0.1 %</td></tr>
+<tr><td>我们任务里的设置（默认值的 30 倍）</td><td class="num">0.16 / 0.31</td><td class="num">0.57 / 0.83</td><td class="num">+1.9 %</td><td class="num">+3.1 %</td></tr>
+<tr><td>再调高 10 倍</td><td class="num">0.04 / 0.11</td><td class="num">0.06 / 0.27</td><td class="num">+0.5 %</td><td class="num">+3.2 %</td></tr>
+</tbody></table></div>
+<p class="small">三档里推力低于极限时的滑动速度都是 0。</p>
+<h2 id="dt">七、时间步长</h2>
+<p><b>结果：</b>MuJoCo 的滑动速度不随步长变（它来自接触模型本身，不是积分误差），刹车距离的误差随步长变小。mortar 的刹车距离误差也随步长变小，滑动距离的误差略有增大，粘住时的弹性位移在步长变小时变大。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>步长</th><th class="num">推力 90 % 时的滑动速度（毫米/秒）</th><th class="num">推力 90 % 时 5 秒的位移（毫米）</th><th class="num">滑动距离误差</th><th class="num">刹车距离误差</th></tr></thead>
+<tbody>
+<tr><td>MuJoCo，行走任务的设置，步长 5 毫秒</td><td class="num">1.03</td><td class="num">5.1</td><td class="num">-0.7 %</td><td class="num">-2.1 %</td></tr>
+<tr><td>MuJoCo，行走任务的设置，步长 2 毫秒</td><td class="num">1.03</td><td class="num">5.1</td><td class="num">-0.3 %</td><td class="num">-0.9 %</td></tr>
+<tr><td>MuJoCo，行走任务的设置，步长 1 毫秒</td><td class="num">1.03</td><td class="num">5.1</td><td class="num">-0.1 %</td><td class="num">-0.1 %</td></tr>
+<tr><td>mortar，我们任务里的设置，步长 5 毫秒</td><td class="num">0</td><td class="num">0.16</td><td class="num">+1.9 %</td><td class="num">+3.1 %</td></tr>
+<tr><td>mortar，我们任务里的设置，步长 2 毫秒</td><td class="num">0</td><td class="num">0.26</td><td class="num">+2.5 %</td><td class="num">+1.4 %</td></tr>
+<tr><td>mortar，我们任务里的设置，步长 1 毫秒</td><td class="num">0</td><td class="num">0.39</td><td class="num">+2.9 %</td><td class="num">+0.8 %</td></tr>
+</tbody></table></div>
+<p class="small">都是沿脚长方向。</p>
+<h2 id="check">八、测试条件和没测的</h2>
+<p><b>测试条件：</b>MuJoCo 用的是 CPU 版（MuJoCo Warp 用的是同一套接触模型，我们没有在 Warp 版上重复这组测试；noslip 只有 CPU 版有）；mortar 用的是和训练时相同的求解设置（每步牛顿迭代 3–60 次、收敛容差 10⁻⁶）。两边都是同一个脚的几何、质量和摩擦系数，平地，没有接触厚度。</p>
+<p><b>没测的：</b>滚动和扭转摩擦；碰撞和反弹；不平的地面；整个机器人（这里只有一只脚）；软体。也没有和真机的测量对比，所以“准”指的是和库仑摩擦、刚体静力学的标准答案相比。</p>
+<footer>World Model Lab · 世界模型的学习与测试记录 · <a href="https://github.com/haoxiangNtu/world-model-lab">源码</a></footer>
+</div>
+</body>
+</html>
