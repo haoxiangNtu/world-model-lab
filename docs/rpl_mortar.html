@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RPL 感知行走 × mortar · World Model Lab</title>
+<meta name="description" content="RPL 感知行走的官方训练代码用 IsaacGym；这里把物理仿真器换成 mortar，并用作者发布的专家策略验证接入：四类地形上走满时限的回合占比和 IsaacGym 对得上。用 mortar 训练尚未开始。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="site.css">
+<style>
+.fig{border:1px solid var(--line);background:var(--bg2);border-radius:10px;margin:14px 0 20px;padding:8px}
+.fig img{width:100%;height:auto;display:block;border-radius:6px;background:#fff}
+.fig img.narrow{max-width:560px;margin:0 auto}
+.fig figcaption{color:var(--muted);font-size:13.5px;line-height:1.6;padding:8px 6px 2px}
+figure{margin:0}
+.tag{display:inline-block;border-radius:999px;padding:0 8px;font-size:12px;font-weight:600;border:1px solid var(--line);white-space:nowrap}
+.tag.ok{color:var(--token)} .tag.run{color:var(--compute)} .tag.todo{color:var(--muted)} .tag.no{color:var(--warn)}
+h4{margin:18px 0 6px;font-size:15px}
+.small{font-size:13px;color:var(--muted)}
+details.tasks summary{cursor:pointer;color:var(--compute);margin:6px 0}
+td.num b{color:var(--fg)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top"><a class="brand" href="../index.html">World Model Lab</a>
+<nav><a href="vpp2.html">论文导读</a><a href="wan.html">Wan2.1 架构</a><a href="mot.html">MoT 原理</a><a href="posttrain.html">后训练过程</a><a href="benchmarks.html">评测数据集</a><a href="notes.html">原理问答</a><a href="vla_wam.html">复现实验</a><a href="lingbot_touch.html">触觉复现</a><a class="on" href="loco_repro.html">行走复现</a><a href="supermimic_repro.html">SuperMimic 复现</a><a href="https://github.com/haoxiangNtu/world-model-lab">GitHub</a></nav></header>
+
+<div class="eyebrow">Humanoid locomotion · RPL × mortar · 2026-11</div>
+<h1>把 RPL 感知行走的仿真器换成 mortar：接入和验证</h1>
+<p class="lead"><b>现状（11-23 7 时）：RPL 的官方训练代码用的是 IsaacGym。把它的物理仿真器换成 mortar 的接入已经做完，并用作者自己的对齐检查验证过：作者随代码发布的四个专家策略（在 IsaacGym 里训练的）原样放进 mortar，512 个机器人 × 30 秒，99.8 % 的回合走满时限，同样的测试在 IsaacGym 里是 99.9 %；石墩、斜坡、上台阶、下台阶四类地形都对得上。</b>用 mortar 训练还没有开始：三个专家各要 5 万轮，在 mortar 里要一天半到几天，排在其它短任务之后（<a href="#plan">见计划</a>）。所以这一页的数字都属于“只是放进 mortar 测试”，不是“用 mortar 训练”。验证过程中查出我们接入时的一处错误（脚底的碰撞外形太粗），改正前石墩上只有 48.3 %，<a href="#sole">见第二节</a>。之前在 IsaacGym 里的复现见<a href="loco_repro.html#rpl">行走复现页</a>。</p>
+<div class="toc"><b>目录</b>
+<a href="#video">效果视频</a><a href="#check">一、作者的专家策略放进 mortar</a><a href="#sole">二、接入时出过的错：脚底太粗</a><a href="#bridge">三、怎么接的，和 IsaacGym 的差别</a><a href="#plan">四、速度和训练计划</a><a href="#cond">五、测试条件和没做的</a>
+</div>
+<h2 id="video">效果视频</h2>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/rpl_mortar_grid.jpg?v=1123a" src="../media/rpl_mortar_grid.mp4?v=1123a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>作者发布的专家策略（IsaacGym 训练）在 mortar 里运行。</b>六格是同一次运行里的六个机器人：上排两个在石墩上，一个在斜坡上；下排一个在斜坡上，两个在台阶上。选法是固定的：每类地形按编号取前几个，不看成败。左上角是时间、速度指令、实际速度和到此为止摔倒的次数。画面是按记录下来的状态重新绘制的，地形是交给 mortar 的那份。</figcaption></figure>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/rpl_isaacgym_grid.jpg?v=1123a" src="../media/rpl_isaacgym_grid.mp4?v=1123a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>对照：同样的策略在 IsaacGym 里。</b>选法相同。两边的地形是各自随机生成的，所以不是同一块。</figcaption></figure>
+<h2 id="check">一、作者的专家策略放进 mortar</h2>
+<p><b>做了什么：</b>RPL 先在 IsaacGym 里为每类地形训练一个专家（能看到脚下的地形高度图），再蒸馏成只看深度图的学生。代码里带着作者训练好的四个专家，也带着一个检查脚本：把这些专家放进蒸馏用的环境里跑，统计回合有多少走满时限、机器人能走到第几级地形。作者用它检查环境有没有搭对，我们用它检查 mortar 的接入。两边用同样的设置各跑一遍：5 级难度 × 8 列地形，512 个机器人，30 秒；机器人倒下（躯干倾斜过大或骨盆离地不足 0.3 米）算失败，回合 10 秒到时重新开始。<b>结果：</b>四类地形上 mortar 和 IsaacGym 都在 99.6–100 % 之间，走到的地形等级也相近。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>地形</th><th class="num">IsaacGym：走满时限的回合</th><th class="num">mortar：走满时限的回合</th><th class="num">IsaacGym：平均到达等级</th><th class="num">mortar：平均到达等级</th></tr></thead>
+<tbody>
+<tr><td>石墩（30 厘米见方，间隔 30 厘米起）</td><td class="num">100 %（1076 / 1076）</td><td class="num"><b>99.6 %</b>（1103 / 1107）</td><td class="num">1.73</td><td class="num">1.65</td></tr>
+<tr><td>斜坡</td><td class="num">99.5 %（360 / 362）</td><td class="num"><b>99.7 %</b>（381 / 382）</td><td class="num">1.25</td><td class="num">1.19</td></tr>
+<tr><td>上台阶</td><td class="num">100 %（721 / 721）</td><td class="num"><b>100 %</b>（729 / 729）</td><td class="num">1.46</td><td class="num">1.55</td></tr>
+<tr><td>下台阶</td><td class="num">100 %（687 / 687）</td><td class="num"><b>100 %</b>（722 / 722）</td><td class="num">1.44</td><td class="num">1.62</td></tr>
+<tr><td>合计</td><td class="num">99.9 %（失败 2 次）</td><td class="num"><b>99.8 %</b>（失败 5 次）</td><td class="num">—</td><td class="num">—</td></tr>
+</tbody></table></div>
+<p class="small">括号里是走满时限的回合数 / 回合总数。地形等级 0–4，机器人走得够远就升一级。两边的地形是按同样的参数各自随机生成的，不是同一块；每边只跑了一次。</p>
+<p><b>步态也对得上。</b>在石墩地形上各录 48 个机器人 10 秒，比较脚的状态：</p>
+<div class="tablewrap"><table>
+<thead><tr><th>石墩上，48 个机器人 × 10 秒</th><th class="num">IsaacGym</th><th class="num">mortar</th></tr></thead>
+<tbody>
+<tr><td>承重的脚（受力超过 100 牛）相对水平面的倾角，中位数 / 90 分位</td><td class="num">0.06° / 0.75°</td><td class="num">0.64° / 2.42°</td></tr>
+<tr><td>承重的脚的水平滑动速度，中位数 / 90 分位</td><td class="num">0.000 / 0.012 米/秒</td><td class="num">0.003 / 0.042 米/秒</td></tr>
+<tr><td>两只脚都不受力的时间占比</td><td class="num">0.7 %</td><td class="num">0.9 %</td></tr>
+<tr><td>每只脚每秒落地次数</td><td class="num">1.25</td><td class="num">1.30</td></tr>
+<tr><td>指令为零时机器人的水平速度</td><td class="num">0.082 米/秒</td><td class="num">0.115 米/秒</td></tr>
+<tr><td>前进速度的跟踪误差（绝对值的平均）</td><td class="num">0.111 米/秒</td><td class="num">0.111 米/秒</td></tr>
+</tbody></table></div>
+<p class="small">mortar 里承重的脚还有约半度的倾角和少量滑动，IsaacGym 里基本为零；其余几项相同或接近。</p>
+<h2 id="sole">二、接入时出过的错：脚底的碰撞外形太粗</h2>
+<p><b>现象：</b>第一次做上面的检查时，mortar 里斜坡和台阶基本正常，石墩上只有 48.3 % 的回合走满时限（IsaacGym 100 %），失败几乎都是机器人掉进石墩之间的缝里。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>地形</th><th class="num">IsaacGym</th><th class="num">mortar，改正前</th><th class="num">mortar，改正后</th></tr></thead>
+<tbody>
+<tr><td>石墩（30 厘米见方，间隔 30 厘米起）</td><td class="num">100 %</td><td class="num">48.3 %</td><td class="num"><b>99.6 %</b></td></tr>
+<tr><td>斜坡</td><td class="num">99.5 %</td><td class="num">99.2 %</td><td class="num"><b>99.7 %</b></td></tr>
+<tr><td>上台阶</td><td class="num">100 %</td><td class="num">96.8 %</td><td class="num"><b>100 %</b></td></tr>
+<tr><td>下台阶</td><td class="num">100 %</td><td class="num">97.9 %</td><td class="num"><b>100 %</b></td></tr>
+</tbody></table></div>
+<p class="small">走满时限的回合占比，512 个机器人 × 30 秒。</p>
+<p><b>怎么查的：</b>先确认策略看到的地形高度图在两边一致（逐点核对，完全相同），再录下石墩上的回放比较脚的状态。差别很明显：mortar 里承重的脚不是平踩在地上的。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>石墩上，48 个机器人 × 10 秒</th><th class="num">IsaacGym</th><th class="num">mortar，改正前</th><th class="num">mortar，改正后</th></tr></thead>
+<tbody>
+<tr><td>承重的脚的倾角，中位数 / 90 分位</td><td class="num">0.06° / 0.75°</td><td class="num">6.2° / 21.6°</td><td class="num">0.64° / 2.42°</td></tr>
+<tr><td>承重的脚的滑动速度，中位数 / 90 分位（米/秒）</td><td class="num">0.000 / 0.012</td><td class="num">0.022 / 0.119</td><td class="num">0.003 / 0.042</td></tr>
+<tr><td>两只脚都不受力的时间占比</td><td class="num">0.7 %</td><td class="num">7.5 %</td><td class="num">0.9 %</td></tr>
+<tr><td>指令为零时机器人的水平速度（米/秒）</td><td class="num">0.082</td><td class="num">0.397</td><td class="num">0.115</td></tr>
+<tr><td>前进速度的跟踪误差（米/秒）</td><td class="num">0.111</td><td class="num">0.293</td><td class="num">0.111</td></tr>
+<tr><td>失败的回合</td><td class="num">0 / 80</td><td class="num">74 / 139</td><td class="num">1 / 83</td></tr>
+</tbody></table></div>
+<p><b>原因：</b>RPL 的机器人模型里，每只脚的碰撞外形是脚底四角的四个半径 5 毫米的小球。这么小的球在我们的 mortar 接入里撑不住机器人，所以换成了覆盖同样四个点、底面高度相同的一块脚底板（18 × 7 厘米）。错在这块板最初只是一个 12 个三角形的盒子：mortar 的接触力是在外形的面片上积分出来的，底面只有两个大三角形时，脚踝一用力脚就歪，站不平，也踩不准。搬箱子任务里我们犯过同一类错（箱子表面太粗）。把板的表面细分成网格（底面 12 × 5 格，整块 376 个三角形）之后，就是上面“改正后”的数字。</p>
+<h2 id="bridge">三、怎么接的，和 IsaacGym 的差别</h2>
+<p>RPL 的代码（基于 holosoma）除了 IsaacGym 还带着一个没有启用的 MuJoCo 仿真器类。我们让环境走这个类，再把它背后的物理计算换成 mortar；任务、观测、奖励、终止条件、策略都是原来的。和 IsaacGym 那边不同的地方有这些：</p>
+<ul>
+<li><b>脚底。</b>四个小球换成一块脚底板，见第二节。脚印的范围和最低点的高度不变。</li>
+<li><b>地形。</b>地形是一张 5 厘米一格的高度图。我们按 8.5 米见方把它切成封闭的实心块交给 mortar，顶面就是高度图的三角网（全分辨率，和高度采样点逐点一致）。IsaacGym 那边在生成网格时会把陡边修成竖直的墙；我们这边陡边是一格宽（5 厘米）的斜面。照 IsaacGym 的做法移动顶点会产生面积为零的三角形，在我们的接入里接触会失效，所以没有采用。</li>
+<li><b>关节力矩。</b>力矩由训练代码按 PD 算出来，每个物理步交给仿真器；电机转子惯量按任务配置逐个关节设置。</li>
+<li><b>摩擦。</b>训练给每个机器人随机一个摩擦系数，IsaacGym 把它和地形的摩擦系数（1.0）取平均；我们在 mortar 里按同样的平均值设置。</li>
+<li><b>手上的外力。</b>训练时会在机器人手上施加随机外力，IsaacGym 有现成的接口；我们换算成作用在质心的力和力矩交给 mortar，并核对过效果。</li>
+<li><b>高度图和深度图。</b>都是训练代码自己对地形网格做查询或射线求交，和仿真器无关，两边完全相同（高度图逐点核对过）。学生用的深度图里，机器人自己的手的位置有几厘米偏差，训练学生之前要改，对专家没有影响。</li>
+</ul>
+<h2 id="plan">四、速度和训练计划</h2>
+<p><b>速度：</b>上面的检查里，512 个机器人、全分辨率地形（约 320 万个三角形）时 mortar 每个物理步约 13 毫秒（显卡同时在跑别的任务，不算干净的数据）。斜坡专家的训练环境（4096 个机器人）还没有在空闲的显卡上测过速度，按 PHP 那边的经验，每张显卡每秒约 0.5–0.7 万个环境步。</p>
+<p><b>计划：</b>先训练斜坡专家（4096 个环境、5 万轮，用 8 张显卡估计一天半），再训练台阶和石墩专家（各 16384 个环境、5 万轮，各要几天），最后是蒸馏。这些都比手上的其它任务长，排在 PHP 的教师和搬箱子的对照训练之后。开始之前还要做两件事：在完整大小的地形（10 级 × 20 列）上用全分辨率跑通，测多张显卡的启动和速度。</p>
+<h2 id="cond">五、测试条件和没做的</h2>
+<p><b>测试条件：</b>代码是 RPL 公开的版本，专家是随代码发布的四个（斜坡、上台阶、下台阶、石墩）。检查用的是代码自带的专家回放脚本，我们只加了按地形类型和失败原因分开的统计。控制频率 50 Hz，物理步长 5 毫秒；域随机化按训练配置打开（摩擦、推搡、力矩扰动、手上外力等），其中有些项在这条路径上的实现和 IsaacGym 那边不同，我们没有逐项核对是否完全等效。mortar 一侧：单精度，接触刚度和摩擦的切向刚度用 FastSAC 那一页查出的设置，机器人不做自碰撞（和 IsaacGym 那边的配置一致）。mortar 的运行里出现非有限数的环境为 0；约千分之一点五的环境步没有被积分。</p>
+<p><b>没做的：</b>用 mortar 训练（专家和学生都还没有）；完整大小的地形；多个随机种子；真机实验。</p>
+<footer>World Model Lab · 世界模型的学习与测试记录 · <a href="https://github.com/haoxiangNtu/world-model-lab">源码</a></footer>
+</div>
+</body>
+</html>
