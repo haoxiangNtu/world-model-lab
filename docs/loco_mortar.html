@@ -28,7 +28,7 @@ td.num b{color:var(--fg)}
 
 <div class="eyebrow">Humanoid locomotion · FastSAC × mortar · 2026-11</div>
 <h1>把 FastSAC 的仿真器换成 mortar 来训练：G1 平地行走与搬箱子</h1>
-<p class="lead"><b>现状（11-22）：FastSAC 论文的官方代码，训练部分一行不改，只把里面的物理仿真器换成 mortar，G1 的平地行走已经训练完成。</b>两个随机种子各训练了 2 万轮：在 mortar 里各用 1024 个机器人走 20 秒，没有一个摔倒；把同一个策略原样放进 MuJoCo，没有一个摔倒；再放进第三个仿真器 Isaac Sim，有 0–0.1 % 摔倒过。对照组用同样的代码和设置在 MuJoCo 里训练：在 MuJoCo 里没有一个摔倒，在 Isaac Sim 里没有一个摔倒，但放进 mortar 后有 31.2–36.6 % 摔倒过。<b>这个不对称的原因已经查到：我们接入 mortar 时沿用了默认的接触刚度，对 G1 由细胶囊组成的脚底偏软</b>；把接触刚度提高 3 倍后，MuJoCo 训练的策略在 mortar 里摔倒过的比例降到 0.1–0.5 %（<a href="#walk-asym">见第一节</a>）。按提高 3 倍的接触刚度重新训练的两个种子也已完成：放进 mortar、MuJoCo、Isaac Sim，摔倒过的机器人都不超过 0.2 %（<a href="#walk-retrain">见这里</a>）。速度上 mortar 慢一个量级：同一张显卡、4096 个并行环境，mortar 每秒推进 1.5 万个环境步，MuJoCo 14.1 万。搬箱子（全身动作跟踪加一个箱子）：<b>此前用 mortar 的两次训练因为我们接入时的一个错误作废</b>（交给 mortar 的箱子表面太粗，箱子会陷进地面约 10 厘米），11-22 06:24 已用修正后的场景重新开始，见<a href="#box">第二节</a>。<b>11-22 10 时更正：我们接入 mortar 时一直没有设置摩擦的切向刚度，用的默认值比调过的接触刚度软 30 倍。</b>把它调到和接触刚度相同后，MuJoCo 训练的行走策略放进 mortar，转向误差从 0.26 / 0.30 降到 0.15 / 0.16 rad/s（它在 MuJoCo 里是 0.13 / 0.12）；MuJoCo 训练的搬箱子策略放进 mortar，完整做完的比例从 5.4 % 升到 15.3 %。搬箱子的 mortar 训练已按新设置重新开始（<a href="#walk-friction">见这里</a>）。这一页只有仿真里的结果，没有真机实验。之前用 Isaac Sim 做的复现见<a href="loco_repro.html">行走复现</a>，SuperMimic 换用 mortar 训练的结果见 <a href="supermimic_repro.html#mortar-train">SuperMimic 复现</a>。</p>
+<p class="lead"><b>现状（11-22）：FastSAC 论文的官方代码，训练部分一行不改，只把里面的物理仿真器换成 mortar，G1 的平地行走已经训练完成。</b>两个随机种子各训练了 2 万轮：在 mortar 里各用 1024 个机器人走 20 秒，没有一个摔倒；把同一个策略原样放进 MuJoCo，没有一个摔倒；再放进第三个仿真器 Isaac Sim，有 0–0.1 % 摔倒过。对照组用同样的代码和设置在 MuJoCo 里训练：在 MuJoCo 里没有一个摔倒，在 Isaac Sim 里没有一个摔倒，但放进 mortar 后有 31.2–36.6 % 摔倒过。<b>这个不对称的原因已经查到：我们接入 mortar 时沿用了默认的接触刚度，对 G1 由细胶囊组成的脚底偏软</b>；把接触刚度提高 3 倍后，MuJoCo 训练的策略在 mortar 里摔倒过的比例降到 0.1–0.5 %（<a href="#walk-asym">见第一节</a>）。按提高 3 倍的接触刚度重新训练的两个种子也已完成：放进 mortar、MuJoCo、Isaac Sim，摔倒过的机器人都不超过 0.2 %（<a href="#walk-retrain">见这里</a>）。速度上 mortar 慢一个量级：同一张显卡、4096 个并行环境，mortar 每秒推进 1.5 万个环境步，MuJoCo 14.1 万。搬箱子（全身动作跟踪加一个箱子）：<b>此前用 mortar 的两次训练因为我们接入时的一个错误作废</b>（交给 mortar 的箱子表面太粗，箱子会陷进地面约 10 厘米），11-22 06:24 已用修正后的场景重新开始，见<a href="#box">第二节</a>。<b>11-22 10 时更正：我们接入 mortar 时一直没有设置摩擦的切向刚度，用的默认值比调过的接触刚度软 30 倍。</b>把它调到和接触刚度相同后，MuJoCo 训练的行走策略放进 mortar，转向误差从 0.26 / 0.30 降到 0.15 / 0.16 rad/s（它在 MuJoCo 里是 0.13 / 0.12）；MuJoCo 训练的搬箱子策略放进 mortar，完整做完的比例从 5.4 % 升到 15.3 %。搬箱子的 mortar 训练已按新设置重新开始（<a href="#walk-friction">见这里</a>）。<b>11-22 下午：行走也按新的摩擦设置用 mortar 重新训练了两次，放进 MuJoCo 后转向误差是 0.14 / 0.14 rad/s（摩擦偏软时训练的是 0.27 / 0.26，MuJoCo 自己训练的是 0.13 / 0.12），换仿真器基本不掉了（<a href="#walk-friction-retrain">见这里</a>）。</b>这一页只有仿真里的结果，没有真机实验。之前用 Isaac Sim 做的复现见<a href="loco_repro.html">行走复现</a>，SuperMimic 换用 mortar 训练的结果见 <a href="supermimic_repro.html#mortar-train">SuperMimic 复现</a>。</p>
 <div class="toc"><b>目录</b>
 <a href="#video">效果视频</a><a href="#walk">一、平地行走</a><a href="#walk-asym">脚底接触偏软的问题</a><a href="#walk-retrain">按新刚度重新训练</a><a href="#walk-friction">更正：摩擦设得太软</a><a href="#box">二、搬箱子</a><a href="#speed">三、速度</a><a href="#bridge">四、怎么接的，和 MuJoCo 的差别</a><a href="#check">五、检查与测试条件</a>
 </div>
@@ -135,9 +135,14 @@ td.num b{color:var(--fg)}
 <tr><td>用 mortar 训练（摩擦用默认设置），在同样设置的 mortar 里评测</td><td class="num">0.0 % / 0.0 %</td><td class="num">0.51 / 0.50</td><td class="num">0.13 / 0.13</td><td class="num">0.03 / 0.03</td></tr>
 <tr><td><b>用 mortar 训练（摩擦用默认设置），放进摩擦刚度调高的 mortar</b></td><td class="num">0.0 % / 0.0 %</td><td class="num">0.50 / 0.49</td><td class="num">0.23 / 0.23</td><td class="num">0.03 / 0.03</td></tr>
 <tr><td>用 mortar 训练（摩擦用默认设置），放进 MuJoCo</td><td class="num">0.0 % / 0.0 %</td><td class="num">0.52 / 0.51</td><td class="num">0.27 / 0.26</td><td class="num">0.03 / 0.03</td></tr>
+<tr><td><b>用 mortar 重新训练（摩擦刚度调高），在同样设置的 mortar 里评测</b></td><td class="num">0.0 % / 0.0 %</td><td class="num">0.46 / 0.48</td><td class="num">0.12 / 0.11</td><td class="num">0.03 / 0.03</td></tr>
+<tr><td><b>用 mortar 重新训练（摩擦刚度调高），放进 MuJoCo</b></td><td class="num">0.0 % / 0.0 %</td><td class="num">0.47 / 0.50</td><td class="num">0.14 / 0.14</td><td class="num">0.03 / 0.03</td></tr>
+<tr><td><b>用 mortar 重新训练（摩擦刚度调高），放进 Isaac Sim</b></td><td class="num">0.1 % / 0.0 %</td><td class="num">0.47 / 0.49</td><td class="num">0.16 / 0.16</td><td class="num">0.03 / 0.03</td></tr>
+<tr><td>用 mortar 训练（摩擦用默认设置），放进 Isaac Sim</td><td class="num">0.0 % / 0.2 %</td><td class="num">0.52 / 0.51</td><td class="num">0.29 / 0.28</td><td class="num">0.03 / 0.03</td></tr>
 </tbody></table></div>
 <p class="small">每格是两个随机种子，各 1024 个机器人 × 20 秒。mortar 的接触刚度都是提高 3 倍的设置；“摩擦刚度调高”指调到和接触刚度相同。</p>
-<p><b>这对结果意味着什么：</b>这一页里用 mortar 训练的行走策略都是在偏软的摩擦下训练的。它们放进 MuJoCo 和 Isaac Sim 不摔，这个结论不变；但换仿真器后转向误差偏大这一项，应当算在我们的设置上，不是 mortar 和别的仿真器之间必然有的差别。按调高后的摩擦重新训练行走，排在搬箱子的重新训练之后。</p>
+<p><b>这对结果意味着什么：</b>这一页前面几小节里用 mortar 训练的行走策略都是在偏软的摩擦下训练的。它们放进 MuJoCo 和 Isaac Sim 不摔，这个结论不变；但换仿真器后转向误差偏大这一项，应当算在我们的设置上，不是 mortar 和别的仿真器之间必然有的差别。按调高后的摩擦重新训练的结果见下一段。</p>
+<p id="walk-friction-retrain"><b>按调高后的摩擦重新训练的结果（11-22 下午，两个种子各 2 万轮，每次约 1 小时 48 分）：换到 MuJoCo 里基本不掉了。</b>放进 MuJoCo 后转向误差是 0.14 / 0.14 rad/s（摩擦偏软时训练的那一批是 0.27 / 0.26，MuJoCo 自己训练的是 0.13 / 0.12），行走时的速度误差是 0.47 / 0.50 m/s（偏软时 0.52 / 0.51，MuJoCo 自己训练的 0.47 / 0.46）；20 秒内摔倒过的机器人：在 mortar 里 0.0 % / 0.0 %，放进 MuJoCo 0.0 % / 0.0 %；放进 Isaac Sim 转向误差 0.16 / 0.16 rad/s（偏软时训练的那一批是 0.29 / 0.28），摔倒过的 0.1 % / 0.0 %。这两次训练和前面的只差摩擦刚度这一项设置，训练代码、轮数、种子都相同。</p>
 <h3 id="walk-time">训练用时</h3>
 <p>用 mortar 训练，每 100 轮约 32 秒：采样 26 秒（4096 个环境各走 100 步），网络更新 5 秒；2 万轮用了 1 小时 49 分（独占一张显卡，不含启动）。另一个种子启动得早，当时建场景的方式还没有改进，启动多花了约 26 分钟，前半段也慢一些（两种建场景方式在对比测试里给出的结果相同）。MuJoCo 的两个对照训练和评测任务挤在同一张显卡上，实际用了 78 分钟，这个数不能当作 MuJoCo 的训练速度；单独占一张显卡时两者的纯仿真速度见<a href="#speed">第三节</a>。</p>
 <h2 id="box">二、搬箱子</h2>
@@ -152,12 +157,12 @@ td.num b{color:var(--fg)}
 </tbody></table></div>
 <p class="small">每格 1024 个机器人，同一个检查点，只改了这一项设置。把这个刚度再提高到 3 倍多，结果基本不变（完整做完 12.8 % 和 14.8 %）。</p>
 <p>因此 06:24 开始的两次 mortar 训练（摩擦用默认设置）里，种子 2 已在第 23400 轮停掉，种子 1 留作对照继续训练；10:18 按调高后的摩擦重新开始了两个随机种子。</p>
-<p><b>现状：</b>用 mortar 训练（摩擦刚度调高，种子 1）：训练中，第 2700 轮；用 mortar 训练（摩擦刚度调高，种子 2）：训练中，第 4100 轮；用 mortar 训练（摩擦用默认设置，种子 1）：训练中，第 28700 轮；用 MuJoCo 训练：已结束（第 60000 轮）。MuJoCo 对照 6 万轮用时约 2 小时，最后的检查点在 MuJoCo 里完整做完 52.6 %。摩擦刚度调高后的两次训练预计 11-22 22–23 时结束（摩擦调高后每轮慢约四分之一），用默认摩擦的对照约 16 时结束，届时补上最终数字和视频。评测方法和 Isaac Sim 那次相同：每个检查点用 1024 个机器人各做一遍这段动作，策略不加噪声，统计完整做完（中途没有因为摔倒或箱子偏离而重置）的比例；每个检查点在 mortar 和 MuJoCo 里各测一遍。</p>
+<p><b>现状：</b>用 mortar 训练（摩擦刚度调高，种子 1）：训练中，第 25200 轮；用 mortar 训练（摩擦刚度调高，种子 2）：训练中，第 29000 轮；用 mortar 训练（摩擦用默认设置，种子 1）：训练中，第 57600 轮；用 MuJoCo 训练：已结束（第 60000 轮）。MuJoCo 对照 6 万轮用时约 2 小时，最后的检查点在 MuJoCo 里完整做完 52.6 %。摩擦刚度调高后的两次训练预计 11-22 22–23 时结束（摩擦调高后每轮慢约四分之一），用默认摩擦的对照约 16 时结束，届时补上最终数字和视频。评测方法和 Isaac Sim 那次相同：每个检查点用 1024 个机器人各做一遍这段动作，策略不加噪声，统计完整做完（中途没有因为摔倒或箱子偏离而重置）的比例；每个检查点在 mortar 和 MuJoCo 里各测一遍。</p>
 <div class="tablewrap"><table>
 <thead><tr><th>完整做完的比例</th><th class="num">第 5000 轮</th><th class="num">第 10000 轮</th><th class="num">第 20000 轮</th><th class="num">第 30000 轮</th><th class="num">第 40000 轮</th><th class="num">第 50000 轮</th><th class="num">第 60000 轮</th></tr></thead>
 <tbody>
-<tr><td>用 mortar 训练（摩擦用默认设置，种子 1），在 mortar 里评测</td><td class="num">0.0 %</td><td class="num">0.0 %</td><td class="num">1.9 %</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
-<tr><td>用 mortar 训练（摩擦用默认设置，种子 1），在 MuJoCo 里评测（换了仿真器）</td><td class="num">0.0 %</td><td class="num">0.0 %</td><td class="num">0.6 %</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
+<tr><td>用 mortar 训练（摩擦用默认设置，种子 1），在 mortar 里评测</td><td class="num">0.0 %</td><td class="num">0.0 %</td><td class="num">1.9 %</td><td class="num">14.8 %</td><td class="num">16.1 %</td><td class="num">30.1 %</td><td class="num">—</td></tr>
+<tr><td>用 mortar 训练（摩擦用默认设置，种子 1），在 MuJoCo 里评测（换了仿真器）</td><td class="num">0.0 %</td><td class="num">0.0 %</td><td class="num">0.6 %</td><td class="num">3.6 %</td><td class="num">7.2 %</td><td class="num">16.2 %</td><td class="num">—</td></tr>
 <tr><td>用 MuJoCo 训练，在 MuJoCo 里评测</td><td class="num">0.0 %</td><td class="num">2.3 %</td><td class="num">25.4 %</td><td class="num">45.3 %</td><td class="num">30.5 %</td><td class="num">49.7 %</td><td class="num">52.6 %</td></tr>
 <tr><td>用 MuJoCo 训练，在 mortar 里评测（换了仿真器）</td><td class="num">—</td><td class="num">2.6 %</td><td class="num">5.3 %</td><td class="num">10.6 %</td><td class="num">6.3 %</td><td class="num">6.9 %</td><td class="num">15.3 %</td></tr>
 </tbody></table></div>
@@ -169,7 +174,7 @@ td.num b{color:var(--fg)}
 <tbody>
 <tr><td>在 Isaac Sim 里训练的策略（6 万轮）</td><td class="num">15.7 %</td><td class="num">15.1 %</td><td class="num">48.4 %</td><td class="num">31.4 %</td></tr>
 <tr><td>在 MuJoCo 里训练的策略（6 万轮）</td><td class="num">—</td><td class="num">10.0 %</td><td class="num">32.1 %</td><td class="num">17.5 %</td></tr>
-<tr><td>在 mortar 里训练的策略（摩擦用默认设置，种子 1），第 20000 轮</td><td class="num">—</td><td class="num">24.7 %</td><td class="num">40.3 %</td><td class="num">—</td></tr>
+<tr><td>在 mortar 里训练的策略（摩擦用默认设置，种子 1），第 50000 轮</td><td class="num">—</td><td class="num">12.2 %</td><td class="num">21.7 %</td><td class="num">—</td></tr>
 </tbody></table></div>
 <p class="small">每格 1024 个机器人，都从动作的开头开始。在 mortar 里训练的策略只在它自己训练时的摩擦设置下测过。</p>
 <p>这个任务的重置状态本身就不“干净”：按参考动作加随机扰动摆好之后，训练用的重置里约三分之二有一只脚的脚底陷进地面超过 5 毫米（中位数约 1 厘米）；动作开头箱子离小腿和脚尖只有几厘米，有一部分一开始就和箱子重叠。几个仿真器把这些重叠分开的方式不同，结果也就不同。我们用单独改一项的测试试过、都不能解释这个差别的因素：接触刚度（默认、提高 3 倍、10 倍、30 倍里，提高 3 倍时最低）、接触阻尼、机器人自身各部位之间的碰撞、箱子外形、箱子陷入地面。摩擦的切向刚度是 11-22 才查到的一项，它解释了其中大约一半；剩下的差别还在查，查清之前，mortar 这边搬箱子的数字要带着这个差别来读。</p>
@@ -199,7 +204,7 @@ td.num b{color:var(--fg)}
 <p><b>做了什么：</b>正式训练之前，先确认换上 mortar 后同一个任务的物理和 MuJoCo 对得上；训练和评测过程中统计仿真器的异常计数。</p>
 <ul>
 <li><b>同一起点、同样的动作，两个仿真器各跑一遍。</b>行走任务里动作全为零（PD 目标是默认站姿），机器人从出生位置落到地面站住，0.4 秒后两边的机身高度相差 2.7 毫米，关节角平均相差 0.01 rad。给随机动作时，每个环境步因摔倒而终止的比例：行走 mortar 1.40 %、MuJoCo 1.22 %；全身动作跟踪 4.8–5.1 % 对 4.7 %；搬箱子 10.3 % 对 8.2 %。</li>
-<li><b>异常计数。</b>mortar 一侧每个物理步都统计三项：行走的 4 次 mortar 训练共 13.11 亿个“环境 × 物理步”：数值非有限 0 次，接触容量不足 0 次，一步之后状态完全没有变化的环境 15 个；行走的 44 次 mortar 评测共 1.80 亿个“环境 × 物理步”：数值非有限 0 次，接触容量不足 0 次，一步之后状态完全没有变化的环境 0 个。</li>
+<li><b>异常计数。</b>mortar 一侧每个物理步都统计三项：行走的 4 次 mortar 训练共 13.11 亿个“环境 × 物理步”：数值非有限 0 次，接触容量不足 0 次，一步之后状态完全没有变化的环境 15 个；行走的 52 次 mortar 评测共 2.13 亿个“环境 × 物理步”：数值非有限 0 次，接触容量不足 0 次，一步之后状态完全没有变化的环境 0 个。</li>
 <li><b>在我们这里，代码自带的 MuJoCo Warp 一路跑搬箱子任务时原本不能用。</b>随机化箱子质量之后，由质量派生出来的几个量没有跟着更新，大多数环境每一步都算出非有限数。我们在本地补上了这一步更新，补上之后为 0。这一页所有 MuJoCo 的对照（包括行走）都带这个修正。</li>
 </ul>
 <p><b>测试条件：</b>代码是 holosoma 2026-11-17 的主分支，任务和算法用默认设置（行走 4096 个环境、每轮每个环境 1 步、8 次网络更新），只把地形换成平地、训练轮数设为 2 万（默认 5 万）。每次训练一张 96 GB 显存的显卡。mortar 用单精度，物理步长 5 毫秒，每个控制步 4 个物理步，和 MuJoCo 一侧相同。没有做的：起伏地形（接入时只做了平地）、真机实验、多个以上随机种子的统计（每种设置只有两个种子）。</p>
