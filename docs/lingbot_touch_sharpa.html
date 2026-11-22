@@ -40,7 +40,7 @@ td.num b{color:var(--fg)}
 </div>
 
 <p><b>做了什么：</b><a href="lingbot_touch_cap.html#capdiv">“PhysX 拧瓶盖”一节里瓶盖各不相同的那一版</a>，在 mortar 里重做了一份：同一只 Sharpa 手（22 个关节，质量、关节参数、碰撞外形和指尖软垫的位置都取自同一份模型文件）、同样的 27 种瓶盖和螺纹规则、同样的观测、动作、奖励、重置和结束条件，训练代码和超参数也是同一份（4104 个并行环境，每次 3000 万步）。两边的策略网络输入输出完全相同，所以一边训练出的策略可以直接放到另一边运行。比较三件事：训练速度、训练出的成功率、策略换仿真器后还剩多少。</p>
-<p><b>现状（11-22 13:07）：PhysX 一侧的训练已完成；mortar 一侧今天中午又查出一处和 PhysX 不一致的地方（回合开始时有手指嵌在瓶盖里，见<a href="#sharpa-sim-check">两个版本对不对得上</a>），改正后在 12 时重新开始训练：9 次都已在训练，预计 15 时到 16 时之间全部结束（这一版每步比上一版慢一些）。</b>已经有的数字：速度上 mortar 比 PhysX 慢约 6.5 倍；PhysX 训练的策略原样放进改正后的 mortar，不给触觉的还能转满一圈的占 41.6–49.5 %（在 PhysX 里是 71.2–79.0 %），直接读触觉数值的只剩 2.7–23.2 %。mortar 训练的成功率等这一批训练结束后补上。</p>
+<p><b>现状（11-22 13:09）：PhysX 一侧的训练已完成；mortar 一侧今天中午又查出一处和 PhysX 不一致的地方（回合开始时有手指嵌在瓶盖里，见<a href="#sharpa-sim-check">两个版本对不对得上</a>），改正后在 12 时重新开始训练：9 次都已在训练，预计 15 时到 16 时之间全部结束（这一版每步比上一版慢一些）。</b>已经有的数字：速度上 mortar 比 PhysX 慢约 6.5 倍；PhysX 训练的策略原样放进改正后的 mortar，不给触觉的还能转满一圈的占 41.6–49.5 %（在 PhysX 里是 71.2–79.0 %），直接读触觉数值的只剩 2.7–23.2 %。mortar 训练的成功率等这一批训练结束后补上。</p>
 <p><b>先说明一点：mortar 这一版今天重做过两次，都是我们搭这个任务时的问题。</b>第一版和 PhysX 的任务有三处没对上，训练出来的策略看上去成功率很高，其实是在一个容易得多的任务上，已经作废。改正后的版本训练到一半，中午又查出第四处：回合开始时，将近一半的环境里有一根手指嵌在瓶盖里，其中约一半一直出不来（PhysX 会把它推出来）。改正后在 12 时重新开始训练；下面表里的 mortar 一侧都是这最后一版。四处差别和查出来的办法见<a href="#sharpa-sim-check">两个版本对不对得上</a>，上一版已经训练完的几次的结果单独列在<a href="#sharpa-sim-v3">那一节的末尾</a>。</p>
 <h2 id="sharpa-sim-result">训练结果</h2>
 <div class="tablewrap"><table>
@@ -96,6 +96,8 @@ td.num b{color:var(--fg)}
 </tbody></table></div>
 <p class="small">同一个检查点，不再训练，各 1026 个环境 × 一个回合。PhysX 训练的策略是用改正后的训练代码重跑的那一批，放进的是改正复位之后的 mortar；还没评测完的没有列出。</p>
 <p><b>PhysX 训练的策略放进 mortar：不给触觉的策略转满一圈从 71.2–79.0 % 降到 41.6–49.5 %，CNN 从 90.6 % 降到 50.3 %，二值和原始触觉从 90.0–92.5 % 降到 2.7–23.2 %。</b>按保留的比例算，不给触觉是原来的 58–63 %，CNN 是 55 %，二值和原始触觉只有 3–25 %。直接读触觉数值的两种输入掉得最多；两边触觉读数的大小不同（PhysX 的指垫是软的，同样的力压入更深）是原因之一，验证见下面。mortar 训练的策略放进 PhysX 的结果，等 mortar 这一批训练结束后补上。</p>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_sharpa_sim_px_to_mortar.jpg?v=1122c" src="../media/lbt_sharpa_sim_px_to_mortar.mp4?v=1122c" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>同一个 PhysX 训练的策略（CNN 触觉，种子 0）：上排在 PhysX 里运行，下排原样放进 mortar，实时播放 20 秒。</b>四种瓶盖是固定选的（中号的圆柱、四棱柱、六棱柱和球形盖），不是按结果挑的；整体上这个策略转满一圈的比例在 PhysX 里是 90.6 %，放进 mortar 是 50.3 %。画面是按记录下来的关节角和瓶盖位姿重新画的，不是仿真器自己的渲染；绿色是指尖的软垫。</figcaption></figure>
 <p><b>为什么读触觉数值的策略掉得最多，做了一个单独的验证。</b>两边指垫的软硬不同（见<a href="#sharpa-sim-diff">还不一样的地方</a>），同样的抓握，mortar 里的触觉读数只有 PhysX 的几分之一。测试：物理不动，只把 mortar 里的触觉读数乘一个系数再交给同一个 PhysX 策略。</p>
 <div class="tablewrap"><table>
 <thead><tr><th>PhysX 训练的策略</th><th class="num">转满一圈：在 PhysX 里</th><th class="num">放进 mortar（读数不变）</th><th class="num">放进 mortar（读数 × 3）</th><th class="num">放进 mortar（读数 × 4.5）</th></tr></thead>
