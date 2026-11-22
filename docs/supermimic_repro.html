@@ -28,7 +28,7 @@ td.num b{color:var(--fg)}
 
 <div class="eyebrow">Humanoid whole-body tracking · SuperMimic · 2026-11</div>
 <h1>复现 SuperMimic：用可微世界模型训练 G1 的全身动作跟踪</h1>
-<p class="lead"><b>结论（11-22 07:39 更新）：用论文作者公开的官方代码在 MuJoCo 里重跑，G1 跟踪 LAFAN1 的 40 段动作，训练 3 小时后的归一化回报是 0.87（按论文的观测，失败 0 段）和 0.88（代码默认设置，失败 0 段），论文报告的是 0.82：论文的数字复现了。把这两个策略不再训练、原样放进另一个仿真器 mortar：代码默认设置的策略是 0.80（40 段里摔 3 段），按论文观测的策略是 0.61（摔 16 段）。更正（11-22）：这两个数是在我们接入 mortar 时沿用的默认接触刚度下测的，它对 G1 的脚底偏软；把接触刚度提高 3 倍重测，是 0.82（摔 2 段）和 0.75（摔 11 段），见<a href="#xfer">第 2 节</a>。把官方代码里的仿真器换成 mortar 来训练，结果和 MuJoCo 版持平：训练到和 MuJoCo 版 3 小时相同的数据量（第 6400 轮）时，mortar 训练的策略在 mortar 里评测，代码默认设置的两个种子是 0.87 / 0.87，按论文的观测是 0.86；MuJoCo 版在 MuJoCo 里是 0.88 和 0.87。把 mortar 训练的策略原样放进 MuJoCo 会低一些：0.80 / 0.85 和 0.78。mortar 仿真慢 17 倍，整个训练慢约 3 倍（9.6 小时对 3 小时）。</b>11-10 用社区代码做的第一版复现（0.57 和 0.84）移到了<a href="supermimic_repro_community.html">单独一页</a>。</p>
+<p class="lead"><b>结论（11-22 09:20 更新）：用论文作者公开的官方代码在 MuJoCo 里重跑，G1 跟踪 LAFAN1 的 40 段动作，训练 3 小时后的归一化回报是 0.87（按论文的观测，失败 0 段）和 0.88（代码默认设置，失败 0 段），论文报告的是 0.82：论文的数字复现了。把这两个策略不再训练、原样放进另一个仿真器 mortar：代码默认设置的策略是 0.80（40 段里摔 3 段），按论文观测的策略是 0.61（摔 16 段）。更正（11-22）：这两个数是在我们接入 mortar 时沿用的默认接触刚度下测的，它对 G1 的脚底偏软；把接触刚度提高 3 倍重测，是 0.82（摔 2 段）和 0.75（摔 11 段），见<a href="#xfer">第 2 节</a>。把官方代码里的仿真器换成 mortar 来训练，结果和 MuJoCo 版持平：训练到和 MuJoCo 版 3 小时相同的数据量（第 6400 轮）时，mortar 训练的策略在 mortar 里评测，代码默认设置的两个种子是 0.87 / 0.87，按论文的观测是 0.86；MuJoCo 版在 MuJoCo 里是 0.88 和 0.87。把 mortar 训练的策略原样放进 MuJoCo 会低一些：0.80 / 0.85 和 0.78。mortar 仿真慢 17 倍，整个训练慢约 3 倍（9.6 小时对 3 小时）。</b>11-10 用社区代码做的第一版复现（0.57 和 0.84）移到了<a href="supermimic_repro_community.html">单独一页</a>。</p>
 <div class="toc"><b>目录</b>
 <a href="#parts">各节做了什么</a><a href="#video">效果视频</a><a href="#official">一、官方代码重跑</a><a href="#xfer">二、原样放进 mortar</a><a href="#mortar-train">三、用 mortar 训练</a><a href="supermimic_repro_community.html">四、社区代码版</a><a href="#setup">测试条件</a>
 </div>
@@ -42,10 +42,14 @@ td.num b{color:var(--fg)}
 <tr><td style="white-space:nowrap"><a href="supermimic_repro_community.html"><b>第 4 节</b><br>此前用社区代码的复现（单独一页）</a></td><td>官方代码公开之前，用社区的独立复现代码做的第一版：三个种子、两组观测，以及把那个策略放进 mortar 的测试。</td><td>按论文的观测 0.57，另加相对位姿 0.84；放进 mortar 后 40 段里摔 19 段。</td></tr>
 </tbody></table></div>
 <h2 id="video">效果视频</h2>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/sm_mortar_trained.jpg?v=1121c" src="../media/sm_mortar_trained.mp4?v=1121c" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>用 mortar 训练出来的策略（官方代码，只把仿真器换成 mortar，训练到第 6400 轮，代码默认设置）：上排在 mortar 里（策略在这里训练），下排不再训练、直接放进 MuJoCo。</b>四段动作（走、跑、跳舞、跳）各取开头 20 秒，半透明的蓝色机器人是参考动作。这四段在两个仿真器里都没有摔倒。录制时同一个策略评测了全部 40 段动作：在 mortar 里跟踪得分 0.872、没有一段失败，放进 MuJoCo 是 0.825、2 段失败。各存档点的完整评测见<a href="#mortar-train">第三节</a>。</figcaption></figure>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/sm_official_mujoco_vs_mortar.jpg?v=1121c" src="../media/sm_official_mujoco_vs_mortar.mp4?v=1121c" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>官方代码训练 3 小时的策略（代码默认设置）：上排在 MuJoCo 里（策略在这里训练），下排不再训练、直接放进 mortar。</b>四段动作（走、跑、跳舞、跳）各取开头 20 秒，两排的策略、起始姿态和参考动作完全相同，只换了物理仿真器。实体是仿真里的机器人，半透明的蓝色是参考动作。这四段在两个仿真器里都完整走完；第 20 秒时身体离参考位置的水平距离，四段平均 MuJoCo 里 0.27 米，mortar 里 0.36 米。40 段的统计见<a href="#xfer">第 2 节</a>。</figcaption></figure>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/sm_official_proprio_mortar.jpg?v=1121c" src="../media/sm_official_proprio_mortar.mp4?v=1121c" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>按论文观测的策略（只用机载传感器）放进 mortar 后摔倒的两个例子：上排 MuJoCo，下排 mortar，同一个策略、同样的两段动作。</b>画面取摔倒前后的 21 秒（“跳”从第 41 秒起，“格斗与运动”从第 46 秒起）。mortar 里分别在第 57.5 秒和第 62.7 秒摔倒，MuJoCo 里这两段都完整走完。这个策略看不到自己在世界里的位置，在 mortar 里身体偏离参考位置很快：第 20 秒时已经离开 2.3 米和 5.3 米（MuJoCo 里是 0.2 米和 0.8 米），所以半透明的参考动作多数时候不在画面里。</figcaption></figure>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/sm_mortar_trained.jpg?v=1121c" src="../media/sm_mortar_trained.mp4?v=1121c" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>在 mortar 里训练出来的策略。</b>上排在 mortar 里（训练用的仿真器），下排放进 MuJoCo。</figcaption></figure>
 <h2 id="official">一、官方代码在 MuJoCo 里重跑</h2>
 <p><b>这一节做什么：</b>论文作者在 11-10 公开了训练代码。这里不改算法和超参数，在 MuJoCo 里重新训练，再按和第一版相同的协议评测。<b>结果：</b>训练 3 小时后两种设置的回报是 0.869 和 0.877，都超过论文的 0.82。</p>
 <ul>
@@ -135,7 +139,7 @@ td.num b{color:var(--fg)}
 <p class="small">曲线是训练日志里的回合回报（每个回合最长 10 秒，满分 50），带探索噪声和随机化，只用来看学习的快慢；正式的评测在下面的表里。每个点是训练到这一轮的各次训练的平均（mortar 版 1–4 次，MuJoCo 版 1–3 次，轮数越靠后次数越少）。一轮 = 4096 个环境各走 10 个控制步。</p>
 <h3 id="mortar-eval">各存档点的评测</h3>
 <p>每格是“归一化回报（40 段里失败的段数）”，同一格里有几个数就是有几次训练到了这一轮并且评测完。前两列是在训练用的仿真器里评测，后两列是换到另一个仿真器里评测。</p>
-<h4>代码默认设置（重新开始的 mortar 训练现在到第 6940 轮，已训练 10.4 小时）</h4>
+<h4>代码默认设置（重新开始的 mortar 训练现在到第 7596 轮，已训练 11.4 小时）</h4>
 <div class="tablewrap"><table>
 <thead><tr><th>迭代轮数</th><th class="num">训练到这一轮的时间：MuJoCo / mortar</th><th class="num">MuJoCo 训练，MuJoCo 里评测</th><th class="num">mortar 训练，mortar 里评测</th><th class="num">MuJoCo 训练，放进 mortar</th><th class="num">mortar 训练，放进 MuJoCo</th></tr></thead>
 <tbody>
@@ -150,7 +154,7 @@ td.num b{color:var(--fg)}
 <tr><td>6000</td><td class="num">2.8 小时 / 9.0 小时</td><td class="num">0.87（0）</td><td class="num">0.87（0），0.87（0）</td><td class="num">0.76（6）</td><td class="num">0.85（0），0.85（0）</td></tr>
 <tr><td>6400</td><td class="num">— / 9.6 小时</td><td class="num">—</td><td class="num">0.87（0），0.87（1）</td><td class="num">—</td><td class="num">0.80（3），0.85（1）</td></tr>
 </tbody></table></div>
-<h4>按论文的观测（重新开始的 mortar 训练现在到第 6865 轮，已训练 10.4 小时）</h4>
+<h4>按论文的观测（重新开始的 mortar 训练现在到第 7515 轮，已训练 11.4 小时）</h4>
 <div class="tablewrap"><table>
 <thead><tr><th>迭代轮数</th><th class="num">训练到这一轮的时间：MuJoCo / mortar</th><th class="num">MuJoCo 训练，MuJoCo 里评测</th><th class="num">mortar 训练，mortar 里评测</th><th class="num">MuJoCo 训练，放进 mortar</th><th class="num">mortar 训练，放进 MuJoCo</th></tr></thead>
 <tbody>
