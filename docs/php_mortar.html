@@ -28,28 +28,28 @@ td.num b{color:var(--fg)}
 
 <div class="eyebrow">Humanoid parkour · PHP × mortar · 2026-11</div>
 <h1>把 PHP 跑酷教师的仿真器换成 mortar 来训练</h1>
-<p class="lead"><b>现状（11-22 23 时）：PHP 跑酷的官方训练代码只支持 Isaac Sim。我们不改训练部分，只把物理仿真器换成 mortar，五个教师里四个正在用 mortar 训练，每个 2 万轮。</b>平地走跑（训练中，第 7001 轮）：第 5000 轮的检查点在 mortar 里片段完成率 96.0 %，原样放进 Isaac Sim 是 91.6 %，Isaac Sim 自己训练满 2 万轮的教师是 99.5 %；上 36 cm 台阶，慢速（训练中，第 3888 轮）：第 2500 轮的检查点在 mortar 里片段完成率 94.8 %，Isaac Sim 自己训练满 2 万轮的教师是 99.5 %；上 36 cm 台阶，快速（训练中，第 3994 轮）：第 2500 轮的检查点在 mortar 里片段完成率 90.0 %，Isaac Sim 自己训练满 2 万轮的教师是 99.1 %。爬 76 cm 高台，慢速刚开始训练，还没有评估。爬 76 cm 高台，快速排在后面，等显卡空出来。评估方法和之前 Isaac Sim 那次相同：1024 个机器人连续跟踪 60 秒，一个片段从头做到尾、中途没有因为偏离太多或摔倒而被终止，算完成。速度上 mortar 慢得多：每张显卡每秒约 0.5–0.7 万个环境步，Isaac Sim 约 4.6 万，所以这里每个教师用 4–8 张显卡，Isaac Sim 当时用 1–2 张（<a href="#speed">见第三节</a>）。这一页只有仿真里的结果，没有真机实验；学生（看深度图的策略）还没有做，策略视频等第一个教师训完后补上。之前用 Isaac Sim 的复现见<a href="loco_repro.html#php">行走复现页</a>，同一个仿真器换法用在 FastSAC 上的结果见<a href="loco_mortar.html">用 mortar 训练 FastSAC</a>。</p>
+<p class="lead"><b>现状（11-23 1 时）：PHP 跑酷的官方训练代码只支持 Isaac Sim。我们不改训练部分，只把物理仿真器换成 mortar，五个教师里四个正在用 mortar 训练，每个 2 万轮。</b>平地走跑（训练中，第 9464 轮）：第 7500 轮的检查点在 mortar 里片段完成率 97.0 %，原样放进 Isaac Sim 是 94.6 %，Isaac Sim 自己训练满 2 万轮的教师是 99.5 %；上 36 cm 台阶，慢速（训练中，第 5573 轮）：第 5000 轮的检查点在 mortar 里片段完成率 98.0 %，Isaac Sim 自己训练满 2 万轮的教师是 99.5 %；上 36 cm 台阶，快速（训练中，第 5729 轮）：第 5000 轮的检查点在 mortar 里片段完成率 97.7 %，原样放进 Isaac Sim 是 94.3 %，Isaac Sim 自己训练满 2 万轮的教师是 99.1 %。爬 76 cm 高台，慢速刚开始训练，还没有评估。爬 76 cm 高台，快速排在后面，等显卡空出来。评估方法和之前 Isaac Sim 那次相同：1024 个机器人连续跟踪 60 秒，一个片段从头做到尾、中途没有因为偏离太多或摔倒而被终止，算完成。速度上 mortar 慢得多：每张显卡每秒约 0.5–0.7 万个环境步，Isaac Sim 约 4.6 万，所以这里每个教师用 4–8 张显卡，Isaac Sim 当时用 1–2 张（<a href="#speed">见第三节</a>）。这一页只有仿真里的结果，没有真机实验；学生（看深度图的策略）还没有做，策略视频等第一个教师训完后补上。之前用 Isaac Sim 的复现见<a href="loco_repro.html#php">行走复现页</a>，同一个仿真器换法用在 FastSAC 上的结果见<a href="loco_mortar.html">用 mortar 训练 FastSAC</a>。</p>
 <div class="toc"><b>目录</b>
 <a href="#train">一、用 mortar 训练的教师</a><a href="#curve">训练曲线</a><a href="#transfer">二、只是放进 mortar 测试的结果</a><a href="#speed">三、速度</a><a href="#bridge">四、怎么接的，接入时出过的错</a><a href="#check">五、测试条件和没做的</a>
 </div>
 <h2 id="train">一、用 mortar 训练的教师</h2>
-<p><b>做了什么：</b>PHP 先把人的动作片段（走、跑、上台阶、手撑爬高台）拼成带障碍的长轨迹，每类动作训练一个跟踪动作的教师，之后再蒸馏成一个看深度图的学生。这里做的是教师这一步：五组公开数据各训练一个教师，算法（PPO）、观测、奖励、障碍的生成方式、训练轮数（2 万）和环境总数（前三个 4096，攀爬的两个 8192）都和之前 Isaac Sim 那次相同，只有物理仿真器换成了 mortar。<b>结果（11-22 23 时）：</b>下表是每个教师目前的进度和最新评估过的检查点；检查点每 2500 轮自动评估一次，先在 mortar 里，再原样放进 Isaac Sim。</p>
+<p><b>做了什么：</b>PHP 先把人的动作片段（走、跑、上台阶、手撑爬高台）拼成带障碍的长轨迹，每类动作训练一个跟踪动作的教师，之后再蒸馏成一个看深度图的学生。这里做的是教师这一步：五组公开数据各训练一个教师，算法（PPO）、观测、奖励、障碍的生成方式、训练轮数（2 万）和环境总数（前三个 4096，攀爬的两个 8192）都和之前 Isaac Sim 那次相同，只有物理仿真器换成了 mortar。<b>结果（11-23 1 时）：</b>下表是每个教师目前的进度和最新评估过的检查点；检查点每 2500 轮自动评估一次，先在 mortar 里，再原样放进 Isaac Sim。</p>
 <div class="tablewrap"><table>
 <thead><tr><th>教师</th><th class="num">动作片段数</th><th class="num">用 mortar 训练的进度</th><th class="num">最新评估的检查点</th><th class="num">在 mortar 里</th><th class="num">原样放进 Isaac Sim</th><th class="num">对照：Isaac Sim 训练满 2 万轮，在 Isaac Sim 里</th></tr></thead>
 <tbody>
-<tr><td>平地走跑</td><td class="num">100</td><td class="num">训练中，第 7001 轮</td><td class="num">第 5000 轮</td><td class="num"><b>96.0 %</b></td><td class="num">91.6 %</td><td class="num">99.5 %</td></tr>
-<tr><td>上 36 cm 台阶，慢速</td><td class="num">56</td><td class="num">训练中，第 3888 轮</td><td class="num">第 2500 轮</td><td class="num"><b>94.8 %</b></td><td class="num">—</td><td class="num">99.5 %</td></tr>
-<tr><td>上 36 cm 台阶，快速</td><td class="num">60</td><td class="num">训练中，第 3994 轮</td><td class="num">第 2500 轮</td><td class="num"><b>90.0 %</b></td><td class="num">—</td><td class="num">99.1 %</td></tr>
-<tr><td>爬 76 cm 高台，慢速</td><td class="num">40</td><td class="num">训练中，第 250 轮</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">98.9 %</td></tr>
+<tr><td>平地走跑</td><td class="num">100</td><td class="num">训练中，第 9464 轮</td><td class="num">第 7500 轮</td><td class="num"><b>97.0 %</b></td><td class="num">94.6 %</td><td class="num">99.5 %</td></tr>
+<tr><td>上 36 cm 台阶，慢速</td><td class="num">56</td><td class="num">训练中，第 5573 轮</td><td class="num">第 5000 轮</td><td class="num"><b>98.0 %</b></td><td class="num">—</td><td class="num">99.5 %</td></tr>
+<tr><td>上 36 cm 台阶，快速</td><td class="num">60</td><td class="num">训练中，第 5729 轮</td><td class="num">第 5000 轮</td><td class="num"><b>97.7 %</b></td><td class="num">94.3 %</td><td class="num">99.1 %</td></tr>
+<tr><td>爬 76 cm 高台，慢速</td><td class="num">40</td><td class="num">训练中，第 235 轮</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">98.9 %</td></tr>
 <tr><td>爬 76 cm 高台，快速</td><td class="num">40</td><td class="num">还没开始</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">97.0 %</td></tr>
 </tbody></table></div>
 <p class="small">片段完成率：1024 个机器人连续跟踪 60 秒，每个片段从头开始，中途没有因为偏离太多或摔倒而被终止就算完成。每个教师只训练了一个随机种子。最右一列是训练满 2 万轮的结果，中间几列是训练到一半的检查点，轮数不同，不能直接比高低。</p>
 <div class="tablewrap"><table>
-<thead><tr><th>各检查点：在 mortar 里 / 放进 Isaac Sim</th><th class="num">第 2500 轮</th><th class="num">第 5000 轮</th></tr></thead>
+<thead><tr><th>各检查点：在 mortar 里 / 放进 Isaac Sim</th><th class="num">第 2500 轮</th><th class="num">第 5000 轮</th><th class="num">第 7500 轮</th></tr></thead>
 <tbody>
-<tr><td>平地走跑</td><td class="num">88.7 % / 81.6 %</td><td class="num">96.0 % / 91.6 %</td></tr>
-<tr><td>上 36 cm 台阶，慢速</td><td class="num">94.8 % / —</td><td class="num">—</td></tr>
-<tr><td>上 36 cm 台阶，快速</td><td class="num">90.0 % / —</td><td class="num">—</td></tr>
+<tr><td>平地走跑</td><td class="num">88.7 % / 81.6 %</td><td class="num">96.0 % / 91.6 %</td><td class="num">97.0 % / 94.6 %</td></tr>
+<tr><td>上 36 cm 台阶，慢速</td><td class="num">94.8 % / 89.1 %</td><td class="num">98.0 % / —</td><td class="num">—</td></tr>
+<tr><td>上 36 cm 台阶，快速</td><td class="num">90.0 % / 91.0 %</td><td class="num">97.7 % / 94.3 %</td><td class="num">—</td></tr>
 </tbody></table></div>
 <p class="small">每格斜线前是在 mortar 里，斜线后是原样放进 Isaac Sim；“—”是还没评估。</p>
 <h3 id="curve">训练曲线</h3>
@@ -75,13 +75,13 @@ td.num b{color:var(--fg)}
 <div class="tablewrap"><table>
 <thead><tr><th>训练</th><th class="num">显卡 × 每张卡的环境数</th><th class="num">每秒环境步</th><th class="num">每张显卡每秒环境步</th><th class="num">每轮用时</th><th class="num">2 万轮用时</th></tr></thead>
 <tbody>
-<tr><td>平地走跑，mortar</td><td class="num">8 张 × 512</td><td class="num">38,973</td><td class="num">4,871</td><td class="num">2.5 秒</td><td class="num">14 小时</td></tr>
+<tr><td>平地走跑，mortar</td><td class="num">8 张 × 512</td><td class="num">38,940</td><td class="num">4,867</td><td class="num">2.5 秒</td><td class="num">14 小时</td></tr>
 <tr><td>平地走跑，Isaac Sim</td><td class="num">1 张 × 4096</td><td class="num">46,409</td><td class="num">46,409</td><td class="num">2.1 秒</td><td class="num">12 小时</td></tr>
-<tr><td>上 36 cm 台阶，慢速，mortar</td><td class="num">4 张 × 1024</td><td class="num">26,260</td><td class="num">6,565</td><td class="num">3.7 秒</td><td class="num">21 小时</td></tr>
+<tr><td>上 36 cm 台阶，慢速，mortar</td><td class="num">4 张 × 1024</td><td class="num">26,280</td><td class="num">6,570</td><td class="num">3.7 秒</td><td class="num">21 小时</td></tr>
 <tr><td>上 36 cm 台阶，慢速，Isaac Sim</td><td class="num">1 张 × 4096</td><td class="num">44,156</td><td class="num">44,156</td><td class="num">2.2 秒</td><td class="num">12 小时</td></tr>
-<tr><td>上 36 cm 台阶，快速，mortar</td><td class="num">4 张 × 1024</td><td class="num">27,066</td><td class="num">6,766</td><td class="num">3.6 秒</td><td class="num">20 小时</td></tr>
+<tr><td>上 36 cm 台阶，快速，mortar</td><td class="num">4 张 × 1024</td><td class="num">27,085</td><td class="num">6,771</td><td class="num">3.6 秒</td><td class="num">20 小时</td></tr>
 <tr><td>上 36 cm 台阶，快速，Isaac Sim</td><td class="num">1 张 × 4096</td><td class="num">47,305</td><td class="num">47,305</td><td class="num">2.1 秒</td><td class="num">12 小时</td></tr>
-<tr><td>爬 76 cm 高台，慢速，mortar</td><td class="num">4 张 × 2048</td><td class="num">26,610</td><td class="num">6,652</td><td class="num">7.4 秒</td><td class="num">41 小时</td></tr>
+<tr><td>爬 76 cm 高台，慢速，mortar</td><td class="num">7 张 × 1170</td><td class="num">40,964</td><td class="num">5,852</td><td class="num">4.8 秒</td><td class="num">27 小时</td></tr>
 <tr><td>爬 76 cm 高台，慢速，Isaac Sim</td><td class="num">2 张 × 4096</td><td class="num">70,431</td><td class="num">35,215</td><td class="num">2.8 秒</td><td class="num">16 小时</td></tr>
 </tbody></table></div>
 <p class="small">每秒环境步和每轮用时取训练日志里第 200 轮以后的中位数；2 万轮用时是按每轮用时折算的。显卡都是 96 GB 显存的同一型号。mortar 用单精度，物理步长 5 毫秒。</p>
@@ -108,7 +108,7 @@ td.num b{color:var(--fg)}
 </div>
 <script src="charts.js"></script>
 <script>
-const CH = {"c_parkour_loco": {"kind": "lines", "cfg": {"title": "平地走跑：训练中的平均回合长度", "sub": "单位：控制步，上限 500 步（10 秒）；用 mortar 训练到第 7001 轮", "x": ["100", "250", "500", "750", "1000", "1500", "2000", "2500", "3000", "4000", "5000", "6000", "7000"], "series": [{"name": "用 mortar 训练", "values": [24.61, 62.86, 135.13, 236.63, 303.07, 375.34, 387.84, 417.47, 428.17, 458.91, 442.89, 470.37, 479.68], "slot": 1}, {"name": "用 Isaac Sim 训练", "values": [21.19, 62.42, 145.07, 220.09, 292.28, 387.55, 374.6, 400.33, 430.01, 420.85, 470.03, 456.33, 479.41], "slot": 0}], "unit": "", "decimals": 0, "xTitle": "训练轮数", "catLabel": "训练轮数", "endLabels": false, "min": 0.0, "max": 500.0}}, "c_parkour_lowstep": {"kind": "lines", "cfg": {"title": "上 36 cm 台阶，慢速：训练中的平均回合长度", "sub": "单位：控制步，上限 500 步（10 秒）；用 mortar 训练到第 3888 轮", "x": ["100", "250", "500", "750", "1000", "1500", "2000", "2500", "3000"], "series": [{"name": "用 mortar 训练", "values": [26.31, 94.63, 155.98, 215.64, 310.19, 379.1, 414.87, 429.32, 446.46], "slot": 1}, {"name": "用 Isaac Sim 训练", "values": [21.38, 77.31, 150.45, 251.18, 333.19, 401.69, 433.5, 424.55, 435.49], "slot": 0}], "unit": "", "decimals": 0, "xTitle": "训练轮数", "catLabel": "训练轮数", "endLabels": false, "min": 0.0, "max": 500.0}}, "c_parkour_highstep": {"kind": "lines", "cfg": {"title": "上 36 cm 台阶，快速：训练中的平均回合长度", "sub": "单位：控制步，上限 500 步（10 秒）；用 mortar 训练到第 3994 轮", "x": ["100", "250", "500", "750", "1000", "1500", "2000", "2500", "3000"], "series": [{"name": "用 mortar 训练", "values": [19.61, 51.18, 126.27, 208.3, 275.83, 382.69, 395.68, 384.52, 435.43], "slot": 1}, {"name": "用 Isaac Sim 训练", "values": [23.29, 54.72, 118.16, 221.47, 322.6, 366.29, 388.73, 426.37, 439.17], "slot": 0}], "unit": "", "decimals": 0, "xTitle": "训练轮数", "catLabel": "训练轮数", "endLabels": false, "min": 0.0, "max": 500.0}}};
+const CH = {"c_parkour_loco": {"kind": "lines", "cfg": {"title": "平地走跑：训练中的平均回合长度", "sub": "单位：控制步，上限 500 步（10 秒）；用 mortar 训练到第 9464 轮", "x": ["100", "250", "500", "750", "1000", "1500", "2000", "2500", "3000", "4000", "5000", "6000", "7000", "7500", "8000", "9000"], "series": [{"name": "用 mortar 训练", "values": [24.61, 62.86, 135.13, 236.63, 303.07, 375.34, 387.84, 417.47, 428.17, 458.91, 442.89, 470.37, 479.68, 465.75, 463.91, 483.69], "slot": 1}, {"name": "用 Isaac Sim 训练", "values": [21.19, 62.42, 145.07, 220.09, 292.28, 387.55, 374.6, 400.33, 430.01, 420.85, 470.03, 456.33, 479.41, 487.25, 482.26, 457.28], "slot": 0}], "unit": "", "decimals": 0, "xTitle": "训练轮数", "catLabel": "训练轮数", "endLabels": false, "min": 0.0, "max": 500.0}}, "c_parkour_lowstep": {"kind": "lines", "cfg": {"title": "上 36 cm 台阶，慢速：训练中的平均回合长度", "sub": "单位：控制步，上限 500 步（10 秒）；用 mortar 训练到第 5573 轮", "x": ["100", "250", "500", "750", "1000", "1500", "2000", "2500", "3000", "4000", "5000"], "series": [{"name": "用 mortar 训练", "values": [26.31, 94.63, 155.98, 215.64, 310.19, 379.1, 414.87, 429.32, 446.46, 455.5, 444.57], "slot": 1}, {"name": "用 Isaac Sim 训练", "values": [21.38, 77.31, 150.45, 251.18, 333.19, 401.69, 433.5, 424.55, 435.49, 470.3, 449.42], "slot": 0}], "unit": "", "decimals": 0, "xTitle": "训练轮数", "catLabel": "训练轮数", "endLabels": false, "min": 0.0, "max": 500.0}}, "c_parkour_highstep": {"kind": "lines", "cfg": {"title": "上 36 cm 台阶，快速：训练中的平均回合长度", "sub": "单位：控制步，上限 500 步（10 秒）；用 mortar 训练到第 5729 轮", "x": ["100", "250", "500", "750", "1000", "1500", "2000", "2500", "3000", "4000", "5000"], "series": [{"name": "用 mortar 训练", "values": [19.61, 51.18, 126.27, 208.3, 275.83, 382.69, 395.68, 384.52, 435.43, 435.29, 462.57], "slot": 1}, {"name": "用 Isaac Sim 训练", "values": [23.29, 54.72, 118.16, 221.47, 322.6, 366.29, 388.73, 426.37, 439.17, 418.66, 444.15], "slot": 0}], "unit": "", "decimals": 0, "xTitle": "训练轮数", "catLabel": "训练轮数", "endLabels": false, "min": 0.0, "max": 500.0}}};
 Charts.register(() => { for (const id in CH) { const host = document.getElementById(id); if (host) Charts[CH[id].kind](host, CH[id].cfg); } });
 </script>
 </body>
