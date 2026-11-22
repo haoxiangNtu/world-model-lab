@@ -31,23 +31,23 @@ td.num b{color:var(--fg)}
 
 <div class="eyebrow">复现 LingBot-Touch · 第 6 节，共 6 节</div>
 <h1>第 6 节：mortar 里拧瓶盖（Wuji 五指手，软指尖）</h1>
-<p class="lead"><b>这一节做什么：</b>在 mortar 仿真器里做同类任务，手是 Wuji 五指手，指尖是软垫。第一版只有一种瓶盖、位置固定；第三版有 24 种瓶盖、位置随机，手要先找到盖子再拧。<br><b>结果：</b>第一版五种输入都学会了（87–100 %），触觉只是让学得更快；第三版训练到 3000 万步时 8 次里 6 次学会（78–98 %），同一种输入两个种子之间的差别比不同输入之间还大，暂时分不出高下，训练继续到 6000 万步。</p>
+<p class="lead"><b>这一节做什么：</b>在 mortar 仿真器里做同类任务，手是 Wuji 五指手，指尖是软垫。第一版只有一种瓶盖、位置固定；第三版有 24 种瓶盖、位置随机，手要先找到盖子再拧。<br><b>结果：</b>第一版五种输入都学会了（87–100 %），触觉只是让学得更快；第三版训练 6000 万步后 8 次都学会（85.7–99.6 %），四种输入两个种子的平均在 92.0–96.9 % 之间，同一种输入两个种子之间的差别和不同输入之间一样大，分不出高下；不给触觉也能学会。</p>
 <div class="toc partnav"><b>分节</b>
 <a href="lingbot_touch.html">总览</a><a href="lingbot_touch_weights.html">1 开源权重</a><a href="lingbot_touch_probe.html">2 probe</a><a href="lingbot_touch_rl.html">3 强化学习</a><a href="lingbot_touch_retrain.html">4 重新预训练</a><a href="lingbot_touch_cap.html">5 PhysX 拧瓶盖</a><a class="on" href="lingbot_touch_mortar.html">6 mortar 拧瓶盖</a>
 </div>
 <div class="toc"><b>本节目录</b>
-<a href="#video-mortar3">效果视频：mortar：手先找到盖子再拧（强化学习训练出的策略，11-21，训练中）</a><a href="#cap-mortar3">在 mortar 里做拧瓶盖，第三版：手先找到盖子再拧（11-21，3000 万步的对比已出，训练继续到 6000 万步）</a><a href="#cap-mortar">在 mortar 里做拧瓶盖（11-19，第一批结果）</a>
+<a href="#video-mortar3">效果视频：mortar：手先找到盖子再拧（强化学习训练出的策略，11-21，训练中）</a><a href="#cap-mortar3">在 mortar 里做拧瓶盖，第三版：手先找到盖子再拧（11-22，6000 万步训练完成）</a><a href="#cap-mortar">在 mortar 里做拧瓶盖（11-19，第一批结果）</a>
 </div>
 <h2 id="video-mortar3">效果视频：mortar：手先找到盖子再拧（强化学习训练出的策略，11-21，训练中）</h2>
-<p>这一组是在 mortar 仿真器里用强化学习训练出来的策略，训练还在进行，画面是 11-21 13:32 时的检查点。每个回合开始时手在盖子附近的随机位置和朝向，策略看不到盖子在哪里，要先把手移到盖子上方，再合拢手指拧开并提起。任务设计和各次训练的现状见<a href="#cap-mortar3">下面的第三版说明</a>。</p>
+<p>这一组是在 mortar 仿真器里用强化学习训练出来的策略，画面是训练途中 11-21 13:32 时的检查点（约 2300 万步）；训练已在 11-22 跑完 6000 万步，最终的成功率见<a href="#cap-mortar3-60m">第三版的对比表</a>。每个回合开始时手在盖子附近的随机位置和朝向，策略看不到盖子在哪里，要先把手移到盖子上方，再合拢手指拧开并提起。任务设计和各次训练的现状见<a href="#cap-mortar3">下面的第三版说明</a>。</p>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_mortar_find_cnn1.jpg?v=1121a" src="../media/lbt_mortar_find_cnn1.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>CNN 触觉输入（种子 1，训练到 2050 万步），24 种盖子各一个回合，实时播放 20 秒。</b>每格是一种盖子，上方的字是形状、轮廓到轴线的最大距离、高度和开始时手偏离盖子的距离；下方是时间和盖子已经转过的圈数，拧开后出现 UNSCREWED。盖子上的黄色扇形用来看转动，橙色是指尖的软垫。这 24 个回合里 24 个拧开，23 个提起并握到结束。画面是用 mortar 仿真记录下来的状态重新画的。</figcaption></figure>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_mortar_find_lbt1.jpg?v=1121a" src="../media/lbt_mortar_find_lbt1.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>冻结的官方 LingBot-Touch 编码器（种子 1，2710 万步）。</b>24 个里 23 个拧开，22 个提起并握到结束。</figcaption></figure>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/lbt_mortar_find_none0.jpg?v=1121a" src="../media/lbt_mortar_find_none0.mp4?v=1121a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>不给触觉（种子 0，2300 万步）。</b>24 个里 22 个拧开，21 个提起并握到结束，拧开用时的中位数是 7.9 秒，CNN 是 4.8 秒。只有 24 个回合，三段之间的成功个数差别不能当成结论；3000 万步时 512 个回合的统一评测见<a href="#cap-mortar3">下面的第三版说明</a>。</figcaption></figure>
-<h2 id="cap-mortar3">在 mortar 里做拧瓶盖，第三版：手先找到盖子再拧（11-21，3000 万步的对比已出，训练继续到 6000 万步）</h2>
-<p><b>现状（11-21 19:00）：8 次训练都已过 3000 万步，在 3000 万步时各用 512 个回合做了统一的评测（见下面第一张表）。8 次里 6 次学会了在盖子位置随机的情况下找到盖子、拧开并提起：LingBot-Touch 一个种子 97.9 %（八次里最高），原始触觉 93.0 % 和 77.7 %，无触觉一个种子 91.2 %，CNN 两个种子 90.0 % 和 88.1 %；无触觉和 LingBot-Touch 各有一个种子到 3000 万步还没有学会（0 %）。同一种输入两个种子之间的差别，比不同输入之间的差别还大，所以 3000 万步时还分不出哪种输入更好。</b>训练继续到 6000 万步，到时再做同样的评测。</p>
+<h2 id="cap-mortar3">在 mortar 里做拧瓶盖，第三版：手先找到盖子再拧（11-22，6000 万步训练完成）</h2>
+<p><b>结果（11-22）：8 次训练都跑完了 6000 万步，8 次都学会了在盖子位置随机的情况下找到盖子、拧开并提起，成功率 85.7–99.6 %（各 512 个回合）。四种输入两个种子的平均是：无触觉 92.0 %，原始触觉 95.2 %，CNN 94.8 %，LingBot-Touch 96.9 %；同一种输入两个种子之间的差别和不同输入之间的差别一样大，所以仍然分不出哪种输入更好。单次里最好的是 LingBot-Touch 的一个种子（99.6 %）。</b>3000 万步时的对比保留在下面。</p>
 <p>前两版里，手每次都从盖子正上方、同一个姿势开始，手腕不动，只动手指就能拧开，所以不用触觉也能学到接近 100 %。这一版改了四处：</p>
 <ul>
 <li>每个回合开始时，手相对盖子的水平位置在半径 20 毫米的圆内随机，高度差在 −3 到 +5 毫米之间，朝向任意，并带最多 5° 的倾斜；开始时手指不碰盖子。</li>
@@ -56,6 +56,26 @@ td.num b{color:var(--fg)}
 <li>随机范围按课程逐步放开：从上面范围的 20 % 开始，最近一批回合的成功率超过 60 % 就加 5 %，直到 100 %。</li>
 </ul>
 <p>成功的标准和前面一样：拧开，把盖子提起 5 毫米以上，并且一直握到 20 秒的回合结束。物理仿真全部用 mortar（指尖是 FEM 软垫，触觉来自软垫的形变），每次训练 1024 个环境并行，算法是 PPO。</p>
+<h4 id="cap-mortar3-60m">训练到 6000 万步时的统一评测（最终）</h4>
+<div class="tablewrap"><table>
+<thead><tr><th>触觉输入</th><th class="num">种子</th><th class="num">训练用的 24 种盖子</th><th class="num">没见过的 3 种形状</th><th class="num">没见过的 2 种大小</th><th class="num">起始偏移放大到 30 毫米</th><th class="num">拧开（训练用的盖子）</th><th class="num">中途松手（训练用的盖子）</th></tr></thead>
+<tbody>
+<tr><td>无触觉</td><td class="num">0</td><td class="num"><b>98.2 %</b></td><td class="num">99.4 %</td><td class="num">95.9 %</td><td class="num">92.0 %</td><td class="num">99.0 %</td><td class="num">1.8 %</td></tr>
+<tr><td>无触觉</td><td class="num">1</td><td class="num"><b>85.7 %</b></td><td class="num">87.5 %</td><td class="num">82.6 %</td><td class="num">77.7 %</td><td class="num">91.6 %</td><td class="num">13.3 %</td></tr>
+<tr><td>原始触觉</td><td class="num">0</td><td class="num"><b>92.6 %</b></td><td class="num">92.8 %</td><td class="num">89.8 %</td><td class="num">83.6 %</td><td class="num">97.3 %</td><td class="num">6.0 %</td></tr>
+<tr><td>原始触觉</td><td class="num">1</td><td class="num"><b>97.9 %</b></td><td class="num">96.9 %</td><td class="num">95.5 %</td><td class="num">93.4 %</td><td class="num">99.2 %</td><td class="num">1.9 %</td></tr>
+<tr><td>CNN</td><td class="num">0</td><td class="num"><b>92.2 %</b></td><td class="num">82.6 %</td><td class="num">87.7 %</td><td class="num">84.6 %</td><td class="num">97.7 %</td><td class="num">6.8 %</td></tr>
+<tr><td>CNN</td><td class="num">1</td><td class="num"><b>97.5 %</b></td><td class="num">94.9 %</td><td class="num">94.9 %</td><td class="num">92.0 %</td><td class="num">99.6 %</td><td class="num">2.5 %</td></tr>
+<tr><td>LingBot-Touch（冻结）</td><td class="num">0</td><td class="num"><b>94.1 %</b></td><td class="num">92.0 %</td><td class="num">82.2 %</td><td class="num">78.3 %</td><td class="num">98.4 %</td><td class="num">5.7 %</td></tr>
+<tr><td>LingBot-Touch（冻结）</td><td class="num">1</td><td class="num"><b>99.6 %</b></td><td class="num">100.0 %</td><td class="num">98.6 %</td><td class="num">96.7 %</td><td class="num">100.0 %</td><td class="num">0.4 %</td></tr>
+</tbody></table></div>
+<p class="small">评测方法和 3000 万步那张表相同：每格 512 个回合，随机范围全开，前四列是成功率（拧开、提起 5 毫米以上并握到回合结束）。八次训练都取 6000 万步时的检查点。</p>
+<ul>
+<li><b>八次训练都学会了。</b>训练用的盖子上成功率 85.7–99.6 %。3000 万步时还没学会的两次（无触觉种子 1、LingBot-Touch 种子 0）后来也学会了，分别到 85.7 % 和 94.1 %。</li>
+<li><b>仍然分不出哪种输入更好。</b>两个种子的平均：无触觉 92.0 %，原始触觉 95.2 %，CNN 94.8 %，LingBot-Touch 96.9 %，最高和最低只差 4.9 个百分点；而同一种输入的两个种子之间相差 5.3–12.5 个百分点。每种输入只有两个种子，这个差别不能当成结论。单次里最好的仍是 LingBot-Touch 种子 1（99.6 %，没见过的形状上 100.0 %）。</li>
+<li><b>不给触觉也能学会这个任务。</b>无触觉的两个种子是 98.2 % 和 85.7 %。也就是说，这一版任务（盖子位置随机、手先找到盖子）仍然没有难到必须靠触觉。</li>
+<li><b>能推广到没见过的盖子，起始偏移放大后都下降。</b>没见过的形状和大小上，八次里六次和训练用的盖子相差不到 6 个百分点；另外两次是 CNN 种子 0（没见过的形状上低 9.6 个百分点）和 LingBot-Touch 种子 0（没见过的大小上低 11.9 个百分点）；起始偏移放大到 30 毫米时八次都下降，降 2.9–15.8 个百分点。</li>
+</ul>
 <h4 id="cap-mortar3-30m">训练到 3000 万步时的统一评测</h4>
 <div class="tablewrap"><table>
 <thead><tr><th>触觉输入</th><th class="num">种子</th><th class="num">训练用的 24 种盖子</th><th class="num">没见过的 3 种形状</th><th class="num">没见过的 2 种大小</th><th class="num">起始偏移放大到 30 毫米</th><th class="num">拧开（训练用的盖子）</th><th class="num">中途松手（训练用的盖子）</th></tr></thead>
