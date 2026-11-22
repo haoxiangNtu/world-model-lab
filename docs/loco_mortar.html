@@ -152,14 +152,14 @@ td.num b{color:var(--fg)}
 </tbody></table></div>
 <p class="small">每格 1024 个机器人，同一个检查点，只改了这一项设置。把这个刚度再提高到 3 倍多，结果基本不变（完整做完 12.8 % 和 14.8 %）。</p>
 <p>因此 06:24 开始的两次 mortar 训练（摩擦用默认设置）里，种子 2 已在第 23400 轮停掉，种子 1 留作对照继续训练；10:18 按调高后的摩擦重新开始了两个随机种子。</p>
-<p><b>现状：</b>用 mortar 训练（摩擦刚度调高，种子 1）：训练中，第 900 轮；用 mortar 训练（摩擦刚度调高，种子 2）：训练中，第 1400 轮；用 mortar 训练（摩擦用默认设置，种子 1）：训练中，第 25900 轮；用 MuJoCo 训练：已结束（第 60000 轮）。MuJoCo 对照 6 万轮用时约 2 小时，最后的检查点在 MuJoCo 里完整做完 52.6 %。摩擦刚度调高后的两次训练预计 11-22 20 时前后结束，用默认摩擦的对照约 16 时结束，届时补上最终数字和视频。评测方法和 Isaac Sim 那次相同：每个检查点用 1024 个机器人各做一遍这段动作，策略不加噪声，统计完整做完（中途没有因为摔倒或箱子偏离而重置）的比例；每个检查点在 mortar 和 MuJoCo 里各测一遍。</p>
+<p><b>现状：</b>用 mortar 训练（摩擦刚度调高，种子 1）：训练中，第 2700 轮；用 mortar 训练（摩擦刚度调高，种子 2）：训练中，第 4100 轮；用 mortar 训练（摩擦用默认设置，种子 1）：训练中，第 28700 轮；用 MuJoCo 训练：已结束（第 60000 轮）。MuJoCo 对照 6 万轮用时约 2 小时，最后的检查点在 MuJoCo 里完整做完 52.6 %。摩擦刚度调高后的两次训练预计 11-22 22–23 时结束（摩擦调高后每轮慢约四分之一），用默认摩擦的对照约 16 时结束，届时补上最终数字和视频。评测方法和 Isaac Sim 那次相同：每个检查点用 1024 个机器人各做一遍这段动作，策略不加噪声，统计完整做完（中途没有因为摔倒或箱子偏离而重置）的比例；每个检查点在 mortar 和 MuJoCo 里各测一遍。</p>
 <div class="tablewrap"><table>
 <thead><tr><th>完整做完的比例</th><th class="num">第 5000 轮</th><th class="num">第 10000 轮</th><th class="num">第 20000 轮</th><th class="num">第 30000 轮</th><th class="num">第 40000 轮</th><th class="num">第 50000 轮</th><th class="num">第 60000 轮</th></tr></thead>
 <tbody>
 <tr><td>用 mortar 训练（摩擦用默认设置，种子 1），在 mortar 里评测</td><td class="num">0.0 %</td><td class="num">0.0 %</td><td class="num">1.9 %</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
 <tr><td>用 mortar 训练（摩擦用默认设置，种子 1），在 MuJoCo 里评测（换了仿真器）</td><td class="num">0.0 %</td><td class="num">0.0 %</td><td class="num">0.6 %</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td></tr>
 <tr><td>用 MuJoCo 训练，在 MuJoCo 里评测</td><td class="num">0.0 %</td><td class="num">2.3 %</td><td class="num">25.4 %</td><td class="num">45.3 %</td><td class="num">30.5 %</td><td class="num">49.7 %</td><td class="num">52.6 %</td></tr>
-<tr><td>用 MuJoCo 训练，在 mortar 里评测（换了仿真器）</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">15.3 %</td></tr>
+<tr><td>用 MuJoCo 训练，在 mortar 里评测（换了仿真器）</td><td class="num">—</td><td class="num">2.6 %</td><td class="num">5.3 %</td><td class="num">10.6 %</td><td class="num">6.3 %</td><td class="num">6.9 %</td><td class="num">15.3 %</td></tr>
 </tbody></table></div>
 <p class="small">每格 1024 个机器人。“在 mortar 里评测”都是修正后的场景（箱子表面细分、接触刚度提高 3 倍）：每次 mortar 训练用它自己训练时的摩擦设置评测，MuJoCo 训练的策略放进的是摩擦刚度调高后的 mortar。mortar 的训练还在进行，表会随检查点更新；训练早期完整做完的比例为 0 是正常的。</p>
 <p><b>这个任务里，策略换仿真器本来就基本不行，不只是换到 mortar。</b>之前在 Isaac Sim 里训练的 FastSAC 策略，在 Isaac Sim 里完整做完 61.0 %，放进这套代码的 MuJoCo 路径只有 0.1 %，放进 mortar 是 11.8 %；这里用 MuJoCo 训练的策略，在 MuJoCo 里 52.6 %，放进 mortar 是 15.3 %。原因之一是机器人的碰撞外形在两条路径里本来就不同：MuJoCo 路径用粗胶囊，Isaac Sim 路径用各连杆网格的凸包和半球形的手（参考动作是按后者做的，我们给 mortar 用的也是后者）。所以这一节要回答的问题是：在 mortar 里训练，能不能在 mortar 里学会；换仿真器的数字只作参考。</p>
