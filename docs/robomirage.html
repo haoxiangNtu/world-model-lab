@@ -62,6 +62,12 @@ figcaption b{color:#dfe8f7;font-weight:500}
 .stat .n{font-size:clamp(24px,2.7vw,34px);font-weight:700;color:#fff;line-height:1.2;font-variant-numeric:tabular-nums;letter-spacing:-.3px}
 .stat .n em{font-style:normal;font-size:.55em;font-weight:500;color:var(--muted);margin-left:4px}
 .stat .l{font-size:13.5px;color:var(--muted);line-height:1.6;margin-top:6px}
+.tasks{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-top:14px}
+.task{display:block;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel2);color:var(--fg);transition:transform .18s ease,border-color .18s ease}
+.task:hover{text-decoration:none;transform:translateY(-3px);border-color:rgba(92,200,255,.55)}
+.task img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;background:#0a1120}
+.task .tt{display:block;font-weight:700;color:#fff;font-size:16px;padding:10px 14px 0}
+.task .td{display:block;font-size:13px;color:var(--muted);line-height:1.55;padding:2px 14px 12px}
 /* sections */
 .sec{padding:74px 0 20px}
 .sec.alt{background:linear-gradient(180deg,var(--bg2),var(--bg))}
@@ -113,6 +119,7 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
   .cols,.cols.rev,.pair,.facts.row3,.facts.row2{grid-template-columns:1fr;gap:20px}
   .facts.row3,.facts.row2{gap:12px}
   .stats{grid-template-columns:repeat(2,1fr)} .steps{grid-template-columns:1fr}
+  .tasks{grid-template-columns:repeat(2,1fr)}
   .sec{padding:54px 0 12px} .hero{padding:40px 0 30px}
   .timeline li{grid-template-columns:1fr;gap:2px}
 }
@@ -132,6 +139,7 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
   <div class="cta"><a class="btn" href="#overview">看全部结果</a><a class="btn ghost" href="#how">怎么做的</a></div>
   <figure><div class="frame"><video autoplay muted loop playsinline preload="auto" poster="../media/rm_hero.jpg?v=1123c" src="../media/rm_hero.mp4?v=1123c"></video></div><figcaption><b>16 台 Unitree G1 执行同一个行走策略。</b>策略在 RoboMirage 里训练，画面里的运动也是在 RoboMirage 里仿真的：站立、前进、边走边转、横移、后退，全程没有一台摔倒。</figcaption></figure>
   <div class="stats"><div class="stat"><div class="n">0<em>/ 2048</em></div><div class="l">平地行走：两个随机种子各 1024 台机器人、随机速度指令走 20 秒，没有一台摔倒</div></div><div class="stat"><div class="n">99.4–99.6 %</div><div class="l">跑酷（平地走跑、上 36 厘米台阶）：1024 台机器人连续跟踪 60 秒，动作片段从头做到尾的比例</div></div><div class="stat"><div class="n">0.88</div><div class="l">全身动作跟踪：LAFAN1 的 40 段动作，归一化回报；同一份代码在 MuJoCo 里训练也是 0.88</div></div><div class="stat"><div class="n">5<em>类任务</em></div><div class="l">行走、跑酷、搬箱子、全身动作跟踪、灵巧手拧瓶盖，都在 RoboMirage 里从零训练</div></div></div>
+  <div class="tasks"><a class="task" href="#walk"><img loading="lazy" alt="行走" src="../media/rm_thumb_walk.jpg?v=1123c"><span class="tt">行走</span><span class="td">2048 台，20 秒，0 台摔倒</span></a><a class="task" href="#parkour"><img loading="lazy" alt="跑酷" src="../media/rm_thumb_parkour.jpg?v=1123c"><span class="tt">跑酷</span><span class="td">动作片段完成率 99.4–99.6 %</span></a><a class="task" href="#box"><img loading="lazy" alt="搬箱子" src="../media/rm_thumb_box.jpg?v=1123c"><span class="tt">搬箱子</span><span class="td">抱起、搬运、放下一整段</span></a><a class="task" href="#mimic"><img loading="lazy" alt="全身动作跟踪" src="../media/rm_thumb_mimic.jpg?v=1123c"><span class="tt">全身动作跟踪</span><span class="td">回报 0.88，和 MuJoCo 里训练持平</span></a><a class="task" href="#hand"><img loading="lazy" alt="灵巧手" src="../media/rm_thumb_hand.jpg?v=1123c"><span class="tt">灵巧手</span><span class="td">拧开瓶盖 85.7–99.6 %</span></a></div>
 </div></header>
 
 <section class="sec" id="overview"><div class="wrap">
