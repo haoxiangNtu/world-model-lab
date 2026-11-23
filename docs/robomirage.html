@@ -209,13 +209,13 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
   <h2>搬箱子：弯腰抱起，走几步，再放下</h2>
   <p class="lead">这是 FastSAC 论文里带物体的全身动作跟踪：机器人弯腰用双手夹住一个大箱子，抱到胸前走几步，再放回地面，整段 6.5 秒。箱子不固定在手上，全靠双手和箱子之间的接触与摩擦把它夹住，所以它对仿真器的接触计算要求最高。</p>
   <div class="cols rev">
-    <div><figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_box.jpg?v=1123c81482" data-src="../media/rm_box.mp4?v=1123c81482"></video></div><figcaption><b>在 RoboMirage 里训练的搬箱子策略，在 RoboMirage 里运行。</b>同屏的是 8 次做完的尝试（1024 次里按编号取最前面 8 次做完的；这次训练的完成率是 65.0 %）。机器人的手画成半球，那是仿真里手的碰撞外形。</figcaption></figure>
+    <div><figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_box.jpg?v=1123c81482" data-src="../media/rm_box.mp4?v=1123c81482"></video></div><figcaption><b>在 RoboMirage 里训练的搬箱子策略，在 RoboMirage 里运行。</b>同屏的是 8 次做完的尝试（1024 次里按编号取最前面 8 次做完的）。视频来自四分之一数据量、改进接入设置的那次训练（完成率 65.0 %）。机器人的手画成半球，那是仿真里手的碰撞外形。</figcaption></figure>
 </div>
     <div>
       <ul class="facts">
         <li><b>71.9 % 完整做完</b><span>在 RoboMirage 里训练、在 RoboMirage 里评测，1024 次尝试里整段动作做完的比例。这是 4 倍数据量（论文的设置）、改进接入设置后的一次训练，只有一个随机种子</span></li>
-        <li><b>对照：Isaac Sim 32.9 % / 22.7 %，MuJoCo 52.6 %</b><span>同样的数据量下，同一份代码在原仿真器里训练的结果。改进接入设置之前，RoboMirage 的两次训练是 18.0 % / 26.3 %</span></li>
-        <li><b>4 倍数据量：71.9 %</b><span>论文的设置是 4 倍数据量（4 张显卡、16384 个环境）；Isaac Sim 在这个设置下是 61 %。</span></li>
+        <li><b>对照：Isaac Sim 61 %</b><span>同样是 4 倍数据量（4 张显卡、16384 个环境），同一份代码在 Isaac Sim 里训练的结果，也只有一个随机种子</span></li>
+        <li><b>四分之一数据量：65.0 %</b><span>1 张显卡、4096 个环境，同样改进了接入设置。这个数据量下 Isaac Sim 是 32.9 % / 22.7 %，MuJoCo 是 52.6 %；改进接入设置之前，RoboMirage 的两次训练是 18.0 % / 26.3 %</span></li>
       </ul>
     </div>
   </div>
