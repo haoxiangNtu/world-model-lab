@@ -41,10 +41,10 @@ td.num b{color:var(--fg)}
 <tr><td>G1 平地行走（FastSAC 官方代码，2 万轮）</td><td>已完成</td><td>两个种子，各 1024 个机器人走 20 秒，<b>没有一个摔倒</b></td><td>MuJoCo：没有一个摔倒</td><td>放进 MuJoCo：没有一个摔倒；放进 Isaac Sim：0–0.1 % 摔倒过</td><td><a href="loco_mortar.html#walk">FastSAC × mortar，第一节</a></td></tr>
 <tr><td>G1 搬箱子：弯腰抱起箱子再放下（FastSAC 官方代码，6 万轮）</td><td>两次训练已完成；三次新训练（带修正、4 倍数据量）11-23 下午开始</td><td>完整做完 <b>18.0 % / 26.3 %</b>（两个种子）</td><td>Isaac Sim，同样数据量：32.9 %；MuJoCo，同样数据量：52.6 %；Isaac Sim，4 倍数据量：61 %</td><td>—</td><td><a href="loco_mortar.html#box-result">FastSAC × mortar，第二节</a></td></tr>
 <tr><td>PHP 跑酷教师：平地走跑</td><td>已训完 2 万轮</td><td>片段完成率 <b>99.4 %</b></td><td>Isaac Sim：99.5 %</td><td>放进 Isaac Sim：95.5 %</td><td><a href="php_mortar.html">PHP × mortar</a></td></tr>
-<tr><td>PHP 跑酷教师：上 36 cm 台阶，慢速</td><td>训练中，第 13626 轮（共 2 万）</td><td>片段完成率 <b>99.7 %</b>（第 12500 轮的检查点）</td><td>Isaac Sim：99.5 %</td><td>放进 Isaac Sim：95.9 %</td><td><a href="php_mortar.html">PHP × mortar</a></td></tr>
-<tr><td>PHP 跑酷教师：上 36 cm 台阶，快速</td><td>训练中，第 14031 轮（共 2 万）</td><td>片段完成率 <b>99.4 %</b>（第 12500 轮的检查点）</td><td>Isaac Sim：99.1 %</td><td>放进 Isaac Sim：95.6 %</td><td><a href="php_mortar.html">PHP × mortar</a></td></tr>
-<tr><td>PHP 跑酷教师：爬 76 cm 高台，慢速（第一次训练没有学会攀爬，是我们接入时的一处遗漏；修正后重新训练的这一次）</td><td>训练中，第 3032 轮（共 2 万）</td><td>片段完成率 <b>16.1 %</b>（第 2500 轮的检查点）</td><td>Isaac Sim：98.9 %</td><td>放进 Isaac Sim：14.6 %</td><td><a href="php_mortar.html">PHP × mortar</a></td></tr>
-<tr><td>PHP 跑酷教师：爬 76 cm 高台，快速（带同样的修正）</td><td>训练中，第 687 轮（共 2 万）</td><td>还没有评估</td><td>Isaac Sim：97.0 %</td><td>—</td><td><a href="php_mortar.html">PHP × mortar</a></td></tr>
+<tr><td>PHP 跑酷教师：上 36 cm 台阶，慢速</td><td>训练中，第 13702 轮（共 2 万）</td><td>片段完成率 <b>99.7 %</b>（第 12500 轮的检查点）</td><td>Isaac Sim：99.5 %</td><td>放进 Isaac Sim：95.9 %</td><td><a href="php_mortar.html">PHP × mortar</a></td></tr>
+<tr><td>PHP 跑酷教师：上 36 cm 台阶，快速</td><td>训练中，第 14110 轮（共 2 万）</td><td>片段完成率 <b>99.4 %</b>（第 12500 轮的检查点）</td><td>Isaac Sim：99.1 %</td><td>放进 Isaac Sim：95.6 %</td><td><a href="php_mortar.html">PHP × mortar</a></td></tr>
+<tr><td>PHP 跑酷教师：爬 76 cm 高台，慢速（第一次训练没有学会攀爬，是我们接入时的一处遗漏；修正后重新训练的这一次）</td><td>训练中，第 3091 轮（共 2 万）</td><td>片段完成率 <b>16.1 %</b>（第 2500 轮的检查点）</td><td>Isaac Sim：98.9 %</td><td>放进 Isaac Sim：14.6 %</td><td><a href="php_mortar.html">PHP × mortar</a></td></tr>
+<tr><td>PHP 跑酷教师：爬 76 cm 高台，快速（带同样的修正）</td><td>训练中，第 754 轮（共 2 万）</td><td>还没有评估</td><td>Isaac Sim：97.0 %</td><td>—</td><td><a href="php_mortar.html">PHP × mortar</a></td></tr>
 <tr><td>PHP 跑酷学生：看深度图的策略，由五个教师蒸馏（官方代码）</td><td>还没开始：等五个教师训完，预计 11-24 中午前后开始，约 2.5–3 天</td><td>—</td><td>Isaac Sim 的学生也还没有训练</td><td>—</td><td><a href="php_mortar.html">PHP × mortar</a></td></tr>
 <tr><td>RPL 感知行走的专家策略（官方代码，原仿真器是 IsaacGym）</td><td>训练还没开始：接入已验证（见下表），斜坡专家排在 11-24 凌晨开始，约 30–35 小时</td><td>—</td><td>作者发布的专家，在 IsaacGym 里 99.9 % 的回合走满时限</td><td>—</td><td><a href="rpl_mortar.html">RPL × mortar</a></td></tr>
 <tr><td>Sharpa 灵巧手拧瓶盖：27 种瓶盖，强化学习，四种输入共 17 次训练</td><td>已完成</td><td>盖子转满一圈：不给触觉 <b>75.3–88.9 %</b>，二值接触 <b>85.9–91.9 %</b>，原始触觉 <b>67.8–93.2 %</b>，CNN <b>85.9–94.6 %</b></td><td>PhysX：71.2–81.6 %，85.4–96.5 %，90.0–96.1 %，88.2–93.8 %</td><td>放进 PhysX：1.1–62.6 %</td><td><a href="lingbot_touch_sharpa.html">触觉复现，第 7 节</a></td></tr>
@@ -71,7 +71,7 @@ td.num b{color:var(--fg)}
 <thead><tr><th>实验</th><th>仿真器</th><th>详情</th></tr></thead>
 <tbody>
 <tr><td>FastSAC：G1 / T1 平地行走、G1 搬箱子</td><td>Isaac Sim</td><td><a href="loco_repro.html">行走复现，第一节</a></td></tr>
-<tr><td>RPL 感知行走：专家和学生蒸馏</td><td>IsaacGym / Isaac Sim（学生蒸馏做到第 4100 轮后暂停）</td><td><a href="loco_repro.html">行走复现，第二节</a></td></tr>
+<tr><td>RPL 感知行走：学生蒸馏（专家用的是作者发布的权重，没有重训）</td><td>Isaac Gym（蒸馏做到第 4100 轮后暂停，共 20000 轮）</td><td><a href="loco_repro.html">行走复现，第二节</a></td></tr>
 <tr><td>PHP 跑酷：五个教师</td><td>Isaac Sim（片段完成率 97.0–99.5 %）</td><td><a href="loco_repro.html">行走复现，第三节</a></td></tr>
 <tr><td>SuperMimic：G1 全身动作跟踪</td><td>MuJoCo（0.87 / 0.88，论文 0.82）</td><td><a href="supermimic_repro.html">SuperMimic 复现</a></td></tr>
 <tr><td>Sharpa 灵巧手拧瓶盖（自建任务）</td><td>Isaac Sim（PhysX）</td><td><a href="lingbot_touch_cap.html">触觉复现，第 5 节</a></td></tr>
