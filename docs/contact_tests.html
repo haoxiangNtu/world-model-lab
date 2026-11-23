@@ -28,9 +28,10 @@ td.num b{color:var(--fg)}
 
 <div class="eyebrow">Contact tests · mortar × MuJoCo · 2026-11</div>
 <h1>接触和摩擦的对照测试：mortar 与 MuJoCo</h1>
+<p class="lead"><b>更新（11-23）：下面说的“mortar 支撑偏软”，大部分是细胶囊脚底造成的；换成一块表面细分的脚底板后，下陷和中等力矩下的倾斜大部分消失。</b>脚的范围和底面高度不变，把七根细胶囊换成脚底板重测：mortar 里静止下陷从 0.50 毫米降到 0.05 毫米；俯仰力矩到理论翻倒值的一半时倾角从 1.24° 降到 0.068°，到 75 % 时是 0.49°（细胶囊 2.08°）；推力低于摩擦极限时脚仍然不动。还有差距的是接近翻倒的时候：90 % 时翻倒（MuJoCo 的脚底板到 100 % 才翻，之前倾角不到 0.02°）。机器人任务里的对应改动见 <a href="rpl_mortar.html#sole">RPL 页</a>和<a href="loco_mortar.html#box-feet">搬箱子</a>。详见<a href="#plate">第五节的补充</a>。</p>
 <p class="lead"><b>结论（11-22）：在单个脚底的接触上，mortar 的摩擦更准，支撑的转动刚度更软；滑动和刹车距离两边都在几个百分点以内。</b>测试对象是 G1 行走任务里的那只脚（七根半径 1 厘米的细胶囊），压上半个机器人的重量，放在平地上，摩擦系数 0.6，做五项有标准答案的测试。<b>摩擦：</b>推力低于摩擦极限时脚应当不动。mortar 里它确实不动（只有 0.04–0.83 毫米的弹性位移，不随时间增长）；MuJoCo 用行走任务默认的设置时会一直慢慢滑（每秒 0.18–1.17 毫米），而且斜 45° 方向推到极限的 90 % 就滑走了；MuJoCo 换成椭圆摩擦锥后每秒只滑 0.013–0.068 毫米，各方向一致，接近 mortar。<b>支撑：</b>MuJoCo 里这只脚几乎是刚性地踩在地上（下陷 0.008 毫米，受俯仰力矩时倾斜不到 0.05°，力矩到理论值的 100 % 才翻倒）；mortar 在我们任务用的接触刚度下，下陷 0.5 毫米，力矩到理论翻倒值的一半时已经倾斜 1.24°，到 95 % 就翻倒了。<b>这组测试只说明单个接触算得准不准，不能直接推出“用 mortar 训练出来的行走策略更好”：</b>行走的训练结果两边都不摔（见<a href="loco_mortar.html">用 mortar 训练 FastSAC</a>）。这一页只有仿真里的测试，没有和真机数据对比。</p>
 <div class="toc"><b>目录</b>
-<a href="#summary">一、结果总表</a><a href="#setup">二、测的是什么</a><a href="#push">三、推力低于摩擦极限</a><a href="#slide">四、滑动和刹车</a><a href="#tilt">五、下陷和倾斜</a><a href="#settings">六、mortar 的摩擦刚度设置</a><a href="#dt">七、时间步长</a><a href="#check">八、测试条件和没测的</a>
+<a href="#summary">一、结果总表</a><a href="#setup">二、测的是什么</a><a href="#push">三、推力低于摩擦极限</a><a href="#slide">四、滑动和刹车</a><a href="#tilt">五、下陷和倾斜</a><a href="#plate">补充：换成脚底板</a><a href="#settings">六、mortar 的摩擦刚度设置</a><a href="#dt">七、时间步长</a><a href="#check">八、测试条件和没测的</a>
 </div>
 <h2 id="summary">一、结果总表</h2>
 <p><b>做了什么：</b>五项测试各取一个代表性的数，和标准答案放在一起。<b>结果：</b>前两行（摩擦）mortar 最接近标准答案，最后四行（下陷和倾斜）MuJoCo 最接近，中间三行差别不大。</p>
@@ -104,6 +105,22 @@ td.num b{color:var(--fg)}
 </tbody></table></div>
 <p class="small">力矩按理论翻倒值（重量 × 质心到脚尖接触线的距离，约 16 牛·米）的百分比给出。标准答案：100 % 以下不倾斜，以上翻倒。</p>
 <p>这些数是在我们任务里用的接触刚度（引擎默认值的 3 倍）下测的。接触刚度再调高，下陷和倾斜都会变小：<a href="loco_mortar.html#walk-asym">FastSAC 那一页</a>量过整机站立时的情况，刚度从 3 倍提到 10 倍，脚的倾斜从 0.19° 降到 0.08°。这里没有换别的接触刚度重复这组测试。对行走的影响我们只有间接的观察：用 MuJoCo 训练的行走策略放进 mortar，在接触偏软时会摔，调高接触刚度后不摔（同见 FastSAC 页）。</p>
+<h3 id="plate">补充（11-23）：把七根细胶囊换成一块脚底板</h3>
+<p><b>做了什么：</b>脚的范围和底面高度不变，把七根细胶囊换成一块脚底板（20.6 × 7.3 厘米，厚 3 厘米）：MuJoCo 里是一个长方体，mortar 里是同样大小的长方体，表面细分成 12 × 5 格的三角网。五项测试原样重做，接触刚度和求解设置都不变；另外把恒定力矩的保持时间从 3 秒加到 10 秒，多测了几档力矩。<b>结果：</b>mortar 里的支撑硬了很多：静止下陷 0.05 毫米（细胶囊时 0.50 毫米）；力矩在理论翻倒值的 75 % 以内时倾角不超过 0.49°（细胶囊在同一档是 2.08°）。接近翻倒时还是比 MuJoCo 软：80 % 时倾角 1.25°（MuJoCo 0.012°），90 % 时翻倒（MuJoCo 到 100 % 才翻）。摩擦方面结论不变：推力为摩擦极限的 90 % 时，mortar 里脚只有 0.04 毫米的弹性位移，不随时间增长；MuJoCo 换成长方体后仍然在滑（每秒 3.6 毫米）。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>恒定俯仰力矩保持后的倾角</th><th class="num">30 %</th><th class="num">50 %</th><th class="num">70 %</th><th class="num">75 %</th><th class="num">80 %</th><th class="num">85 %</th><th class="num">90 %</th><th class="num">95 %</th><th class="num">100 %</th><th class="num">静止下陷（毫米）</th></tr></thead>
+<tbody>
+<tr><td>MuJoCo，七根细胶囊</td><td class="num">0.001°</td><td class="num">0.003°</td><td class="num">0.004°</td><td class="num">0.004°</td><td class="num">0.006°</td><td class="num">0.010°</td><td class="num">0.016°</td><td class="num">0.040°</td><td class="num">翻倒</td><td class="num">0.008</td></tr>
+<tr><td>MuJoCo，脚底板（长方体）</td><td class="num">0.004°</td><td class="num">0.007°</td><td class="num">0.010°</td><td class="num">0.011°</td><td class="num">0.012°</td><td class="num">0.013°</td><td class="num">0.013°</td><td class="num">0.014°</td><td class="num">翻倒</td><td class="num">0.027</td></tr>
+<tr><td>mortar，七根细胶囊</td><td class="num">0.15°</td><td class="num">1.24°</td><td class="num">1.93°</td><td class="num">2.08°</td><td class="num">2.47°</td><td class="num">3.3°</td><td class="num">4.2°</td><td class="num">翻倒</td><td class="num">翻倒</td><td class="num">0.50</td></tr>
+<tr><td><b>mortar，脚底板（12 × 5 格）</b></td><td class="num"><b>0.031°</b></td><td class="num"><b>0.068°</b></td><td class="num"><b>0.27°</b></td><td class="num"><b>0.49°</b></td><td class="num"><b>1.25°</b></td><td class="num"><b>8.5°（未稳定）</b></td><td class="num"><b>翻倒</b></td><td class="num"><b>翻倒</b></td><td class="num"><b>翻倒</b></td><td class="num"><b>0.05</b></td></tr>
+<tr><td>mortar，脚底板（12 × 5 格），法向接触刚度为任务设置的 3.3 倍</td><td class="num">0.009°</td><td class="num">0.021°</td><td class="num">0.080°</td><td class="num">0.14°</td><td class="num">0.35°</td><td class="num">9.1°</td><td class="num">翻倒</td><td class="num">翻倒</td><td class="num">翻倒</td><td class="num">0.02</td></tr>
+</tbody></table></div>
+<p class="small">力矩按各自的理论翻倒值的百分比给出（细胶囊 16.0 牛·米，脚底板的前缘靠前 1 厘米，所以是 17.7 牛·米）。70–90 % 各档保持 10 秒，其余保持 3 秒；“未稳定”指最后 1 秒倾角还在变。按绝对力矩算，mortar 里细胶囊在 14.4–15.2 牛·米之间翻倒，12 × 5 格的脚底板在 15.0–15.9 牛·米之间翻倒，两者差不多。</p>
+<p><b>接触刚度：</b>把法向接触刚度提高到我们任务所用值的 3.3 倍（即引擎默认值的 10 倍），下陷降到 0.016 毫米，80 % 力矩时倾角从 1.25° 降到 0.35°，但翻倒的门槛没有变（90 % 时翻倒）。</p>
+<p><b>不细分：</b>同样大小的脚底板如果只是一个 12 个三角形的长方体，静止下陷 8.7 毫米，力矩到 30 % 时 3 秒末倾角 0.86°而且还在增大，50 % 时翻倒：比细胶囊还差，所以细分是必要的。</p>
+<p><b>怎么读这个结果：</b>前面“支撑偏软”的结论，说的是“用七根细胶囊做脚底时”。同一个引擎、同样的接触刚度，换成细分的脚底板后，下陷是原来的十分之一左右，中等力矩下的倾斜小一个数量级；接近翻倒时仍然比 MuJoCo 软，翻倒也更早。这些差别的原因我们没有进一步拆开验证，这里只给测到的数。</p>
+<p><b>对机器人任务的影响：</b>我们已经按这个结果改了两处脚底：RPL 的验证（<a href="rpl_mortar.html#sole">脚底板太粗时石墩上只有 48 % 的回合走到时间上限，细分后 99.6 %</a>）和搬箱子的新训练（<a href="loco_mortar.html#box-feet">见那一页</a>）。行走和 PHP 的已有结果用的还是细胶囊脚底，那两页的数字不受这次补充影响。</p>
 <h2 id="settings">六、mortar 的摩擦刚度设置</h2>
 <p><b>做了什么：</b>mortar 的摩擦有一个切向刚度的设置，决定“粘住”时有多硬。我们最早接入时没有设它，用的是引擎的默认值，后来才调高（FastSAC 页有这次更正）。这里把三档放在一起。<b>结果：</b>用默认值时脚不会一直滑，但推到极限的 90 % 要弹性地移动约 1 厘米才稳住，滑动距离也偏多 16 %；调到我们任务用的值之后是零点几毫米和 +2 %；再调高 10 倍，位移和滑动误差继续变小，刹车距离的误差不变。</p>
 <div class="tablewrap"><table>
