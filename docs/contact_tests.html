@@ -34,21 +34,21 @@ td.num b{color:var(--fg)}
 <a href="#summary">一、结果总表</a><a href="#setup">二、测的是什么</a><a href="#push">三、推力低于摩擦极限</a><a href="#slide">四、滑动和刹车</a><a href="#tilt">五、下陷和倾斜</a><a href="#plate">补充：换成脚底板</a><a href="#settings">六、mortar 的摩擦刚度设置</a><a href="#dt">七、时间步长</a><a href="#check">八、测试条件和没测的</a>
 </div>
 <h2 id="summary">一、结果总表</h2>
-<p><b>做了什么：</b>五项测试各取一个代表性的数，和标准答案放在一起。<b>结果：</b>前两行（摩擦）mortar 最接近标准答案，最后四行（下陷和倾斜）MuJoCo 最接近，中间三行差别不大。</p>
+<p><b>做了什么：</b>五项测试各取一个代表性的数，和标准答案放在一起。<b>结果：</b>前两行（摩擦）mortar 最接近标准答案，最后四行（下陷和倾斜）MuJoCo 最接近，中间三行差别不大。最右一列是 11-23 补充的：把细胶囊换成表面细分的脚底板后，mortar 的下陷和中等力矩下的倾角小了一个数量级，接近翻倒时仍比 MuJoCo 软（<a href="#plate">详见第五节的补充</a>）。</p>
 <div class="tablewrap"><table>
-<thead><tr><th>测试</th><th class="num">标准答案</th><th class="num">MuJoCo，行走任务的设置</th><th class="num">MuJoCo，椭圆摩擦锥</th><th class="num">mortar，我们任务里的设置</th></tr></thead>
+<thead><tr><th>测试</th><th class="num">标准答案</th><th class="num">MuJoCo，行走任务的设置</th><th class="num">MuJoCo，椭圆摩擦锥</th><th class="num">mortar，我们任务里的设置</th><th class="num">mortar，换成脚底板（11-23 补充）</th></tr></thead>
 <tbody>
-<tr><td>推力为摩擦极限的 90 %，沿脚长方向：滑动速度（毫米/秒）</td><td class="num">0</td><td class="num">1.03</td><td class="num">0.040</td><td class="num">0</td></tr>
-<tr><td>同上，斜 45° 方向</td><td class="num">0</td><td class="num">滑走（5 秒移动 9.2 米）</td><td class="num">0.053</td><td class="num">0</td></tr>
-<tr><td>推力为极限的 1.2 倍：1 秒内滑动距离的误差，沿脚长方向</td><td class="num">0 %</td><td class="num">-0.7 %</td><td class="num">-0.5 %</td><td class="num">+1.9 %</td></tr>
-<tr><td>同上，斜 45° 方向</td><td class="num">0 %</td><td class="num">+140.7 %</td><td class="num">0.0 %</td><td class="num">+2.0 %</td></tr>
-<tr><td>以 1 米/秒松手：刹车距离的误差</td><td class="num">0 %</td><td class="num">-2.1 %</td><td class="num">-2.7 %</td><td class="num">+3.1 %</td></tr>
-<tr><td>静止时脚底陷入地面（毫米）</td><td class="num">0（刚性）</td><td class="num">0.008</td><td class="num">0.032</td><td class="num">0.50</td></tr>
-<tr><td>俯仰力矩为理论翻倒值的 50 %：倾角</td><td class="num">0°（刚性）</td><td class="num">0.003°</td><td class="num">0.011°</td><td class="num">1.24°</td></tr>
-<tr><td>俯仰力矩为理论翻倒值的 90 %：倾角</td><td class="num">0°（刚性）</td><td class="num">0.016°</td><td class="num">0.064°</td><td class="num">4.19°</td></tr>
-<tr><td>开始翻倒的力矩（占理论值）</td><td class="num">100 %</td><td class="num">95–100 %</td><td class="num">95–100 %</td><td class="num">90–95 %</td></tr>
+<tr><td>推力为摩擦极限的 90 %，沿脚长方向：滑动速度（毫米/秒）</td><td class="num">0</td><td class="num">1.03</td><td class="num">0.040</td><td class="num">0</td><td class="num"><b>0</b></td></tr>
+<tr><td>同上，斜 45° 方向</td><td class="num">0</td><td class="num">滑走（5 秒移动 9.2 米）</td><td class="num">0.053</td><td class="num">0</td><td class="num"><b>0</b></td></tr>
+<tr><td>推力为极限的 1.2 倍：1 秒内滑动距离的误差，沿脚长方向</td><td class="num">0 %</td><td class="num">-0.7 %</td><td class="num">-0.5 %</td><td class="num">+1.9 %</td><td class="num"><b>+0.6 %</b></td></tr>
+<tr><td>同上，斜 45° 方向</td><td class="num">0 %</td><td class="num">+140.7 %</td><td class="num">0.0 %</td><td class="num">+2.0 %</td><td class="num"><b>+0.8 %</b></td></tr>
+<tr><td>以 1 米/秒松手：刹车距离的误差</td><td class="num">0 %</td><td class="num">-2.1 %</td><td class="num">-2.7 %</td><td class="num">+3.1 %</td><td class="num"><b>+2.9 %</b></td></tr>
+<tr><td>静止时脚底陷入地面（毫米）</td><td class="num">0（刚性）</td><td class="num">0.008</td><td class="num">0.032</td><td class="num">0.50</td><td class="num"><b>0.052</b></td></tr>
+<tr><td>俯仰力矩为理论翻倒值的 50 %：倾角</td><td class="num">0°（刚性）</td><td class="num">0.003°</td><td class="num">0.011°</td><td class="num">1.24°</td><td class="num"><b>0.068°</b></td></tr>
+<tr><td>俯仰力矩为理论翻倒值的 90 %：倾角</td><td class="num">0°（刚性）</td><td class="num">0.016°</td><td class="num">0.064°</td><td class="num">4.19°</td><td class="num"><b>翻倒</b></td></tr>
+<tr><td>开始翻倒的力矩（占理论值）</td><td class="num">100 %</td><td class="num">95–100 %</td><td class="num">95–100 %</td><td class="num">90–95 %</td><td class="num"><b>85–90 %</b></td></tr>
 </tbody></table></div>
-<p class="small">物理步长都是 5 毫秒。“开始翻倒的力矩”一行：恒定力矩保持 3 秒，前一个数是还能稳住的最大档，后一个数是翻倒的最小档（只测了 30、50、80、90、95、100、105、110 % 这几档）。</p>
+<p class="small">物理步长都是 5 毫秒。“开始翻倒的力矩”一行：恒定力矩保持 3 秒，前一个数是还能稳住的最大档，后一个数是翻倒的最小档（只测了 30、50、80、90、95、100、105、110 % 这几档）。最右一列用的是 12 × 5 格的脚底板，它的理论翻倒力矩按脚底板自己的前缘算（比细胶囊大约 10 %），这一列的翻倒门槛多测了 60–85 % 几档（保持 10 秒）。</p>
 <h2 id="setup">二、测的是什么</h2>
 <p><b>对象：</b>G1 的左脚，按行走任务里的碰撞模型：七根半径 1 厘米的胶囊排成脚掌的形状（长约 19 厘米，宽约 6 厘米）。脚作为一个单独的刚体，质量 17.5 公斤（半个机器人），质心在脚掌中部上方 2 厘米，放在平地上，摩擦系数 0.6。只有这一个刚体，没有腿和关节。每项测试的标准答案都能用库仑摩擦和刚体静力学直接算出来。</p>
 <ul>
