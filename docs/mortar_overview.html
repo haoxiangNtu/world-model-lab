@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>mortar 仿真器上的实验总览 · World Model Lab</title>
+<meta name="description" content="所有涉及 mortar 仿真器的实验按“策略在哪个仿真器里训练”分组的总览：用 mortar 训练的、只在 mortar 里测试的、其他仿真器里的复现，以及速度和接入时出过的错。">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="site.css">
+<style>
+.fig{border:1px solid var(--line);background:var(--bg2);border-radius:10px;margin:14px 0 20px;padding:8px}
+.fig img{width:100%;height:auto;display:block;border-radius:6px;background:#fff}
+.fig img.narrow{max-width:560px;margin:0 auto}
+.fig figcaption{color:var(--muted);font-size:13.5px;line-height:1.6;padding:8px 6px 2px}
+figure{margin:0}
+.tag{display:inline-block;border-radius:999px;padding:0 8px;font-size:12px;font-weight:600;border:1px solid var(--line);white-space:nowrap}
+.tag.ok{color:var(--token)} .tag.run{color:var(--compute)} .tag.todo{color:var(--muted)} .tag.no{color:var(--warn)}
+h4{margin:18px 0 6px;font-size:15px}
+.small{font-size:13px;color:var(--muted)}
+details.tasks summary{cursor:pointer;color:var(--compute);margin:6px 0}
+td.num b{color:var(--fg)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top"><a class="brand" href="../index.html">World Model Lab</a>
+<nav><a href="vpp2.html">论文导读</a><a href="wan.html">Wan2.1 架构</a><a href="mot.html">MoT 原理</a><a href="posttrain.html">后训练过程</a><a href="benchmarks.html">评测数据集</a><a href="notes.html">原理问答</a><a href="vla_wam.html">复现实验</a><a href="lingbot_touch.html">触觉复现</a><a class="on" href="loco_repro.html">行走复现</a><a href="supermimic_repro.html">SuperMimic 复现</a><a href="https://github.com/haoxiangNtu/world-model-lab">GitHub</a></nav></header>
+
+<div class="eyebrow">Overview · mortar · 2026-11</div>
+<h1>mortar 仿真器上的实验总览</h1>
+<p class="lead"><b>截至 11-23 9 时：mortar 仿真器已经替换原来的仿真器，在五类机器人任务上完成了训练：全身动作跟踪、平地行走、搬箱子、跑酷教师（五个里 1 个已训完）、灵巧手拧瓶盖。</b>训练代码都是论文的官方代码或同一套强化学习代码，训练部分不改，只换物理仿真器。结果分三种情况：<b>和原仿真器持平的</b>有全身动作跟踪（0.88 对 0.88）、平地行走（都不摔）、跑酷里的平地走跑和上台阶教师（99.4–99.7 % 对 99.1–99.5 %；上台阶的两个还在训练，按最新的检查点）、灵巧手拧瓶盖（四种输入里三种持平，原始触觉那一种 mortar 的波动更大）；<b>搬箱子</b>在同样数据量下和 Isaac Sim 的对照相近（18.0 % / 26.3 % 对 32.9 %），低于 MuJoCo 的对照（52.6 %）；<b>爬高台的跑酷教师</b>第一次没有学会，原因是我们接入时的一处遗漏，修正后正在重新训练。速度上，mortar 比这些任务原来用的 GPU 刚体仿真器慢 6–17 倍。还没有做完的：跑酷的两个上台阶教师和两个爬高台教师（训练中）、跑酷的学生、RPL 的专家（都已排期，见最后一节）。这一页把各页面的结果按“策略是在哪个仿真器里训练的”分组；“只是放进 mortar 测试”和“用 mortar 训练”分开列，不混在一起。所有数字都是仿真里的，没有真机实验。</p>
+<div class="toc"><b>目录</b>
+<a href="#trained">一、用 mortar 训练的</a><a href="#tested">二、只在 mortar 里测试的</a><a href="#others">三、其他仿真器里的复现</a><a href="#speed">四、速度</a><a href="#errors">五、我们接入时出过的错</a><a href="#next">六、接下来</a>
+</div>
+<h2 id="trained">一、用 mortar 训练的</h2>
+<p><b>这一组是什么：</b>策略从头到尾在 mortar 里训练。“在 mortar 里”一列是它在 mortar 里的评测结果；对照是同样的代码在原仿真器里训练、在原仿真器里评测；“换仿真器”是把 mortar 训练出的策略不再训练、原样放进别的仿真器。<b>结果：</b>12 项里 6 项已完成，其余在训练或排队。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>任务</th><th>进度</th><th>用 mortar 训练，在 mortar 里</th><th>对照：原仿真器训练，在原仿真器里</th><th>换仿真器</th><th>详情</th></tr></thead>
+<tbody>
+<tr><td>G1 全身动作跟踪：LAFAN1 的 40 段动作（SuperMimic 官方代码）</td><td>已完成</td><td>归一化回报 <b>0.88 / 0.88 / 0.87</b>（三次训练）</td><td>MuJoCo：0.88 / 0.87；论文报告 0.82</td><td>放进 MuJoCo：0.87 / 0.85 / 0.86（120 段里合计只失败 2 段）</td><td><a href="supermimic_repro.html">SuperMimic 复现</a></td></tr>
+<tr><td>G1 平地行走（FastSAC 官方代码，2 万轮）</td><td>已完成</td><td>两个种子，各 1024 个机器人走 20 秒，<b>没有一个摔倒</b></td><td>MuJoCo：没有一个摔倒</td><td>放进 MuJoCo：没有一个摔倒；放进 Isaac Sim：0–0.1 % 摔倒过</td><td><a href="loco_mortar.html#walk">FastSAC × mortar，第一节</a></td></tr>
+<tr><td>G1 搬箱子：弯腰抱起箱子再放下（FastSAC 官方代码，6 万轮）</td><td>两次训练已完成；三次新训练（带修正、4 倍数据量）11-23 下午开始</td><td>完整做完 <b>18.0 % / 26.3 %</b>（两个种子）</td><td>Isaac Sim，同样数据量：32.9 %；MuJoCo，同样数据量：52.6 %；Isaac Sim，4 倍数据量：61 %</td><td>—</td><td><a href="loco_mortar.html#box-result">FastSAC × mortar，第二节</a></td></tr>
+<tr><td>PHP 跑酷教师：平地走跑</td><td>已训完 2 万轮</td><td>片段完成率 <b>99.4 %</b></td><td>Isaac Sim：99.5 %</td><td>放进 Isaac Sim：95.5 %</td><td><a href="php_mortar.html">PHP × mortar</a></td></tr>
+<tr><td>PHP 跑酷教师：上 36 cm 台阶，慢速</td><td>训练中，第 13626 轮（共 2 万）</td><td>片段完成率 <b>99.7 %</b>（第 12500 轮的检查点）</td><td>Isaac Sim：99.5 %</td><td>放进 Isaac Sim：95.9 %</td><td><a href="php_mortar.html">PHP × mortar</a></td></tr>
+<tr><td>PHP 跑酷教师：上 36 cm 台阶，快速</td><td>训练中，第 14031 轮（共 2 万）</td><td>片段完成率 <b>99.4 %</b>（第 12500 轮的检查点）</td><td>Isaac Sim：99.1 %</td><td>放进 Isaac Sim：95.6 %</td><td><a href="php_mortar.html">PHP × mortar</a></td></tr>
+<tr><td>PHP 跑酷教师：爬 76 cm 高台，慢速（第一次训练没有学会攀爬，是我们接入时的一处遗漏；修正后重新训练的这一次）</td><td>训练中，第 3032 轮（共 2 万）</td><td>片段完成率 <b>16.1 %</b>（第 2500 轮的检查点）</td><td>Isaac Sim：98.9 %</td><td>放进 Isaac Sim：14.6 %</td><td><a href="php_mortar.html">PHP × mortar</a></td></tr>
+<tr><td>PHP 跑酷教师：爬 76 cm 高台，快速（带同样的修正）</td><td>训练中，第 687 轮（共 2 万）</td><td>还没有评估</td><td>Isaac Sim：97.0 %</td><td>—</td><td><a href="php_mortar.html">PHP × mortar</a></td></tr>
+<tr><td>PHP 跑酷学生：看深度图的策略，由五个教师蒸馏（官方代码）</td><td>还没开始：等五个教师训完，预计 11-24 中午前后开始，约 2.5–3 天</td><td>—</td><td>Isaac Sim 的学生也还没有训练</td><td>—</td><td><a href="php_mortar.html">PHP × mortar</a></td></tr>
+<tr><td>RPL 感知行走的专家策略（官方代码，原仿真器是 IsaacGym）</td><td>训练还没开始：接入已验证（见下表），斜坡专家排在 11-24 凌晨开始，约 30–35 小时</td><td>—</td><td>作者发布的专家，在 IsaacGym 里 99.9 % 的回合走满时限</td><td>—</td><td><a href="rpl_mortar.html">RPL × mortar</a></td></tr>
+<tr><td>Sharpa 灵巧手拧瓶盖：27 种瓶盖，强化学习，四种输入共 17 次训练</td><td>已完成</td><td>盖子转满一圈：不给触觉 <b>75.3–88.9 %</b>，二值接触 <b>85.9–91.9 %</b>，原始触觉 <b>67.8–93.2 %</b>，CNN <b>85.9–94.6 %</b></td><td>PhysX：71.2–81.6 %，85.4–96.5 %，90.0–96.1 %，88.2–93.8 %</td><td>放进 PhysX：1.1–62.6 %</td><td><a href="lingbot_touch_sharpa.html">触觉复现，第 7 节</a></td></tr>
+<tr><td>Wuji 五指手拧瓶盖：软指尖，24 种瓶盖、位置随机，强化学习</td><td>已完成</td><td>8 次训练，成功率 <b>85.7–99.6 %</b></td><td>没有做其他仿真器的版本</td><td>—</td><td><a href="lingbot_touch_mortar.html">触觉复现，第 6 节</a></td></tr>
+</tbody></table></div>
+<p class="small">各任务的指标不同，不能跨行比较：动作跟踪是归一化回报（1 为满分），行走是摔倒过的机器人比例，搬箱子和跑酷是把整段动作做完的比例，拧瓶盖是盖子转满一圈的比例。</p>
+<h2 id="tested">二、只在 mortar 里测试的</h2>
+<p><b>这一组是什么：</b>策略是在别的仿真器里训练的，不再训练，原样放进 mortar 评测。它说明的是“换仿真器掉多少”，不是“mortar 能不能训练出来”。<b>结果：</b>行走、动作跟踪、平地和台阶上的跑酷教师、RPL 的专家基本不掉或只掉几个百分点；带物体的（搬箱子、拧瓶盖）和爬高台掉得多。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>策略</th><th>在训练它的仿真器里</th><th>原样放进 mortar</th><th>详情</th></tr></thead>
+<tbody>
+<tr><td>G1 全身动作跟踪（SuperMimic），在 MuJoCo 里训练的两个策略</td><td>0.88 / 0.87</td><td><b>0.86 / 0.81</b>（接触和摩擦刚度调好之后；用默认值时是 0.80 / 0.61）</td><td><a href="supermimic_repro.html">SuperMimic 复现</a></td></tr>
+<tr><td>G1 平地行走（FastSAC），在 MuJoCo 里训练的策略</td><td>没有一个摔倒</td><td><b>0.1–0.5 %</b> 摔倒过（接触刚度提高 3 倍之后；用默认值时是 31.2–36.6 %）</td><td><a href="loco_mortar.html#walk-asym">FastSAC × mortar，第一节</a></td></tr>
+<tr><td>G1 搬箱子（FastSAC），在 MuJoCo 里训练的策略</td><td>完整做完 52.6 %</td><td><b>15.3 %</b>（摩擦刚度调好之后；之前 5.4 %）</td><td><a href="loco_mortar.html#box-transfer">FastSAC × mortar，第二节</a></td></tr>
+<tr><td>G1 搬箱子（FastSAC），在 Isaac Sim 里用 4 倍数据训练的策略</td><td>完整做完 61 %</td><td><b>11.8 %</b>；脚底换成脚底板后 <b>15.7 %</b></td><td><a href="loco_mortar.html#box-feet">FastSAC × mortar，第二节</a></td></tr>
+<tr><td>PHP 跑酷的五个教师，在 Isaac Sim 里训练</td><td>99.5 % / 99.5 % / 99.1 % / 98.9 % / 97.0 %</td><td><b>96.9 % / 98.6 % / 92.5 % / 86.2 % / 87.6 %</b>（顺序：平地走跑、慢速上台阶、快速上台阶、慢速爬高台、快速爬高台）</td><td><a href="php_mortar.html#transfer">PHP × mortar</a></td></tr>
+<tr><td>RPL 感知行走的四个专家，作者在 IsaacGym 里训练并随代码发布</td><td>99.9 % 的回合走满时限</td><td><b>99.8 %</b>（石墩、斜坡、上台阶、下台阶四类地形都对得上）</td><td><a href="rpl_mortar.html">RPL × mortar</a></td></tr>
+<tr><td>Sharpa 灵巧手拧瓶盖，在 PhysX 里训练的策略</td><td>71.2–96.5 %（按输入不同）</td><td><b>2.7–64.9 %</b>（两个方向换仿真器都掉得多）</td><td><a href="lingbot_touch_sharpa.html">触觉复现，第 7 节</a></td></tr>
+<tr><td>单个脚底的接触和摩擦测试（不涉及策略，对照 MuJoCo）</td><td>—</td><td>推力低于摩擦极限时 mortar 里脚不滑，MuJoCo 默认设置会慢慢滑；支撑偏软的问题在把细胶囊脚底换成细分的脚底板后大部分消失</td><td><a href="contact_tests.html">接触测试</a></td></tr>
+</tbody></table></div>
+<h2 id="others">三、其他仿真器里的复现</h2>
+<p><b>这一组是什么：</b>不涉及 mortar 的复现，是上面两组的对照来源。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>实验</th><th>仿真器</th><th>详情</th></tr></thead>
+<tbody>
+<tr><td>FastSAC：G1 / T1 平地行走、G1 搬箱子</td><td>Isaac Sim</td><td><a href="loco_repro.html">行走复现，第一节</a></td></tr>
+<tr><td>RPL 感知行走：专家和学生蒸馏</td><td>IsaacGym / Isaac Sim（学生蒸馏做到第 4100 轮后暂停）</td><td><a href="loco_repro.html">行走复现，第二节</a></td></tr>
+<tr><td>PHP 跑酷：五个教师</td><td>Isaac Sim（片段完成率 97.0–99.5 %）</td><td><a href="loco_repro.html">行走复现，第三节</a></td></tr>
+<tr><td>SuperMimic：G1 全身动作跟踪</td><td>MuJoCo（0.87 / 0.88，论文 0.82）</td><td><a href="supermimic_repro.html">SuperMimic 复现</a></td></tr>
+<tr><td>Sharpa 灵巧手拧瓶盖（自建任务）</td><td>Isaac Sim（PhysX）</td><td><a href="lingbot_touch_cap.html">触觉复现，第 5 节</a></td></tr>
+</tbody></table></div>
+<h2 id="speed">四、速度</h2>
+<p><b>结果：</b>mortar 比这些任务原来用的 GPU 刚体仿真器慢 6–17 倍，所以同样的训练要用更多显卡或更长时间。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>任务</th><th>mortar 的速度和对照</th><th>对照的仿真器</th></tr></thead>
+<tbody>
+<tr><td>G1 全身动作跟踪（SuperMimic）</td><td>仿真慢 17 倍；整个训练慢约 3 倍（9.6 小时对 3 小时）</td><td>MuJoCo</td></tr>
+<tr><td>G1 平地行走（FastSAC），同一张显卡、4096 个环境</td><td>每秒 1.5 万个环境步，对照 14.1 万（慢约 9 倍）</td><td>MuJoCo Warp</td></tr>
+<tr><td>PHP 跑酷教师，每张显卡</td><td>每秒 0.5–0.7 万个环境步，对照约 4.6 万（慢 7–9 倍）</td><td>Isaac Sim</td></tr>
+<tr><td>Sharpa 灵巧手拧瓶盖，3000 万步</td><td>2.6–3.0 小时，对照 25–27 分钟（慢约 6.4 倍）</td><td>Isaac Sim（PhysX）</td></tr>
+</tbody></table></div>
+<h2 id="errors">五、我们接入时出过的错</h2>
+<p><b>为什么列出来：</b>把 mortar 接进各套训练代码的工作是我们做的。下面这些错都出在我们的接入上，每一处都让某个结果先偏差、后更正；受影响的数字都已重做或在原页面标注。</p>
+<ul>
+<li><b>接触刚度</b>沿用了默认值，对 G1 由细胶囊组成的脚底偏软：MuJoCo 训练的行走策略放进 mortar 有 31.2–36.6 % 摔倒过，提高 3 倍后降到 0.1–0.5 %（<a href="loco_mortar.html#walk-asym">详情</a>）。</li>
+<li><b>摩擦的切向刚度</b>一直没有设置，比接触刚度软 30 倍：调到相同后，换仿真器的损失明显变小（<a href="loco_mortar.html#walk-friction">详情</a>）。</li>
+<li><b>箱子的表面</b>只用了 12 个大三角形，箱子陷进地面约 10 厘米：细分表面后正常，之前的两次搬箱子训练作废重做（<a href="loco_mortar.html#box-history">详情</a>）。</li>
+<li><b>从动作中途重置</b>时，机器人或箱子和障碍、手有几厘米重叠，被直接推开后弹飞：重置后的头几个物理步里限制速度变化。跑酷的爬高台教师因此第一次没有学会（<a href="php_mortar.html#climb-reset">详情</a>），搬箱子抱着箱子重置时箱子被弹走（<a href="loco_mortar.html#box-reset">详情</a>）。</li>
+<li><b>脚底的碰撞外形</b>太粗或太细：RPL 的脚底板只有 12 个三角形时石墩上只有 48 % 的回合走满时限，细分后 99.6 %（<a href="rpl_mortar.html#sole">详情</a>）；七根细胶囊做脚底时脚踩不平，换成细分的脚底板后好转（<a href="loco_mortar.html#box-feet">搬箱子</a>，<a href="contact_tests.html#plate">接触测试</a>）。</li>
+</ul>
+<h2 id="next">六、接下来</h2>
+<p>时间都是按现在的训练速度估的。</p>
+<div class="tablewrap"><table>
+<thead><tr><th>什么时候</th><th>什么</th></tr></thead>
+<tbody>
+<tr><td>11-23 下午</td><td>跑酷的两个上台阶教师训练完；搬箱子的三次新训练开始（带两项修正、4 倍数据量）</td></tr>
+<tr><td>11-24 凌晨到上午</td><td>搬箱子的新训练结束；跑酷的慢速爬高台教师训练完；RPL 的斜坡专家开始用 mortar 训练（约 30–35 小时）</td></tr>
+<tr><td>11-24 中午前后</td><td>跑酷的快速爬高台教师训练完；随后跑酷的学生开始用 mortar 训练（8192 个环境，约 2.5–3 天）</td></tr>
+</tbody></table></div>
+<footer>World Model Lab · 世界模型的学习与测试记录 · <a href="https://github.com/haoxiangNtu/world-model-lab">源码</a></footer>
+</div>
+</body>
+</html>
