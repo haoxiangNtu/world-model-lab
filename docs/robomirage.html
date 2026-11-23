@@ -137,9 +137,9 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
   <h1>用 <span class="grad">RoboMirage</span> 训练人形机器人<small>行走 · 跑酷 · 搬箱子 · 全身动作跟踪</small></h1>
   <p class="sub">把公开论文的官方训练代码原样拿来，算法、观测、奖励和超参数都不改，只把物理仿真器换成 RoboMirage。Unitree G1 在 RoboMirage 里从零训练了平地行走、全身动作跟踪、跑酷（走跑、上台阶，爬高台还在训练）和搬箱子，灵巧手训练了拧瓶盖。行走、动作跟踪和跑酷的策略不再训练，原样放进 MuJoCo 或 Isaac Sim 也能用。</p>
   <div class="cta"><a class="btn" href="#overview">看全部结果</a><a class="btn ghost" href="#how">怎么做的</a></div>
-  <figure><div class="frame"><video autoplay muted loop playsinline preload="auto" poster="../media/rm_hero.jpg?v=1123c" src="../media/rm_hero.mp4?v=1123c"></video></div><figcaption><b>16 台 Unitree G1 执行同一个行走策略。</b>策略在 RoboMirage 里训练，画面里的运动也是在 RoboMirage 里仿真的：站立、前进、边走边转、横移、后退，全程没有一台摔倒。</figcaption></figure>
+  <figure><div class="frame"><video autoplay muted loop playsinline preload="auto" poster="../media/rm_hero.jpg?v=1123c23755" src="../media/rm_hero.mp4?v=1123c23755"></video></div><figcaption><b>16 台 Unitree G1 执行同一个行走策略。</b>策略在 RoboMirage 里训练，画面里的运动也是在 RoboMirage 里仿真的：站立、前进、边走边转、横移、后退，全程没有一台摔倒。</figcaption></figure>
   <div class="stats"><div class="stat"><div class="n">0<em>/ 2048</em></div><div class="l">平地行走：两个随机种子各 1024 台机器人、随机速度指令走 20 秒，没有一台摔倒</div></div><div class="stat"><div class="n">99.4–99.6 %</div><div class="l">跑酷（平地走跑、上 36 厘米台阶）：1024 台机器人连续跟踪 60 秒，动作片段从头做到尾的比例</div></div><div class="stat"><div class="n">0.88</div><div class="l">全身动作跟踪：LAFAN1 的 40 段动作，归一化回报；同一份代码在 MuJoCo 里训练也是 0.88</div></div><div class="stat"><div class="n">5<em>类任务</em></div><div class="l">行走、跑酷、搬箱子、全身动作跟踪、灵巧手拧瓶盖，都在 RoboMirage 里从零训练</div></div></div>
-  <div class="tasks"><a class="task" href="#walk"><img loading="lazy" alt="行走" src="../media/rm_thumb_walk.jpg?v=1123c"><span class="tt">行走</span><span class="td">2048 台，20 秒，0 台摔倒</span></a><a class="task" href="#parkour"><img loading="lazy" alt="跑酷" src="../media/rm_thumb_parkour.jpg?v=1123c"><span class="tt">跑酷</span><span class="td">动作片段完成率 99.4–99.6 %</span></a><a class="task" href="#box"><img loading="lazy" alt="搬箱子" src="../media/rm_thumb_box.jpg?v=1123c"><span class="tt">搬箱子</span><span class="td">抱起、搬运、放下一整段</span></a><a class="task" href="#mimic"><img loading="lazy" alt="全身动作跟踪" src="../media/rm_thumb_mimic.jpg?v=1123c"><span class="tt">全身动作跟踪</span><span class="td">回报 0.88，和 MuJoCo 里训练持平</span></a><a class="task" href="#hand"><img loading="lazy" alt="灵巧手" src="../media/rm_thumb_hand.jpg?v=1123c"><span class="tt">灵巧手</span><span class="td">拧开瓶盖 85.7–99.6 %</span></a></div>
+  <div class="tasks"><a class="task" href="#walk"><img loading="lazy" alt="行走" src="../media/rm_thumb_walk.jpg?v=1123c32015"><span class="tt">行走</span><span class="td">2048 台，20 秒，0 台摔倒</span></a><a class="task" href="#parkour"><img loading="lazy" alt="跑酷" src="../media/rm_thumb_parkour.jpg?v=1123c20141"><span class="tt">跑酷</span><span class="td">动作片段完成率 99.4–99.6 %</span></a><a class="task" href="#box"><img loading="lazy" alt="搬箱子" src="../media/rm_thumb_box.jpg?v=1123c26879"><span class="tt">搬箱子</span><span class="td">抱起、搬运、放下一整段</span></a><a class="task" href="#mimic"><img loading="lazy" alt="全身动作跟踪" src="../media/rm_thumb_mimic.jpg?v=1123c17347"><span class="tt">全身动作跟踪</span><span class="td">回报 0.88，和 MuJoCo 里训练持平</span></a><a class="task" href="#hand"><img loading="lazy" alt="灵巧手" src="../media/rm_thumb_hand.jpg?v=1123c10170"><span class="tt">灵巧手</span><span class="td">拧开瓶盖 85.7–99.6 %</span></a></div>
 </div></header>
 
 <section class="sec" id="overview"><div class="wrap">
@@ -179,7 +179,7 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
         <li><b>换仿真器照样能走</b><span>同一个策略不再训练，原样放进 MuJoCo：没有一台摔倒；放进 Isaac Sim：0–0.1 % 摔倒过</span></li>
         <li><b>跟踪精度和对照相当</b><span>速度误差 0.49 / 0.48 m/s、转向误差 0.13 / 0.13 rad/s；同样设置在 MuJoCo 里训练的对照是 0.47 / 0.46 m/s、0.13 / 0.12 rad/s</span></li>
   </ul>
-  <div class="wide"><figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_walk_xfer.jpg?v=1123c" data-src="../media/rm_walk_xfer.mp4?v=1123c"></video></div><figcaption><b>同一个在 RoboMirage 里训练的行走策略，放在三个仿真器里。</b>从左到右：RoboMirage、MuJoCo、Isaac Sim，各 4 台机器人，收到同一串速度指令（站立 → 前进 → 边走边转 → 横移 → 后退 → 站立）。左下角是当前指令，右下角是到此为止摔倒的台数。</figcaption></figure>
+  <div class="wide"><figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_walk_xfer.jpg?v=1123c64783" data-src="../media/rm_walk_xfer.mp4?v=1123c64783"></video></div><figcaption><b>同一个在 RoboMirage 里训练的行走策略，放在三个仿真器里。</b>从左到右：RoboMirage、MuJoCo、Isaac Sim，各 4 台机器人，收到同一串速度指令（站立 → 前进 → 边走边转 → 横移 → 后退 → 站立）。左下角是当前指令，右下角是到此为止摔倒的台数。</figcaption></figure>
 </div>
 </div></section>
 
@@ -198,10 +198,10 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
 </tbody></table></div>
 
   <p class="note">平地走跑和上台阶的三个教师已经训练完成，在 RoboMirage 里的完成率和 Isaac Sim 里训练的对照在同一水平（99.4–99.6 % 对 99.1–99.5 %）；原样放进 Isaac Sim 是 95.5–96.2 %。爬 76 厘米高台的两个教师还在训练：慢速第 7500 轮的检查点已到 97.9 %；快速第 5000 轮的检查点已到 66.5 %。</p>
-  <div class="wide"><figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_parkour_loco.jpg?v=1123c" data-src="../media/rm_parkour_loco.mp4?v=1123c"></video></div><figcaption><b>平地走跑教师（训练完成），在 RoboMirage 里运行。</b>六格是同一次录像里的六台机器人，各自跟踪自己的动作片段，橙色的是障碍。按编号从小到大取前 20 秒里走到障碍附近的前六台，不看成败。左下角是时间和到此为止做完的片段数。</figcaption></figure>
+  <div class="wide"><figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_parkour_loco.jpg?v=1123c8807" data-src="../media/rm_parkour_loco.mp4?v=1123c8807"></video></div><figcaption><b>平地走跑教师（训练完成），在 RoboMirage 里运行。</b>六格是同一次录像里的六台机器人，各自跟踪自己的动作片段，橙色的是障碍。按编号从小到大取前 20 秒里走到障碍附近的前六台，不看成败。左下角是时间和到此为止做完的片段数。</figcaption></figure>
 </div>
-  <div class="pair"><figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_parkour_step.jpg?v=1123c" data-src="../media/rm_parkour_step.mp4?v=1123c"></video></div><figcaption><b>上 36 厘米台阶的两个教师（训练完成）。</b>上排慢速，下排快速，各取编号最前的三台。</figcaption></figure>
-<figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_parkour_climb.jpg?v=1123c" data-src="../media/rm_parkour_climb.mp4?v=1123c"></video></div><figcaption><b>手撑爬上 76 厘米高台（慢速教师，训练中）。</b>这是第 7500 轮的检查点（共 2 万轮），取编号最前的六台。</figcaption></figure>
+  <div class="pair"><figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_parkour_step.jpg?v=1123c86847" data-src="../media/rm_parkour_step.mp4?v=1123c86847"></video></div><figcaption><b>上 36 厘米台阶的两个教师（训练完成）。</b>上排慢速，下排快速，各取编号最前的三台。</figcaption></figure>
+<figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_parkour_climb.jpg?v=1123c55197" data-src="../media/rm_parkour_climb.mp4?v=1123c55197"></video></div><figcaption><b>手撑爬上 76 厘米高台（慢速教师，训练中）。</b>这是第 7500 轮的检查点（共 2 万轮），取编号最前的六台。</figcaption></figure>
 </div>
 </div></section>
 
@@ -210,7 +210,7 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
   <h2>搬箱子：弯腰抱起，走几步，再放下</h2>
   <p class="lead">这是 FastSAC 论文里带物体的全身动作跟踪：机器人弯腰用双手夹住一个大箱子，抱到胸前走几步，再放回地面，整段 6.5 秒。箱子不固定在手上，全靠双手和箱子之间的接触与摩擦把它夹住，所以它对仿真器的接触计算要求最高。</p>
   <div class="cols rev">
-    <div><figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_box.jpg?v=1123c" data-src="../media/rm_box.mp4?v=1123c"></video></div><figcaption><b>在 RoboMirage 里训练的搬箱子策略，在 RoboMirage 里运行。</b>同屏的是 8 次做完的尝试（1024 次里按编号取最前面 8 次做完的；这次训练的完成率是 65.0 %）。机器人的手画成半球，那是仿真里手的碰撞外形。</figcaption></figure>
+    <div><figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_box.jpg?v=1123c81482" data-src="../media/rm_box.mp4?v=1123c81482"></video></div><figcaption><b>在 RoboMirage 里训练的搬箱子策略，在 RoboMirage 里运行。</b>同屏的是 8 次做完的尝试（1024 次里按编号取最前面 8 次做完的；这次训练的完成率是 65.0 %）。机器人的手画成半球，那是仿真里手的碰撞外形。</figcaption></figure>
 </div>
     <div>
       <ul class="facts">
@@ -240,7 +240,7 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
         <li><b>0.88 / 0.88 / 0.87</b><span>在 RoboMirage 里训练三次的归一化回报（满分 1）；同一份代码在 MuJoCo 里训练是 0.88 / 0.87，论文报告的是 0.82</span></li>
         <li><b>放进 MuJoCo：0.87 / 0.85 / 0.86</b><span>三个策略不再训练，原样换到 MuJoCo，120 段动作里合计只失败 2 段</span></li>
   </ul>
-  <div class="wide"><figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_mimic.jpg?v=1123c" data-src="../media/rm_mimic.mp4?v=1123c"></video></div><figcaption><b>在 RoboMirage 里训练出来的策略。</b>上排在 RoboMirage 里运行，下排是同一个策略原样放进 MuJoCo；四列是四段不同的动作。蓝色半透明的是要跟踪的参考动作。</figcaption></figure>
+  <div class="wide"><figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_mimic.jpg?v=1123c26149" data-src="../media/rm_mimic.mp4?v=1123c26149"></video></div><figcaption><b>在 RoboMirage 里训练出来的策略。</b>上排在 RoboMirage 里运行，下排是同一个策略原样放进 MuJoCo；四列是四段不同的动作。蓝色半透明的是要跟踪的参考动作。</figcaption></figure>
 </div>
 </div></section>
 
@@ -253,14 +253,14 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
       <ul class="facts">
         <li><b>67.8–94.6 %</b><span>Sharpa 手（22 个关节），27 种形状大小不同的瓶盖：盖子转满一圈的比例，四种输入（不给触觉、二值接触、原始触觉、CNN）共 17 次训练。同样的 17 次训练在 PhysX 里是 71.2–96.5 %</span></li>
       </ul>
-      <figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_hand_sharpa.jpg?v=1123c" data-src="../media/rm_hand_sharpa.mp4?v=1123c"></video></div><figcaption><b>Sharpa 手，在 RoboMirage 里训练并运行。</b>四种瓶盖是固定选的中号（圆柱、四棱柱、六棱柱、球形），不是按结果挑的；绿色是指尖的软垫，底部横条变绿表示盖子已经拧开。</figcaption></figure>
+      <figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_hand_sharpa.jpg?v=1123c1997" data-src="../media/rm_hand_sharpa.mp4?v=1123c1997"></video></div><figcaption><b>Sharpa 手，在 RoboMirage 里训练并运行。</b>四种瓶盖是固定选的中号（圆柱、四棱柱、六棱柱、球形），不是按结果挑的；绿色是指尖的软垫，底部横条变绿表示盖子已经拧开。</figcaption></figure>
 
     </div>
     <div>
       <ul class="facts">
         <li><b>85.7–99.6 %</b><span>Wuji 五指手，软指尖，24 种瓶盖、位置随机：手先找到盖子，再拧开并提起，8 次训练的成功率</span></li>
       </ul>
-      <figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_hand_wuji.jpg?v=1123c" data-src="../media/rm_hand_wuji.mp4?v=1123c"></video></div><figcaption><b>Wuji 五指手，24 种盖子各一个回合。</b>训练中途的检查点（约 2000 万步，共训练 6000 万步）：24 个全部拧开，23 个提起并握到结束。橙色是指尖的软垫，盖子上的黄色扇形用来看转动。</figcaption></figure>
+      <figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_hand_wuji.jpg?v=1123c9573" data-src="../media/rm_hand_wuji.mp4?v=1123c9573"></video></div><figcaption><b>Wuji 五指手，24 种盖子各一个回合。</b>训练中途的检查点（约 2000 万步，共训练 6000 万步）：24 个全部拧开，23 个提起并握到结束。橙色是指尖的软垫，盖子上的黄色扇形用来看转动。</figcaption></figure>
 
     </div>
   </div>
@@ -290,7 +290,7 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
 </tbody></table></div>
 
   <p class="note">以脚底接触为主的任务（行走、动作跟踪、平地和台阶上的跑酷）换仿真器基本不掉。带物体的任务（搬箱子、拧瓶盖）对接触细节更敏感，换仿真器后掉得多，两个方向都是这样，所以没有列在上面：在 MuJoCo 里训练的搬箱子策略（完整做完 52.6 %）放进 RoboMirage 是 15.3 %；Sharpa 手拧瓶盖的策略，两个方向换仿真器后都只剩 1–65 %。</p>
-  <div class="wide"><figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_rpl_xfer.jpg?v=1123c" data-src="../media/rm_rpl_xfer.mp4?v=1123c"></video></div><figcaption><b>RPL 论文作者发布的专家策略（在 IsaacGym 里训练），原样放进 RoboMirage 运行。</b>六格是同一次运行里的六台机器人：石墩、斜坡和台阶。每类地形按编号取前几台，不看成败。这段展示的是“别处训练的策略能在 RoboMirage 里跑”，不是在 RoboMirage 里训练的结果。</figcaption></figure>
+  <div class="wide"><figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_rpl_xfer.jpg?v=1123c67431" data-src="../media/rm_rpl_xfer.mp4?v=1123c67431"></video></div><figcaption><b>RPL 论文作者发布的专家策略（在 IsaacGym 里训练），原样放进 RoboMirage 运行。</b>六格是同一次运行里的六台机器人：石墩、斜坡和台阶。每类地形按编号取前几台，不看成败。这段展示的是“别处训练的策略能在 RoboMirage 里跑”，不是在 RoboMirage 里训练的结果。</figcaption></figure>
 </div>
 </div></section>
 
