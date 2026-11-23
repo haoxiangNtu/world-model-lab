@@ -35,6 +35,10 @@ td.num b{color:var(--fg)}
 <h2 id="video">效果视频</h2>
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/parkour_loco_grid.jpg?v=1123a" src="../media/parkour_loco_grid.mp4?v=1123a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>平地走跑教师，用 mortar 训练到第 19999 轮，在 mortar 里运行。</b>六格是同一次录像里的六个机器人，各自跟踪自己的动作片段，橙色的是障碍。选法是固定的：按编号从小到大，取前 20 秒里走到障碍附近（1.2 米内）的前六个，不看成败。左上角是时间和到此为止做完、失败的片段数。画面是按记录下来的状态重新绘制的。</figcaption></figure>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/parkour_lowstep_grid.jpg?v=1123a" src="../media/parkour_lowstep_grid.mp4?v=1123a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>上 36 cm 台阶，慢速教师，用 mortar 训练到第 19999 轮，在 mortar 里运行。</b>六格是同一次录像里的六个机器人，各自跟踪自己的动作片段，橙色的是障碍。选法是固定的：按编号从小到大，取前 20 秒里走到障碍附近（1.2 米内）的前六个，不看成败。左上角是时间和到此为止做完、失败的片段数。画面是按记录下来的状态重新绘制的。</figcaption></figure>
+<figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/parkour_highstep_grid.jpg?v=1123a" src="../media/parkour_highstep_grid.mp4?v=1123a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
+<figcaption><b>上 36 cm 台阶，快速教师，用 mortar 训练到第 19999 轮，在 mortar 里运行。</b>六格是同一次录像里的六个机器人，各自跟踪自己的动作片段，橙色的是障碍。选法是固定的：按编号从小到大，取前 20 秒里走到障碍附近（1.2 米内）的前六个，不看成败。左上角是时间和到此为止做完、失败的片段数。画面是按记录下来的状态重新绘制的。</figcaption></figure>
 <h2 id="train">一、用 mortar 训练的教师</h2>
 <p><b>做了什么：</b>PHP 先把人的动作片段（走、跑、上台阶、手撑爬高台）拼成带障碍的长轨迹，每类动作训练一个跟踪动作的教师，之后再蒸馏成一个看深度图的学生。这里做的是教师这一步：五组公开数据各训练一个教师，算法（PPO）、观测、奖励、障碍的生成方式、训练轮数（2 万）和环境总数（前三个 4096，攀爬的两个 8192）都和之前 Isaac Sim 那次相同，只有物理仿真器换成了 mortar。<b>结果（11-23 17 时）：</b>下表是每个教师目前的进度和最新评估过的检查点；检查点每 2500 轮自动评估一次，先在 mortar 里，再原样放进 Isaac Sim。</p>
 <div class="tablewrap"><table>
