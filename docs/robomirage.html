@@ -143,7 +143,7 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
 </div></header>
 
 <section class="sec" id="overview"><div class="wrap">
-  <div class="kicker"><span class="num">00</span><span class="tag">数据截至 11 月 24 日 0 时</span></div>
+  <div class="kicker"><span class="num">00</span><span class="tag">数据截至 11 月 24 日 2 时</span></div>
   <h2>这次做了什么</h2>
   <p class="lead">五类任务，全部在 RoboMirage 里从零训练，再和同一份代码在原仿真器里的训练结果逐项对照。下表每一行都是“在 RoboMirage 里训练、在 RoboMirage 里评测”；各任务的指标不同，不能跨行比较。</p>
   <div class="tablewrap"><table>
@@ -154,8 +154,8 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
 <tr><td class="k">跑酷：平地走跑<br><span class="mut">跟踪带障碍的动作，G1</span></td><td>PHP 官方代码</td><td><b>99.4 %</b></td><td>Isaac Sim：99.5 %</td><td><span class="pill done">已完成</span></td></tr>
 <tr><td class="k">跑酷：上 36 cm 台阶，慢速<br><span class="mut">跟踪带障碍的动作，G1</span></td><td>PHP 官方代码</td><td><b>99.4 %</b></td><td>Isaac Sim：99.5 %</td><td><span class="pill done">已完成</span></td></tr>
 <tr><td class="k">跑酷：上 36 cm 台阶，快速<br><span class="mut">跟踪带障碍的动作，G1</span></td><td>PHP 官方代码</td><td><b>99.6 %</b></td><td>Isaac Sim：99.1 %</td><td><span class="pill done">已完成</span></td></tr>
-<tr><td class="k">跑酷：爬 76 cm 高台，慢速<br><span class="mut">跟踪带障碍的动作，G1</span></td><td>PHP 官方代码</td><td><b>96.6 %</b><br><span class="mut">第 12500 轮的检查点</span></td><td>Isaac Sim：98.9 %</td><td><span class="pill run">训练中 · 第 13515 / 20000 轮</span></td></tr>
-<tr><td class="k">跑酷：爬 76 cm 高台，快速<br><span class="mut">跟踪带障碍的动作，G1</span></td><td>PHP 官方代码</td><td><b>80.3 %</b><br><span class="mut">第 12500 轮的检查点</span></td><td>Isaac Sim：97.0 %</td><td><span class="pill run">训练中 · 第 12938 / 20000 轮</span></td></tr>
+<tr><td class="k">跑酷：爬 76 cm 高台，慢速<br><span class="mut">跟踪带障碍的动作，G1</span></td><td>PHP 官方代码</td><td><b>96.6 %</b><br><span class="mut">第 12500 轮的检查点</span></td><td>Isaac Sim：98.9 %</td><td><span class="pill run">训练中 · 第 14941 / 20000 轮</span></td></tr>
+<tr><td class="k">跑酷：爬 76 cm 高台，快速<br><span class="mut">跟踪带障碍的动作，G1</span></td><td>PHP 官方代码</td><td><b>80.3 %</b><br><span class="mut">第 12500 轮的检查点</span></td><td>Isaac Sim：97.0 %</td><td><span class="pill run">训练中 · 第 14567 / 20000 轮</span></td></tr>
 <tr><td class="k">搬箱子<br><span class="mut">弯腰抱起、搬运、放下，G1</span></td><td>FastSAC 官方代码</td><td>完整做完 <b>65.0 %</b><br><span class="mut">改进接入设置后，同样数据量，一个随机种子；改进前 18.0 % / 26.3 %</span></td><td>Isaac Sim：32.9 % / 22.7 %<br>MuJoCo：52.6 %</td><td><span class="pill done">已完成</span></td></tr>
 <tr><td class="k">灵巧手拧瓶盖<br><span class="mut">Sharpa 手，27 种瓶盖</span></td><td>自建任务，强化学习</td><td>盖子转满一圈 <b>67.8–94.6 %</b><br><span class="mut">四种输入共 17 次训练</span></td><td>Isaac Sim（PhysX）：71.2–96.5 %</td><td><span class="pill done">已完成</span></td></tr>
 </tbody></table></div>
@@ -192,8 +192,8 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
 <tr><td class="k">平地走跑</td><td>100 段</td><td><b>99.4 %</b></td><td>95.5 %</td><td>99.5 %</td><td><span class="pill done">已完成</span></td></tr>
 <tr><td class="k">上 36 cm 台阶，慢速</td><td>56 段</td><td><b>99.4 %</b></td><td>96.0 %</td><td>99.5 %</td><td><span class="pill done">已完成</span></td></tr>
 <tr><td class="k">上 36 cm 台阶，快速</td><td>60 段</td><td><b>99.6 %</b></td><td>96.2 %</td><td>99.1 %</td><td><span class="pill done">已完成</span></td></tr>
-<tr><td class="k">爬 76 cm 高台，慢速</td><td>40 段</td><td><b>96.6 %</b><br><span class="mut">第 12500 轮的检查点</span></td><td>92.6 %</td><td>98.9 %</td><td><span class="pill run">训练中 · 第 13515 / 20000 轮</span></td></tr>
-<tr><td class="k">爬 76 cm 高台，快速</td><td>40 段</td><td><b>80.3 %</b><br><span class="mut">第 12500 轮的检查点</span></td><td>80.1 %</td><td>97.0 %</td><td><span class="pill run">训练中 · 第 12938 / 20000 轮</span></td></tr>
+<tr><td class="k">爬 76 cm 高台，慢速</td><td>40 段</td><td><b>96.6 %</b><br><span class="mut">第 12500 轮的检查点</span></td><td>92.6 %</td><td>98.9 %</td><td><span class="pill run">训练中 · 第 14941 / 20000 轮</span></td></tr>
+<tr><td class="k">爬 76 cm 高台，快速</td><td>40 段</td><td><b>80.3 %</b><br><span class="mut">第 12500 轮的检查点</span></td><td>80.1 %</td><td>97.0 %</td><td><span class="pill run">训练中 · 第 14567 / 20000 轮</span></td></tr>
 </tbody></table></div>
 
   <p class="note">平地走跑和上台阶的三个教师已经训练完成，在 RoboMirage 里的完成率和 Isaac Sim 里训练的对照在同一水平（99.4–99.6 % 对 99.1–99.5 %）；原样放进 Isaac Sim 是 95.5–96.2 %。爬 76 厘米高台的两个教师还在训练：慢速第 12500 轮的检查点已到 96.6 %；快速第 12500 轮的检查点已到 80.3 %。</p>
@@ -209,7 +209,7 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
   <h2>搬箱子：弯腰抱起，走几步，再放下</h2>
   <p class="lead">这是 FastSAC 论文里带物体的全身动作跟踪：机器人弯腰用双手夹住一个大箱子，抱到胸前走几步，再放回地面，整段 6.5 秒。箱子不固定在手上，全靠双手和箱子之间的接触与摩擦把它夹住，所以它对仿真器的接触计算要求最高。</p>
   <div class="cols rev">
-    <div><figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_box.jpg?v=1123c81482" data-src="../media/rm_box.mp4?v=1123c81482"></video></div><figcaption><b>在 RoboMirage 里训练的搬箱子策略，在 RoboMirage 里运行。</b>同屏的是 8 次做完的尝试（1024 次里按编号取最前面 8 次做完的）。视频来自四分之一数据量、改进接入设置的那次训练（完成率 65.0 %）。机器人的手画成半球，那是仿真里手的碰撞外形。</figcaption></figure>
+    <div><figure class="vid "><div class="frame"><video muted loop playsinline controls preload="none" poster="../media/rm_box.jpg?v=1123c59653" data-src="../media/rm_box.mp4?v=1123c59653"></video></div><figcaption><b>在 RoboMirage 里训练的搬箱子策略，在 RoboMirage 里运行。</b>同屏的是 8 次做完的尝试（1024 次里按编号取最前面 8 次做完的）。视频来自 4 倍数据量、改进接入设置的那次训练（完成率 71.9 %）。机器人的手画成半球，那是仿真里手的碰撞外形。</figcaption></figure>
 </div>
     <div>
       <ul class="facts">
@@ -224,7 +224,7 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
 <tbody>
 <tr><td class="k">同样数据量（1 张显卡、4096 个环境、6 万轮）</td><td><b>18.0 % / 26.3 %</b><br><span class="mut">两个随机种子</span></td><td>Isaac Sim：32.9 % / 22.7 %<br>MuJoCo：52.6 %</td><td><span class="pill done">已完成</span></td></tr>
 <tr><td class="k">同样数据量，改进脚底和重置的接入设置</td><td><b>65.0 %</b></td><td>同上</td><td><span class="pill done">已完成</span></td></tr>
-<tr><td class="k">4 倍数据量（论文的设置）</td><td>11.8 % / 10.3 % / 32.7 % / 37.2 %<br><span class="mut">训练中途第 1、2、3、4 万轮的检查点（共 6 万轮），最终结果以训练结束时为准</span></td><td>Isaac Sim：61 %</td><td><span class="pill run">训练中</span></td></tr>
+<tr><td class="k">4 倍数据量（论文的设置）</td><td>11.8 % / 10.3 % / 32.7 % / 37.2 % / 49.9 %<br><span class="mut">训练中途第 1、2、3、4、5 万轮的检查点（共 6 万轮），最终结果以训练结束时为准</span></td><td>Isaac Sim：61 %</td><td><span class="pill run">训练中</span></td></tr>
 <tr><td class="k">4 倍数据量，改进脚底和重置的接入设置</td><td><b>71.9 %</b></td><td>Isaac Sim：61 %</td><td><span class="pill done">已完成</span></td></tr>
 </tbody></table></div>
 
@@ -301,7 +301,7 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
 </div></section>
 
 <section class="sec alt" id="status"><div class="wrap">
-  <div class="kicker"><span class="num">08</span><span class="tag">数据截至 11 月 24 日 0 时</span></div>
+  <div class="kicker"><span class="num">08</span><span class="tag">数据截至 11 月 24 日 2 时</span></div>
   <h2>进展</h2>
   <ul class="timeline"><li><span class="w"><span class="pill done">已完成</span></span><span>平地行走；全身动作跟踪；跑酷的 3 个教师：平地走跑、上台阶（慢速）、上台阶（快速）；搬箱子（同样数据量）；灵巧手拧瓶盖。</span></li><li><span class="w"><span class="pill run">训练中</span></span><span>跑酷的 2 个教师：爬高台（慢速）、爬高台（快速）。各 2 万轮，11 月 24 日上午训完。</span></li><li><span class="w"><span class="pill next">接下来</span></span><span>跑酷的学生策略：只看深度图，由五个教师蒸馏得到（论文的最后一步）。</span></li><li><span class="w"><span class="pill next">接下来</span></span><span>RPL 感知行走的专家策略用 RoboMirage 从零训练（目前只验证了作者发布的策略能原样在 RoboMirage 里运行）。</span></li></ul>
   <div class="about" style="margin-top:34px"><p><b>关于 RoboMirage。</b>RoboMirage 是面向具身智能的通用物理仿真平台。这一页是它用于人形机器人运动控制训练的第一批结果：把公开论文的训练代码接到 RoboMirage 上，从零训练，再和原来的仿真器逐项对照。</p></div>
@@ -310,7 +310,7 @@ footer .fb{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;bo
 <footer><div class="wrap">
   <p>说明：本页所有结果都来自仿真，没有真机实验。视频不是仿真器直接渲染的画面：先把策略运行时每一步的机器人状态（位置、姿态、关节角）记录下来，再用同一台机器人的模型重新画出来，每段视频下面写了状态是在哪个仿真器里记录的、画面里的机器人是怎么选的。</p>
   <p>评测规模：行走 1024 台 × 20 秒 × 2 个随机种子；跑酷 1024 台 × 60 秒；搬箱子 1024 次尝试；全身动作跟踪 40 段完整动作；灵巧手每次训练 1026 个回合。带“检查点”字样的数字来自还在训练的策略，会随训练更新。</p>
-  <div class="fb"><span>RoboMirage · 人形机器人训练</span><span>页面生成于 11 月 24 日 0 时</span></div>
+  <div class="fb"><span>RoboMirage · 人形机器人训练</span><span>页面生成于 11 月 24 日 2 时</span></div>
 </div></footer>
 <script>
 (function(){
