@@ -28,12 +28,12 @@ td.num b{color:var(--fg)}
 
 <div class="eyebrow">Humanoid parkour · PHP × mortar · 2026-11</div>
 <h1>把 PHP 跑酷教师的仿真器换成 mortar 来训练</h1>
-<p class="lead"><b>现状（11-24 23 时）：PHP 跑酷的官方训练代码只支持 Isaac Sim。我们不改训练部分，只把物理仿真器换成 mortar，五个教师都用 mortar 训练，每个 2 万轮：五个都已训练完。</b>平地走跑（已训完 2 万轮）：第 19999 轮的检查点在 mortar 里片段完成率 99.4 %，原样放进 Isaac Sim 是 95.5 %，Isaac Sim 自己训练满 2 万轮的教师是 99.5 %；上 36 cm 台阶，慢速（已训完 2 万轮）：第 19999 轮的检查点在 mortar 里片段完成率 99.4 %，原样放进 Isaac Sim 是 96.0 %，Isaac Sim 自己训练满 2 万轮的教师是 99.5 %；上 36 cm 台阶，快速（已训完 2 万轮）：第 19999 轮的检查点在 mortar 里片段完成率 99.6 %，原样放进 Isaac Sim 是 96.2 %，Isaac Sim 自己训练满 2 万轮的教师是 99.1 %；爬 76 cm 高台，快速（已训完 2 万轮）：第 19999 轮的检查点在 mortar 里片段完成率 96.3 %，原样放进 Isaac Sim 是 88.1 %，Isaac Sim 自己训练满 2 万轮的教师是 97.0 %。<b>“爬 76 cm 高台，慢速”这个教师的第一次训练没有学会攀爬</b>（第 2500 轮的检查点完成率是 0），原因是我们接入时漏了一处处理，11-23 已修正并从头重新训练（重新训练已完成 2 万轮：在 mortar 里 98.2 %，原样放进 Isaac Sim 是 89.9 %，Isaac Sim 自己训练满 2 万轮的教师是 98.9 %），见<a href="#climb-reset">下面的说明</a>。评估方法和之前 Isaac Sim 那次相同：1024 个机器人连续跟踪 60 秒，一个片段从头做到尾、中途没有因为偏离太多或摔倒而被终止，算完成。速度上 mortar 慢得多：每张显卡每秒约 0.5–0.7 万个环境步，Isaac Sim 约 4.6 万，所以这里每个教师用 4–8 张显卡，Isaac Sim 当时用 1–2 张（<a href="#speed">见第三节</a>）。这一页只有仿真里的结果，没有真机实验；学生（看深度图的策略，11-24 10:36 开始用 mortar 训练，只蒸馏慢速上 36 cm 台阶和慢速爬 76 cm 高台两个教师）训练到第 7500 轮（共 3 万轮）时，原样放进 MuJoCo 按论文的单障碍测试：上台阶 98.2 %、爬高台 94.2 %，<a href="#student">见下面</a>，策略视频见<a href="#video">下面</a>。之前用 Isaac Sim 的复现见<a href="loco_repro.html#php">行走复现页</a>，同一个仿真器换法用在 FastSAC 上的结果见<a href="loco_mortar.html">用 mortar 训练 FastSAC</a>。</p>
+<p class="lead"><b>现状（11-25 13 时）：PHP 跑酷的官方训练代码只支持 Isaac Sim。我们不改训练部分，只把物理仿真器换成 mortar，五个教师都用 mortar 训练，每个 2 万轮：五个都已训练完。</b>平地走跑（已训完 2 万轮）：第 19999 轮的检查点在 mortar 里片段完成率 99.4 %，原样放进 Isaac Sim 是 95.5 %，Isaac Sim 自己训练满 2 万轮的教师是 99.5 %；上 36 cm 台阶，慢速（已训完 2 万轮）：第 19999 轮的检查点在 mortar 里片段完成率 99.4 %，原样放进 Isaac Sim 是 96.0 %，Isaac Sim 自己训练满 2 万轮的教师是 99.5 %；上 36 cm 台阶，快速（已训完 2 万轮）：第 19999 轮的检查点在 mortar 里片段完成率 99.6 %，原样放进 Isaac Sim 是 96.2 %，Isaac Sim 自己训练满 2 万轮的教师是 99.1 %；爬 76 cm 高台，快速（已训完 2 万轮）：第 19999 轮的检查点在 mortar 里片段完成率 96.3 %，原样放进 Isaac Sim 是 88.1 %，Isaac Sim 自己训练满 2 万轮的教师是 97.0 %。<b>“爬 76 cm 高台，慢速”这个教师的第一次训练没有学会攀爬</b>（第 2500 轮的检查点完成率是 0），原因是我们接入时漏了一处处理，11-23 已修正并从头重新训练（重新训练已完成 2 万轮：在 mortar 里 98.2 %，原样放进 Isaac Sim 是 89.9 %，Isaac Sim 自己训练满 2 万轮的教师是 98.9 %），见<a href="#climb-reset">下面的说明</a>。评估方法和之前 Isaac Sim 那次相同：1024 个机器人连续跟踪 60 秒，一个片段从头做到尾、中途没有因为偏离太多或摔倒而被终止，算完成。速度上 mortar 慢得多：每张显卡每秒约 0.5–0.7 万个环境步，Isaac Sim 约 4.6 万，所以这里每个教师用 4–8 张显卡，Isaac Sim 当时用 1–2 张（<a href="#speed">见第三节</a>）。这一页只有仿真里的结果，没有真机实验；学生（看深度图的策略，11-24 10:36 开始用 mortar 训练，只蒸馏慢速上 36 cm 台阶和慢速爬 76 cm 高台两个教师）训练到第 15000 轮（官方设置共 3 万轮）后暂停，原样放进 MuJoCo 按论文的单障碍测试：上台阶 99.0 %、爬高台 100.0 %，和作者发布的学生（99.2 %、99.8 %）相当，<a href="#student">见下面</a>，策略视频见<a href="#video">下面</a>。之前用 Isaac Sim 的复现见<a href="loco_repro.html#php">行走复现页</a>，同一个仿真器换法用在 FastSAC 上的结果见<a href="loco_mortar.html">用 mortar 训练 FastSAC</a>。</p>
 <div class="toc"><b>目录</b>
 <a href="#student">学生（深度图蒸馏）</a><a href="#video">效果视频</a><a href="#train">一、用 mortar 训练的教师</a><a href="#curve">训练曲线</a><a href="#transfer">二、只是放进 mortar 测试的结果</a><a href="#speed">三、速度</a><a href="#bridge">四、怎么接的，接入时出过的错</a><a href="#check">五、测试条件和没做的</a>
 </div>
-<h2 id="student">学生（深度图蒸馏）：训练到四分之一时已经能上台阶、爬高台</h2>
-<p><b>做了什么：</b>学生只看深度图和自身状态，由两个用 mortar 训练的教师（慢速上 36 cm 台阶、慢速爬 76 cm 高台）蒸馏，蒸馏也在 mortar 里进行（8 张显卡、8192 个环境，官方设置共 3 万轮）。每隔 2500 轮取一个检查点，不再训练，原样放进 MuJoCo 按论文的单障碍测试评估：场地上只有一个障碍，100 个障碍实例各试 5 次，越过障碍后再走 1.5 米不摔算成功。<b>结果（11-24 23 时）：</b>训练到第 7500 轮时，上台阶 98.2 %、爬高台 94.2 %；作者发布的学生在同一测试里是 99.2 % 和 99.8 %。上台阶在 2500 轮时已经到 94 %，爬高台到 5000 轮还是 0，之后才学会。训练还在继续，后面的检查点会接着评估。</p>
+<h2 id="student">学生（深度图蒸馏）：训练到一半时已和作者发布的学生相当，已暂停</h2>
+<p><b>做了什么：</b>学生只看深度图和自身状态，由两个用 mortar 训练的教师（慢速上 36 cm 台阶、慢速爬 76 cm 高台）蒸馏，蒸馏也在 mortar 里进行（8 张显卡、8192 个环境，官方设置共 3 万轮）。每隔 2500 轮取一个检查点，不再训练，原样放进 MuJoCo 按论文的单障碍测试评估：场地上只有一个障碍，100 个障碍实例各试 5 次，越过障碍后再走 1.5 米不摔算成功。<b>结果（11-25 13 时）：</b>训练到第 15000 轮时，上台阶 99.0 %、爬高台 100.0 %；作者发布的学生在同一测试里是 99.2 % 和 99.8 %。上台阶在 2500 轮时已经到 94 %，爬高台到 5000 轮还是 0，之后才学会。从第 10000 轮起两项都在 99 % 以上，和作者发布的学生相当，所以训练到第 15000 轮（官方设置的一半）后在 11-25 12:36 暂停，检查点保留，需要时可以接着训练。</p>
 <div class="tablewrap"><table>
 <thead><tr><th>训练轮数</th><th class="num">MuJoCo 单障碍测试：上 36 cm 台阶</th><th class="num">MuJoCo 单障碍测试：爬 76 cm 高台</th><th class="num">Isaac Sim 片段完成率：台阶</th><th class="num">Isaac Sim 片段完成率：高台</th></tr></thead>
 <tbody>
@@ -46,6 +46,9 @@ td.num b{color:var(--fg)}
 <tr><td>6500</td><td class="num">—</td><td class="num">—</td><td class="num">57.4 %</td><td class="num">3.6 %</td></tr>
 <tr><td>7000</td><td class="num">—</td><td class="num">—</td><td class="num">61.7 %</td><td class="num">8.0 %</td></tr>
 <tr><td>7500</td><td class="num">98.2 %</td><td class="num">94.2 %</td><td class="num">—</td><td class="num">—</td></tr>
+<tr><td>10000</td><td class="num">99.4 %</td><td class="num">99.4 %</td><td class="num">—</td><td class="num">—</td></tr>
+<tr><td>12500</td><td class="num">99.6 %</td><td class="num">99.6 %</td><td class="num">—</td><td class="num">—</td></tr>
+<tr><td>15000</td><td class="num">99.0 %</td><td class="num">100.0 %</td><td class="num">—</td><td class="num">—</td></tr>
 <tr><td>作者发布的学生（Isaac Sim 里训练）</td><td class="num">99.2 %</td><td class="num">99.8 %</td><td class="num">—</td><td class="num">—</td></tr>
 </tbody></table></div>
 <p class="small">MuJoCo 两列每格 500 次尝试。Isaac Sim 两列是另一种更严的量法，和下面教师表里的相同：1024 台机器人连续跟踪 60 秒，一个动作片段从头做到尾、中途没有偏离参考轨迹太远才算完成；两个教师自己在 Isaac Sim 里是 96.0 % 和 89.9 %。学生跟参考轨迹还跟得不紧，所以这个数字比单障碍测试低得多。“—”表示那个检查点没有做这一项评估。</p>
@@ -61,7 +64,7 @@ td.num b{color:var(--fg)}
 <figure class="fig"><video controls muted loop playsinline preload="metadata" poster="../media/parkour_climb_fast_grid.jpg?v=1123a" src="../media/parkour_climb_fast_grid.mp4?v=1123a" style="width:100%;height:auto;display:block;border-radius:6px;background:#000"></video>
 <figcaption><b>爬 76 cm 高台，快速教师，用 mortar 训练到第 19999 轮，在 mortar 里运行。</b>六格是同一次录像里的六个机器人，各自跟踪自己的动作片段，橙色的是障碍。选法是固定的：按编号从小到大，取前 20 秒里走到障碍附近（1.2 米内）的前六个，不看成败。左上角是时间和到此为止做完、失败的片段数。画面是按记录下来的状态重新绘制的。</figcaption></figure>
 <h2 id="train">一、用 mortar 训练的教师</h2>
-<p><b>做了什么：</b>PHP 先把人的动作片段（走、跑、上台阶、手撑爬高台）拼成带障碍的长轨迹，每类动作训练一个跟踪动作的教师，之后再蒸馏成一个看深度图的学生。这里做的是教师这一步：五组公开数据各训练一个教师，算法（PPO）、观测、奖励、障碍的生成方式、训练轮数（2 万）和环境总数（前三个 4096，攀爬的两个 8192）都和之前 Isaac Sim 那次相同，只有物理仿真器换成了 mortar。<b>结果（11-24 23 时）：</b>下表是每个教师目前的进度和最新评估过的检查点；检查点每 2500 轮自动评估一次，先在 mortar 里，再原样放进 Isaac Sim。</p>
+<p><b>做了什么：</b>PHP 先把人的动作片段（走、跑、上台阶、手撑爬高台）拼成带障碍的长轨迹，每类动作训练一个跟踪动作的教师，之后再蒸馏成一个看深度图的学生。这里做的是教师这一步：五组公开数据各训练一个教师，算法（PPO）、观测、奖励、障碍的生成方式、训练轮数（2 万）和环境总数（前三个 4096，攀爬的两个 8192）都和之前 Isaac Sim 那次相同，只有物理仿真器换成了 mortar。<b>结果（11-25 13 时）：</b>下表是每个教师目前的进度和最新评估过的检查点；检查点每 2500 轮自动评估一次，先在 mortar 里，再原样放进 Isaac Sim。</p>
 <div class="tablewrap"><table>
 <thead><tr><th>教师</th><th class="num">动作片段数</th><th class="num">用 mortar 训练的进度</th><th class="num">最新评估的检查点</th><th class="num">在 mortar 里</th><th class="num">原样放进 Isaac Sim</th><th class="num">对照：Isaac Sim 训练满 2 万轮，在 Isaac Sim 里</th></tr></thead>
 <tbody>
@@ -152,7 +155,7 @@ td.num b{color:var(--fg)}
 <p>还有一处和速度有关的更正：最早量到的“每秒 1.87 万步”是在第一处错误还没改、机器人悬在空中时测的，没有接触所以偏快；改正后是每秒约 0.97 万步。</p>
 <h2 id="check">五、测试条件和没做的</h2>
 <p><b>测试条件：</b>代码是 PHP 公开的 v1.0 版，数据是作者公开的五组；每个教师 2 万轮、每轮每个环境 24 步，障碍每组 64 套随机变体；控制频率 50 Hz，物理步长 5 毫秒。mortar 一侧：单精度，接触刚度和摩擦的切向刚度都用 FastSAC 那一页查出的设置，机器人的碰撞外形取自机器人的 URDF 描述（各连杆的凸包），不是 MuJoCo 模型里的胶囊。两个攀爬的教师另外带着第一节说的重置后限速。训练中每 250 个控制步检查一次异常：出现非有限数的环境为 0；有极少数环境步没有被积分（约十万分之二，主要出现在策略还是随机输出的最初几百轮）。</p>
-<p><b>没做的：</b>学生只蒸馏了慢速台阶和慢速高台两个教师，另外三个教师（平地走跑、快速台阶、快速高台）不蒸馏；学生还没训完，现在的数字来自训练中途的检查点；真机实验；多个随机种子（每个教师只有一个）；攀爬的教师放进 mortar 掉约 10 个点的原因。</p>
+<p><b>没做的：</b>学生只蒸馏了慢速台阶和慢速高台两个教师，另外三个教师（平地走跑、快速台阶、快速高台）不蒸馏；学生训练到官方设置的一半（第 15000 轮）后暂停，数字来自这个检查点；真机实验；多个随机种子（每个教师只有一个）；攀爬的教师放进 mortar 掉约 10 个点的原因。</p>
 <footer>World Model Lab · 世界模型的学习与测试记录 · <a href="https://github.com/haoxiangNtu/world-model-lab">源码</a></footer>
 </div>
 <script src="charts.js"></script>
